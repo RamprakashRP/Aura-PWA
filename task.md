@@ -1,0 +1,34 @@
+# Aura PWA Task List
+
+- [ ] **Planning**
+  - [x] Initial Task Breakdown
+  - [x] Implementation Plan
+  - [ ] User Approval (Optimized Plan)
+- [ ] **Project Setup**
+  - [ ] Initialize React Vite TypeScript project (`aura`)
+  - [ ] Install dependencies (`@supabase/supabase-js`, `lucide-react`, `recharts`, `tailwindcss`, `thefuzz` for parser, etc.)
+  - [ ] Configure Tailwind CSS for 'Solo Leveling' aesthetic (sharp edges, neon borders, dark mode default)
+  - [ ] Setup Vite PWA plugin (`vite-plugin-pwa`) for manifest and service worker
+- [ ] **Backend Setup (Supabase)**
+  - [ ] Initialize Supabase configuration
+  - [ ] Setup Authentication (Email / Password)
+  - [ ] Create Database Schema (`profiles`, `transactions`, `shared_groups`) with `visibility` hardcoded to 'Private' by default
+  - [ ] Formulate strict RLS Policies preventing partner access unless visibility is 'shared' or group_id matches
+- [ ] **Statement Parser Skill (Python)**
+  - [ ] Create Python-based `.agents/skills/statement-parser` for CSV/PDF extraction
+  - [ ] Implement Smart Mapper (ML Lite) using `thefuzz` for fuzzy categorization based on historical data
+- [ ] **Frontend Infrastructure & UI Components**
+  - [ ] Design System Setup ('Solo Leveling' inspired: glowing neon active states, vibrant Google Green for healthy budgets, desaturated grey for exceeded budgets)
+  - [ ] Routing architecture
+  - [ ] Authentication Context and Guards
+- [ ] **Core Features**
+  - [ ] Authentication UI (Log in, Sign up)
+  - [ ] App Layout & Navigation (including User Switcher / Shared view toggle)
+  - [ ] Dashboard (Universal Ledger: fetch ExchangeRate-API for Currency Normalization to 'Home Currency')
+  - [ ] Dashboard Charts (Visualizing spend with `recharts` and high-energy progress bars)
+  - [ ] Transaction Ledger UI (List views, filtering, Privacy toggle: Private/Shared)
+  - [ ] Statement Upload Center (File dropzone for CSV/PDF)
+  - [ ] Settings (Home Currency preference: INR/CAD, Ledger management)
+- [ ] **Deployment**
+  - [ ] Finalize production build setup
+  - [ ] Prepare for one-click Vercel/Netlify deployment

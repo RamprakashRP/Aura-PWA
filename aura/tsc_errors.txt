@@ -1,0 +1,15 @@
+src/App.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/Layout.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/context/AuthContext.tsx(2,10): error TS1484: 'User' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/context/AuthContext.tsx(2,16): error TS1484: 'Session' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Dashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Dashboard.tsx(4,10): error TS6133: 'LineChart' is declared but its value is never read.
+src/pages/Dashboard.tsx(4,21): error TS6133: 'Line' is declared but its value is never read.
+src/pages/Dashboard.tsx(5,28): error TS6133: 'TrendingDown' is declared but its value is never read.
+src/pages/Dashboard.tsx(9,10): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Settings.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Transactions.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Transactions.tsx(3,31): error TS6133: 'ArrowDownRight' is declared but its value is never read.
+src/pages/Transactions.tsx(3,47): error TS6133: 'ArrowUpRight' is declared but its value is never read.
+src/pages/Transactions.tsx(7,10): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Upload.tsx(2,55): error TS6133: 'AlertCircle' is declared but its value is never read.
