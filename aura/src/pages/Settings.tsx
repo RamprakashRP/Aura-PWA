@@ -65,8 +65,14 @@ const Settings = () => {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ home_currency: currency })
-      .eq('id', user.id);
+      .upsert({ 
+         id: user.id, 
+         home_currency: currency,
+         email: user.email || 'operator@aura.com',
+         name: user.user_metadata?.name || user.email?.split('@')[0] || 'Operator'
+      });
+      
+    localStorage.setItem(`aura_home_currency_${user.id}`, currency);
 
     if (error) console.error("Failed to update profile", error);
     

@@ -38,8 +38,14 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
     if (user?.id) {
-       const saved = localStorage.getItem(`aura_budget_${user.id}`);
-       if (saved) setBaseMonthlyBudget(Number(saved));
+       const savedBudget = localStorage.getItem(`aura_budget_${user.id}`);
+       if (savedBudget) setBaseMonthlyBudget(Number(savedBudget));
+       
+       const savedCurrency = localStorage.getItem(`aura_home_currency_${user.id}`);
+       if (savedCurrency) {
+          setHomeCurrency(savedCurrency);
+          setActiveCurrency(savedCurrency);
+       }
     }
   }, [user]);
 
