@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Eye, EyeOff, Search, Sparkles, Edit2, Check, X, Share2, ChevronUp, ChevronDown, Filter, Calendar } from 'lucide-react';
+import { Eye, EyeOff, Search, Sparkles, Edit2, Check, X, Share2, ChevronUp, ChevronDown, Filter, Calendar, Trash2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -64,7 +64,7 @@ const Transactions = () => {
   useEffect(() => {
     fetchTransactions();
     
-    // Click outside to close filter menu and time dropdown
+    // Click outside
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveFilterMenu(null);
@@ -80,14 +80,12 @@ const Transactions = () => {
   const fetchTransactions = async () => {
     const { data } = await supabase.from('transactions').select('*');
     if (data) {
-       // Primary chronological ingestion
        const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
        setTransactions(sorted);
     }
     setLoading(false);
   };
 
-  // --- SPREADSHEET LOGIC ---
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -122,11 +120,9 @@ const Transactions = () => {
     setActiveFilterMenu(null);
   };
 
-  // Processed Data
   const processedData = useMemo(() => {
     let result = [...transactions];
 
-    // 1. Time Range Filter
     if (timeRange !== 'ALL' && timeRange !== 'CUSTOM' && result.length > 0) {
       const latestEpoch = Math.max(...result.map(t => new Date(t.date).getTime()));
       const multiplier = timeRange === '1M' ? 1 : timeRange === '3M' ? 3 : timeRange === '6M' ? 6 : 12;
@@ -134,18 +130,15 @@ const Transactions = () => {
       result = result.filter(t => new Date(t.date).getTime() >= (latestEpoch - windowMs));
     } else if (timeRange === 'CUSTOM') {
       if (customDateFrom) {
-         // Forcing local time midnight to prevent UTC drift clipping the exact current day
          const fromTime = new Date(customDateFrom + "T00:00:00").getTime();
          result = result.filter(t => new Date(t.date).getTime() >= fromTime);
       }
       if (customDateTo) {
-         // Forcing local time boundary to the final second of the selected day
          const toTime = new Date(customDateTo + "T23:59:59").getTime();
          result = result.filter(t => new Date(t.date).getTime() <= toTime);
       }
     }
 
-    // 2. Search Query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(t => 
@@ -155,24 +148,20 @@ const Transactions = () => {
       );
     }
 
-    // 3. Spreadsheet Dynamic Checkbox Filters
     Object.entries(filters).forEach(([col, activeValues]) => {
       if (activeValues.length > 0) {
         result = result.filter(t => activeValues.includes(String(t[col])));
       }
     });
 
-    // 4. Sorting
     if (sortConfig !== null) {
       result.sort((a, b) => {
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
-        
         if (sortConfig.key === 'date') {
            valA = new Date(a.date).getTime();
            valB = new Date(b.date).getTime();
         }
-        
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -182,14 +171,27 @@ const Transactions = () => {
     return result;
   }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, filters, sortConfig]);
 
-  // Unique values for the filter menus
+  // Grouped Mobile Sticky Segments
+  const groupedData = useMemo(() => {
+    const groups: { month: string, txs: any[] }[] = [];
+    processedData.forEach(tx => {
+       const dateObj = new Date(tx.date);
+       const monthStr = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+       let group = groups.find(g => g.month === monthStr);
+       if (!group) {
+          group = { month: monthStr, txs: [] };
+          groups.push(group);
+       }
+       group.txs.push(tx);
+    });
+    return groups;
+  }, [processedData]);
+
   const getUniqueValues = (column: string) => {
     const rawSet = new Set(transactions.map(t => String(t[column])));
     return Array.from(rawSet).sort();
   };
 
-
-  // --- MUTATION LOGIC ---
   const handleEditClick = (tx: any) => {
     setEditingId(tx.transaction_id);
     const instantCategory = categorize(tx.description);
@@ -209,9 +211,18 @@ const Transactions = () => {
     const { error } = await supabase.from('transactions').update({ visibility: newVis }).eq('transaction_id', id);
     if (!error) setTransactions(transactions.map(t => t.transaction_id === id ? { ...t, visibility: newVis } : t));
   };
+  
+  const handleDeleteTx = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to completely erase this record?")) {
+       setTransactions(transactions.filter(t => t.transaction_id !== id));
+       await supabase.from('transactions').delete().eq('transaction_id', id);
+       setEditingId(null);
+    }
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       
       {/* FILTER OVERLAY POPUP */}
       <AnimatePresence>
@@ -247,26 +258,28 @@ const Transactions = () => {
         )}
       </AnimatePresence>
 
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2 md:mb-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter text-white uppercase flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white uppercase flex items-center gap-2 md:gap-3">
              Ledger <span style={{ color: getAuraColor() }}>Archive</span>
           </h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">
+          <p className="text-[8px] md:text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">
             Viewing {processedData.length} records • Context-click headers to filter
           </p>
         </div>
         
         {/* ADVANCED SPREADSHEET UI CONTROLS */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
           
-          <div className="relative" ref={timeDropdownRef}>
+          <div className="relative flex-1 md:flex-none" ref={timeDropdownRef}>
              <button 
                 onClick={() => setShowTimeDropdown(!showTimeDropdown)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#0a0f1a] border border-slate-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
+                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#0a0f1a] border border-slate-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
              >
-                <Calendar size={12} style={{ color: getAuraColor() }} /> 
-                {timeRange === 'CUSTOM' ? 'Custom Bounds' : timeRange === 'ALL' ? 'All Time' : timeRange}
+                <div className="flex items-center gap-2">
+                   <Calendar size={12} style={{ color: getAuraColor() }} /> 
+                   {timeRange === 'CUSTOM' ? 'Custom Bounds' : timeRange === 'ALL' ? 'All Time' : timeRange}
+                </div>
                 <ChevronDown size={12} className="opacity-50" />
              </button>
              
@@ -276,13 +289,13 @@ const Transactions = () => {
                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                   className="absolute top-full right-0 mt-2 w-40 glass bg-[#020617] border border-slate-700 rounded-lg shadow-2xl z-40 overflow-hidden"
+                   className="absolute top-full left-0 md:auto md:right-0 mt-2 w-full md:w-40 glass bg-[#020617] border border-slate-700 rounded-lg shadow-2xl z-40 overflow-hidden"
                  >
                     {['1M', '3M', '6M', '1Y', 'ALL', 'CUSTOM'].map(opt => (
                        <button
                           key={opt}
                           onClick={() => { setTimeRange(opt as TimeRange); setShowTimeDropdown(false); }}
-                          className={`w-full text-left px-4 py-2 text-[10px] font-black tracking-widest uppercase hover:bg-slate-800 transition-colors ${timeRange === opt ? 'bg-slate-800/80 text-white' : 'text-slate-400'}`}
+                          className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest uppercase hover:bg-slate-800 transition-colors ${timeRange === opt ? 'bg-slate-800/80 text-white' : 'text-slate-400'}`}
                           style={timeRange === opt ? { color: getAuraColor() } : {}}
                        >
                           {opt === 'CUSTOM' ? 'Custom Range' : opt === 'ALL' ? 'All Time' : opt}
@@ -298,13 +311,13 @@ const Transactions = () => {
              <motion.div 
                initial={{ opacity: 0, x: -10 }}
                animate={{ opacity: 1, x: 0 }}
-               className="flex items-center gap-2 bg-[#0a0f1a] rounded-lg p-1 border border-slate-800 shadow-lg"
+               className="flex-1 md:flex-none flex items-center justify-between md:justify-start gap-1 md:gap-2 bg-[#0a0f1a] rounded-lg p-1 border border-slate-800 shadow-lg"
              >
                 <input 
                    type="date" 
                    value={customDateFrom} 
                    onChange={e => setCustomDateFrom(e.target.value)} 
-                   className="bg-transparent text-[10px] font-mono text-slate-300 px-2 py-1 outline-none" 
+                   className="w-full bg-transparent text-[9px] md:text-[10px] font-mono text-slate-300 px-1 md:px-2 py-1 outline-none" 
                    style={{ colorScheme: 'dark' }} 
                 />
                 <span className="text-slate-600">-</span>
@@ -312,20 +325,20 @@ const Transactions = () => {
                    type="date" 
                    value={customDateTo} 
                    onChange={e => setCustomDateTo(e.target.value)} 
-                   className="bg-transparent text-[10px] font-mono text-slate-300 px-2 py-1 outline-none" 
+                   className="w-full bg-transparent text-[9px] md:text-[10px] font-mono text-slate-300 px-1 md:px-2 py-1 outline-none" 
                    style={{ colorScheme: 'dark' }} 
                 />
              </motion.div>
           )}
 
-          <div className="relative">
+          <div className="relative w-full md:w-auto mt-2 md:mt-0">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input 
               type="text" 
               placeholder="Search records..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-[#0a0f1a] border border-slate-800 rounded-lg text-xs text-white focus:outline-none transition-colors w-48"
+              className="w-full pl-9 pr-4 py-2 bg-[#0a0f1a] border border-slate-800 rounded-lg text-xs text-white focus:outline-none transition-colors md:w-48"
               style={{ '--tw-ring-color': getAuraColor() } as any}
             />
           </div>
@@ -333,14 +346,112 @@ const Transactions = () => {
         </div>
       </header>
 
-      {/* RENDER TABLE */}
-      <div className="glass rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
+      {/* MOBILE TRASACTION CARDS (Visible only < 768px) */}
+      <div className="md:hidden space-y-4 pb-20">
+         {processedData.length === 0 ? (
+            <div className="text-center py-10 text-slate-500 font-mono text-xs">No records match the current filter matrix.</div>
+         ) : (
+            groupedData.map(group => (
+               <div key={group.month} className="space-y-3">
+                  <div className="sticky top-0 z-10 bg-[#020617]/90 backdrop-blur-md py-2 border-b border-slate-800">
+                     <h3 className="text-[10px] font-black uppercase tracking-widest px-2" style={{ color: getAuraColor() }}>{group.month}</h3>
+                  </div>
+                  <div className="space-y-3 px-1">
+                     {group.txs.map(tx => {
+                        const isEditing = editingId === tx.transaction_id;
+                        const isDeposit = tx.amount > 0;
+                        const amountColor = isDeposit ? "#00FF41" : "#FF4D4D";
+                        const prefix = isDeposit ? "+" : "-";
+                        const absAmount = Math.abs(tx.amount).toFixed(2);
+                        const categoryDisplayColor = CATEGORY_COLORS[tx.category] || CATEGORY_COLORS["Miscellaneous"];
+                        
+                        return (
+                           <div 
+                              key={tx.transaction_id}
+                              onClick={() => { if (!isEditing) handleEditClick(tx); }}
+                              className={`p-4 rounded-xl transition-all ${isEditing ? 'bg-slate-900 border border-slate-600 shadow-2xl scale-[1.02]' : 'bg-[#0a0f1a] border border-slate-800/80 active:scale-[0.98]'}`}
+                           >
+                              {/* Top Row: Reason and Amount */}
+                              <div className="flex justify-between items-start mb-3 gap-4">
+                                 {isEditing ? (
+                                    <input 
+                                      type="text"
+                                      value={editForm.description}
+                                      onChange={(e) => {
+                                         const newDesc = e.target.value;
+                                         setEditForm({...editForm, description: newDesc, category: categorize(newDesc)});
+                                      }}
+                                      className="flex-1 w-full min-w-0 bg-[#020617] border border-slate-700 text-white font-bold py-1.5 px-2 rounded focus:outline-none text-sm"
+                                      style={{ borderColor: getAuraColor() }}
+                                      onClick={e => e.stopPropagation()}
+                                      placeholder="Entity Description"
+                                    />
+                                 ) : (
+                                    <span className="font-bold text-sm text-white truncate flex-1 leading-tight">{tx.description}</span>
+                                 )}
+                                 <span className="font-mono text-base font-black flex-shrink-0" style={{ color: amountColor }}>
+                                    {prefix}{absAmount} <span className="text-[10px] opacity-60 ml-0.5">{tx.currency}</span>
+                                 </span>
+                              </div>
+                              
+                              {/* Middle Row: Category and ID */}
+                              <div className="flex justify-between items-center mb-3">
+                                 {isEditing ? (
+                                    <select 
+                                       value={editForm.category}
+                                       onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                                       className="text-[10px] font-bold uppercase tracking-widest py-1.5 px-2 rounded appearance-none bg-[#020617] focus:outline-none border border-slate-700"
+                                       style={{ color: CATEGORY_COLORS[editForm.category] || CATEGORY_COLORS["Miscellaneous"] }}
+                                       onClick={e => e.stopPropagation()}
+                                    >
+                                       {CATEGORY_OPTIONS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                    </select>
+                                 ) : (
+                                    <div 
+                                       className="px-2 py-0.5 rounded-sm text-[9px] font-black tracking-widest uppercase border"
+                                       style={{ 
+                                          color: categoryDisplayColor,
+                                          backgroundColor: `${categoryDisplayColor}15`,
+                                          borderColor: `${categoryDisplayColor}30`
+                                       }}
+                                    >
+                                       {tx.category || 'Miscellaneous'}
+                                    </div>
+                                 )}
+                                 <span className="text-[9px] text-slate-500 font-mono truncate max-w-[120px]">{tx.transaction_id.split('-')[0]}•••</span>
+                              </div>
+                              
+                              {/* Bottom Row / Floating Action Deck */}
+                              <div className="flex justify-between items-end mt-1">
+                                 <span className="text-[10px] text-slate-400 font-mono">{tx.date}</span>
+                                 
+                                 {isEditing && (
+                                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                       <button onClick={(e) => handleDeleteTx(e, tx.transaction_id)} className="p-2 rounded-lg bg-[#FF0000] text-black font-black active:scale-95 transition-transform"><Trash2 size={14}/></button>
+                                       <button onClick={(e) => { e.stopPropagation(); toggleVisibility(tx.transaction_id, tx.visibility); }} className="p-2 rounded-lg border border-slate-700 active:scale-95 transition-transform bg-[#020617]" style={{ color: tx.visibility === 'Shared' ? getAuraColor() : '#4A4A4A' }}>
+                                          {tx.visibility === 'Private' ? <EyeOff size={14}/> : <Eye size={14}/>}
+                                       </button>
+                                       <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-2 rounded-lg border border-slate-700 text-slate-400 active:scale-95 transition-transform bg-[#020617]"><X size={14}/></button>
+                                       <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(tx); }} className="px-4 py-2 rounded-lg bg-[#00FF41] text-black font-black uppercase text-[10px] active:scale-95 transition-transform flex items-center gap-1"><Check size={14}/> Save</button>
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                        );
+                     })}
+                  </div>
+               </div>
+            ))
+         )}
+      </div>
+
+      {/* DESKTOP SPREADSHEET (Visible only >= 768px) */}
+      <div className="hidden md:block glass rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto min-h-[60vh]">
           <table className="w-full text-left whitespace-nowrap table-auto border-collapse">
             <thead>
               <tr className="border-b border-slate-800 bg-[#020617] bg-opacity-80 select-none">
                 
-                {/* SPREADSHEET HEADERS WITH TOGGLE SORTS AND CONTEXT-MENU FILTERS */}
                 {[
                   { key: 'date', label: 'Date / Ref', align: 'left', width: 'w-48' },
                   { key: 'description', label: 'Entity', align: 'left', width: 'w-1/3' },
@@ -468,8 +579,9 @@ const Transactions = () => {
                       <td className="px-6 py-4 text-center align-top w-24">
                          {isEditing ? (
                             <div className="flex items-center justify-center gap-2">
+                               <button onClick={(e) => handleDeleteTx(e, tx.transaction_id)} className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors" title="Delete"><Trash2 size={16} /></button>
                                <button onClick={() => handleSaveEdit(tx)} className="p-1.5 rounded bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors" title="Save Changes"><Check size={16} /></button>
-                               <button onClick={() => setEditingId(null)} className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors" title="Cancel"><X size={16} /></button>
+                               <button onClick={() => setEditingId(null)} className="p-1.5 rounded bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 transition-colors" title="Cancel"><X size={16} /></button>
                             </div>
                          ) : (
                             <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -51,27 +51,7 @@ const Layout = () => {
         </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-          Aura Resonance
-        </label>
-        <select 
-          value={aura}
-          onChange={(e) => {
-            setAura(e.target.value as AuraType);
-          }}
-          className="w-full bg-[#020617] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none transition-colors appearance-none"
-          style={{ borderColor: getAuraColor() }}
-        >
-          <option value="Berserker Red">Berserker Red</option>
-          <option value="Void Black">Void Black</option>
-          <option value="Hunter Green">Hunter Green</option>
-          <option value="Super Saiyan Gold">Super Saiyan Gold</option>
-          <option value="Ultra Instinct Silver">Ultra Instinct Silver</option>
-          <option value="Demon Slayer Blue">Demon Slayer Blue</option>
-          <option value="Hollow Purple">Hollow Purple</option>
-        </select>
-      </div>
+
 
       <div className="space-y-1 mt-4 pt-4 border-t border-slate-800">
         <button 

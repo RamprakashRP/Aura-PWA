@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-export type AuraType = 'Berserker Red' | 'Void Black' | 'Hunter Green' | 'Super Saiyan Gold' | 'Ultra Instinct Silver' | 'Demon Slayer Blue' | 'Hollow Purple';
+export type AuraType = 'Berserker Red' | 'Void Black' | 'Hunter Green' | 'Super Saiyan Gold' | 'Ultra Instinct Silver' | 'Demon Slayer Blue' | 'Hollow Purple' | 'Sakura Pink';
 
 interface ThemeContextType {
   aura: AuraType;
@@ -23,13 +23,16 @@ const AURA_PALETTE: Record<AuraType, { primary: string, glow: string }> = {
   'Super Saiyan Gold': { primary: '#FFD700', glow: '0 0 30px #FFFF00' },
   'Ultra Instinct Silver': { primary: '#E6E6FA', glow: '0 0 20px #ADD8E6' },
   'Demon Slayer Blue': { primary: '#38bdf8', glow: '0 0 20px #38bdf880' },
-  'Hollow Purple': { primary: '#9333ea', glow: '0 0 20px #9333ea80' }
+  'Hollow Purple': { primary: '#9333ea', glow: '0 0 20px #9333ea80' },
+  'Sakura Pink': { primary: '#ff69b4', glow: '0 0 25px #ffb7c5' }
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [aura, setAura] = useState<AuraType>(() => {
     const saved = localStorage.getItem('aura_preference');
-    return (saved as AuraType) || 'Demon Slayer Blue';
+    // Force Sakura Pink as the absolute default to awaken the new aura immediately
+    if (!saved || saved === 'Demon Slayer Blue') return 'Sakura Pink';
+    return (saved as AuraType);
   });
 
   useEffect(() => {
