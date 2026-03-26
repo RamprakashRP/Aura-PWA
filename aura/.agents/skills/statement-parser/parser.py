@@ -103,7 +103,7 @@ def extract_kotak_data(pdf_path):
                             "deposit": d_amt if float(d_val) > 0 else "0",
                             "balance": bal,
                             "currency": "INR",
-                            "visibility": "Shared"
+                            "visibility": "Private"
                         })
         
         # Deduplicate transaction_ids deterministically for Supabase UPSERT
