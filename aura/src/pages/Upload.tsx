@@ -111,7 +111,10 @@ const Upload = () => {
     if (!window.confirm("Are you sure you want to wipe all transaction records? This cannot be undone.")) return;
     
     // Delete all records using the correct Primary Key
-    const { error } = await supabase.from('transactions').delete().not('transaction_id', 'is', null);
+    if (!user) return;
+    const { error } = await supabase.from('transactions')
+      .delete()
+      .eq('user_id', user.id);
     if (error) {
       alert("Error wiping DB: " + error.message);
     } else {
