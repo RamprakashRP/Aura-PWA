@@ -87,7 +87,7 @@ const Dashboard = () => {
       const { data: txs } = await supabase
         .from('transactions')
         .select('*')
-        .or(`user_id.eq.${user.id},visibility.eq.Shared`)
+        .eq('user_id', user.id)
         .order('date', { ascending: true });
 
       if (txs) {
