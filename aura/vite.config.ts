@@ -16,14 +16,15 @@ const pythonParserPlugin = () => ({
         req.on('data', (chunk: any) => { body += chunk.toString() });
         req.on('end', () => {
           try {
-            const { pdfBase64 } = JSON.parse(body);
+            const { pdfBase64, bankType = 'kotak' } = JSON.parse(body);
             const buffer = Buffer.from(pdfBase64, 'base64');
-            const tmpPath = path.join(os.tmpdir(), `kotak_${Date.now()}.pdf`);
+            const tmpPath = path.join(os.tmpdir(), `${bankType}_${Date.now()}.pdf`);
             fs.writeFileSync(tmpPath, buffer);
 
             const parserPath = path.join(__dirname, '.agents', 'skills', 'statement-parser', 'parser.py');
             
-            exec(`python "${parserPath}" "${tmpPath}"`, { timeout: 15000 }, (error, stdout, stderr) => {
+            // Execute: python parser.py <bankType> <tmpPath>
+            exec(`python "${parserPath}" "${bankType}" "${tmpPath}"`, { timeout: 15000 }, (error, stdout, stderr) => {
               try { fs.unlinkSync(tmpPath); } catch(e) {} // Clean up
               
               if (error) {

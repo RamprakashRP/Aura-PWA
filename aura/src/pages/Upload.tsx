@@ -46,6 +46,8 @@ const Upload = () => {
   // State for Review Screen
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [statementCurrency, setStatementCurrency] = useState('INR');
+  const [bankType, setBankType] = useState('auto');
+  const [detectedBank, setDetectedBank] = useState<string>('');
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -83,16 +85,23 @@ const Upload = () => {
           const response = await fetch('/api/parse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdfBase64: base64 }),
+            body: JSON.stringify({ pdfBase64: base64, bankType: bankType }),
             signal: controller.signal
           });
           
           clearTimeout(timeoutId);
           
-          const data = await response.json();
-          if (data.error) throw new Error(data.error);
+          const result = await response.json();
+          if (result.error) throw new Error(result.error);
           
-          setParsedData(data);
+          // Result is now { bank: 'kotak', transactions: [...] }
+          if (result.bank && result.transactions) {
+            setDetectedBank(result.bank);
+            setParsedData(result.transactions);
+          } else {
+            // Fallback for legacy format
+            setParsedData(Array.isArray(result) ? result : []);
+          }
           setStatus('review');
         } catch (fetchErr: any) {
              console.error(fetchErr);
@@ -271,42 +280,85 @@ const Upload = () => {
         </div>
       ) : status === 'review' || status === 'importing' ? (
         <motion.div 
-           initial={{ opacity: 0, scale: 0.95 }}
+           initial={{ opacity: 0, scale: 0.98 }}
            animate={{ opacity: 1, scale: 1 }}
-           className="glass rounded-2xl border overflow-hidden pb-24 md:pb-0"
-           style={{ borderColor: `${getAuraColor()}30`, boxShadow: getAuraGlow() }}
+           className="glass rounded-2xl border overflow-hidden pb-24 md:pb-0 relative shadow-2xl"
+           style={{ borderColor: `${getAuraColor()}20` }}
         >
-           <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col md:flex-row justify-between items-center bg-[#0a0f1a] gap-4">
-             <div className="text-center md:text-left w-full">
-               <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-widest">Review Imports</h3>
-               <p className="text-[10px] md:text-xs text-slate-500 font-mono mt-1">Found {parsedData.length} authentic records. Verify Full Ledger mapping.</p>
+           {/* High-Contrast Control Header */}
+           <div className="p-5 md:p-8 border-b border-slate-800/50 flex flex-col xl:flex-row justify-between items-center bg-[#0a0f1a]/80 backdrop-blur-xl gap-6">
+             <div className="text-center md:text-left">
+               <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
+                 <div className="w-2 h-8 rounded-full" style={{ backgroundColor: getAuraColor(), boxShadow: `0 0 15px ${getAuraColor()}` }}></div>
+                 <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">Review Imports</h3>
+               </div>
+               <p className="text-[10px] md:text-xs text-slate-500 font-mono tracking-widest uppercase">
+                 <span style={{ color: getAuraColor() }}>{parsedData.length}</span> Records Synchronized • Verify Neural Mapping
+               </p>
              </div>
              
-             <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-               <div className="flex flex-col items-center md:items-end w-full md:w-auto">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1">Native Currency</span>
-                  <select 
-                     value={statementCurrency}
-                     onChange={(e) => setStatementCurrency(e.target.value)}
-                     className="w-full md:w-auto bg-[#020617] text-white text-[10px] md:text-xs font-bold uppercase tracking-widest border border-slate-700 rounded-lg px-3 py-2 focus:outline-none cursor-pointer transition-colors text-center min-h-[44px]"
-                     style={{ borderColor: getAuraColor(), color: getAuraColor() }}
-                  >
-                     {['INR', 'CAD', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c} className="bg-[#020617] text-white">{c}</option>)}
-                  </select>
+             <div className="flex flex-wrap items-center justify-center md:justify-end gap-6 w-full xl:w-auto">
+               {/* Modular Selectors */}
+               <div className="flex gap-4">
+                 <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em] text-center md:text-left">Bank Engine</span>
+                    <select 
+                       value={detectedBank || bankType}
+                       onChange={(e) => {
+                          const newBank = e.target.value;
+                          setBankType(newBank);
+                          setDetectedBank(newBank);
+                          handleProcess();
+                       }}
+                       className="bg-[#020617] text-white text-[11px] font-bold uppercase tracking-widest border border-slate-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[140px] appearance-none text-center shadow-lg"
+                       style={{ 
+                          boxShadow: `inset 0 0 10px ${getAuraColor()}05`,
+                          borderLeft: `3px solid ${getAuraColor()}50`
+                       }}
+                    >
+                       <option value="kotak">Kotak</option>
+                       <option value="hdfc">HDFC</option>
+                       <option value="jio">Jio</option>
+                       <option value="union">Union</option>
+                    </select>
+                 </div>
+
+                 <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em] text-center md:text-left">Currency</span>
+                    <select 
+                       value={statementCurrency}
+                       onChange={(e) => setStatementCurrency(e.target.value)}
+                       className="bg-[#020617] text-white text-[11px] font-bold uppercase tracking-widest border border-slate-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[100px] appearance-none text-center shadow-lg"
+                       style={{ 
+                          boxShadow: `inset 0 0 10px ${getAuraColor()}05`,
+                          borderLeft: `3px solid ${getAuraColor()}50`
+                       }}
+                    >
+                       {['INR', 'CAD', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                 </div>
                </div>
                
+               {/* Level-Up Action Button */}
                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={confirmImport}
                   disabled={status === 'importing' || parsedData.length === 0}
-                  className="flex items-center justify-center gap-2 px-6 py-3 w-[calc(100%-2rem)] left-4 md:w-auto md:left-auto fixed md:relative bottom-24 md:bottom-auto rounded-xl font-black uppercase tracking-widest text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed z-50 text-[10px] md:text-sm min-h-[44px]"
-                  style={{ backgroundColor: getAuraColor(), boxShadow: `0 10px 30px ${getAuraColor()}80` }}
+                  className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-white transition-all disabled:opacity-30 disabled:grayscale z-50 text-xs md:text-sm min-h-[56px] shadow-2xl relative overflow-hidden group"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${getAuraColor()}, ${getAuraColor()}dd)`,
+                    boxShadow: `0 15px 40px ${getAuraColor()}40`
+                  }}
                 >
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   {status === 'importing' ? (
-                     <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Syncing...</span>
+                     <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
                   ) : (
-                     <><Play size={16} fill="white" /> Confirm & Import</>
+                     <>
+                       <Play size={18} fill="white" className="drop-shadow-lg" /> 
+                       <span>Confirm & Commit</span>
+                     </>
                   )}
                 </motion.button>
               </div>
