@@ -94,14 +94,38 @@ const Upload = () => {
           const result = await response.json();
           if (result.error) throw new Error(result.error);
           
-          // Result is now { bank: 'kotak', transactions: [...] }
+          let incomingTransactions = [];
           if (result.bank && result.transactions) {
             setDetectedBank(result.bank);
-            setParsedData(result.transactions);
+            incomingTransactions = result.transactions;
           } else {
-            // Fallback for legacy format
-            setParsedData(Array.isArray(result) ? result : []);
+            incomingTransactions = Array.isArray(result) ? result : [];
           }
+
+          // Neural Duplicate Detection: cross-reference with existing DB records
+          if (user && incomingTransactions.length > 0) {
+             const { data: existingRecords, error: fetchError } = await supabase
+               .from('transactions')
+               .select('transaction_id')
+               .eq('user_id', user.id);
+             
+             if (!fetchError && existingRecords) {
+                const existingIds = new Set(existingRecords.map(r => r.transaction_id));
+                // Filter out those already in the matrix
+                const freshTransactions = incomingTransactions.filter((tx: any) => !existingIds.has(tx.transaction_id));
+                
+                const duplicateCount = incomingTransactions.length - freshTransactions.length;
+                if (duplicateCount > 0) {
+                   console.log(`Neural Filter: Purged ${duplicateCount} duplicate records found in the ledger.`);
+                }
+                setParsedData(freshTransactions);
+             } else {
+                setParsedData(incomingTransactions);
+             }
+          } else {
+             setParsedData(incomingTransactions);
+          }
+          
           setStatus('review');
         } catch (fetchErr: any) {
              console.error(fetchErr);
