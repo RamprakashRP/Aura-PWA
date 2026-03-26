@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Eye, EyeOff, Search, Sparkles, Edit2, Check, X, Share2, ChevronUp, ChevronDown, Filter, Calendar, Trash2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -35,6 +36,7 @@ const categorize = (desc: string) => {
 };
 
 const Transactions = () => {
+  const { user } = useAuth();
   const { getAuraColor } = useTheme();
   
   // Data State
@@ -78,7 +80,8 @@ const Transactions = () => {
   }, []);
 
   const fetchTransactions = async () => {
-    const { data } = await supabase.from('transactions').select('*');
+    if (!user) return;
+    const { data } = await supabase.from('transactions').select('*').eq('user_id', user.id);
     if (data) {
        const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
        setTransactions(sorted);
@@ -203,12 +206,19 @@ const Transactions = () => {
        t.transaction_id === tx.transaction_id ? { ...t, description: editForm.description, category: editForm.category } : t
     ));
     setEditingId(null);
-    await supabase.from('transactions').update({ description: editForm.description, category: editForm.category }).eq('transaction_id', tx.transaction_id);
+    await supabase.from('transactions')
+      .update({ description: editForm.description, category: editForm.category })
+      .eq('transaction_id', tx.transaction_id)
+      .eq('user_id', user?.id);
   };
 
   const toggleVisibility = async (id: string, currentVisibility: string) => {
+    if (!user) return;
     const newVis = currentVisibility === 'Private' ? 'Shared' : 'Private';
-    const { error } = await supabase.from('transactions').update({ visibility: newVis }).eq('transaction_id', id);
+    const { error } = await supabase.from('transactions')
+      .update({ visibility: newVis })
+      .eq('transaction_id', id)
+      .eq('user_id', user.id);
     if (!error) setTransactions(transactions.map(t => t.transaction_id === id ? { ...t, visibility: newVis } : t));
   };
   
@@ -216,7 +226,10 @@ const Transactions = () => {
     e.stopPropagation();
     if (confirm("Are you sure you want to completely erase this record?")) {
        setTransactions(transactions.filter(t => t.transaction_id !== id));
-       await supabase.from('transactions').delete().eq('transaction_id', id);
+       await supabase.from('transactions')
+         .delete()
+         .eq('transaction_id', id)
+         .eq('user_id', user?.id);
        setEditingId(null);
     }
   };
