@@ -185,6 +185,7 @@ const Upload = () => {
       amount: tx.amount,
       currency: statementCurrency, // Master override using user-selected native Statement Currency
       visibility: tx.visibility,
+      bank: detectedBank || bankType, // Tag the source engine for advanced filtering
       user_id: user.id
     }));
 

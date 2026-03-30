@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Eye, EyeOff, Search, Sparkles, Edit2, Check, X, Share2, ChevronUp, ChevronDown, Filter, Calendar, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Search, Edit2, Check, X, Share2, ChevronUp, ChevronDown, Filter, Calendar, Trash2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -41,7 +41,6 @@ const Transactions = () => {
   
   // Data State
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // Spreadsheet Controls
   type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL' | 'CUSTOM';
@@ -58,6 +57,11 @@ const Transactions = () => {
   // Custom Right-Click Filter Menu State
   const [activeFilterMenu, setActiveFilterMenu] = useState<{ column: string; x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Bank Filter State
+  const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
+  const [showBankDropdown, setShowBankDropdown] = useState(false);
+  const bankDropdownRef = useRef<HTMLDivElement>(null);
   
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,6 +78,9 @@ const Transactions = () => {
       if (timeDropdownRef.current && !timeDropdownRef.current.contains(e.target as Node)) {
         setShowTimeDropdown(false);
       }
+      if (bankDropdownRef.current && !bankDropdownRef.current.contains(e.target as Node)) {
+        setShowBankDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -86,7 +93,6 @@ const Transactions = () => {
        const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
        setTransactions(sorted);
     }
-    setLoading(false);
   };
 
   const handleSort = (key: string) => {
@@ -157,6 +163,10 @@ const Transactions = () => {
       }
     });
 
+    if (selectedBanks.length > 0) {
+       result = result.filter(t => selectedBanks.includes(t.bank?.toLowerCase() || ''));
+    }
+
     if (sortConfig !== null) {
       result.sort((a, b) => {
         let valA = a[sortConfig.key];
@@ -172,7 +182,7 @@ const Transactions = () => {
     }
 
     return result;
-  }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, filters, sortConfig]);
+  }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, filters, sortConfig, selectedBanks]);
 
   // Grouped Mobile Sticky Segments
   const groupedData = useMemo(() => {
@@ -351,9 +361,59 @@ const Transactions = () => {
               placeholder="Search records..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-[#0a0f1a] border border-slate-800 rounded-lg text-xs text-white focus:outline-none transition-colors md:w-48"
+              className="w-full pl-9 pr-4 py-2 bg-[#0a0f1a] border border-slate-800 rounded-lg text-xs text-white focus:outline-none transition-all md:w-48 hover:border-slate-600"
               style={{ '--tw-ring-color': getAuraColor() } as any}
             />
+          </div>
+
+          {/* BANK MATRIX FILTER */}
+          <div className="relative flex-1 md:flex-none" ref={bankDropdownRef}>
+             <button 
+                onClick={() => setShowBankDropdown(!showBankDropdown)}
+                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#0a0f1a] border border-slate-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
+             >
+                <div className="flex items-center gap-2">
+                   <Filter size={12} style={{ color: getAuraColor() }} /> 
+                   {selectedBanks.length > 0 ? `${selectedBanks.length} Banks` : 'All Banks'}
+                </div>
+                <ChevronDown size={12} className="opacity-50" />
+             </button>
+             
+             <AnimatePresence>
+               {showBankDropdown && (
+                 <motion.div 
+                   initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                   animate={{ opacity: 1, scale: 1, y: 0 }}
+                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                   className="absolute top-full right-0 mt-2 w-48 glass bg-[#020617] border border-slate-700 rounded-lg shadow-2xl z-40 overflow-hidden p-2"
+                 >
+                    {['kotak', 'hdfc', 'jio', 'union'].map(bank => (
+                       <label key={bank} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800/80 rounded cursor-pointer transition-colors group">
+                          <input 
+                             type="checkbox"
+                             checked={selectedBanks.includes(bank)}
+                             onChange={() => {
+                                setSelectedBanks(prev => prev.includes(bank) ? prev.filter(b => b !== bank) : [...prev, bank]);
+                             }}
+                             className="rounded border-slate-600 bg-transparent text-blue-500 focus:ring-blue-500/20"
+                             style={{ accentColor: getAuraColor() }}
+                          />
+                          <span className="text-[10px] font-black tracking-widest uppercase group-hover:text-white transition-colors" style={selectedBanks.includes(bank) ? { color: getAuraColor() } : { color: '#64748b' }}>
+                             {bank}
+                          </span>
+                       </label>
+                    ))}
+                    {selectedBanks.length > 0 && (
+                       <button 
+                          onClick={() => setSelectedBanks([])}
+                          className="w-full mt-2 pt-2 border-t border-slate-800 text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-white py-1"
+                       >
+                          Reset Filters
+                       </button>
+                    )}
+                 </motion.div>
+               )}
+             </AnimatePresence>
           </div>
           
         </div>
@@ -534,7 +594,7 @@ const Transactions = () => {
                             autoFocus
                           />
                         ) : (
-                          <div className="font-medium whitespace-normal break-words" style={{ color: isVoid ? '#64748b' : '#ffffff' }}>
+                          <div className="font-medium whitespace-normal break-words text-white">
                              {tx.description}
                           </div>
                         )}
@@ -558,9 +618,9 @@ const Transactions = () => {
                             <div 
                                className="inline-block px-3 py-1 rounded text-[10px] font-black tracking-widest uppercase border border-transparent shadow-lg"
                                style={{ 
-                                  color: isVoid ? '#4A4A4A' : categoryDisplayColor,
-                                  backgroundColor: isVoid ? '#111' : `${categoryDisplayColor}15`,
-                                  borderColor: isVoid ? '#333' : `${categoryDisplayColor}30`
+                                  color: categoryDisplayColor,
+                                  backgroundColor: `${categoryDisplayColor}15`,
+                                  borderColor: `${categoryDisplayColor}30`
                                }}
                             >
                                {tx.category || 'Miscellaneous'}
@@ -568,7 +628,7 @@ const Transactions = () => {
                          )}
                       </td>
                       
-                      <td className="px-6 py-4 font-mono font-black text-right text-base align-top w-32" style={{ color: isVoid ? '#4A4A4A' : amountColor }}>
+                      <td className="px-6 py-4 font-mono font-black text-right text-base align-top w-32" style={{ color: amountColor }}>
                         {prefix}{absAmount} <span className="text-[10px] font-normal opacity-50 ml-1">{tx.currency}</span>
                       </td>
                       
@@ -581,10 +641,14 @@ const Transactions = () => {
                             borderColor: `${getAuraColor()}40`,
                             borderWidth: '1px', color: getAuraColor()
                           } : {
-                            backgroundColor: '#050505', borderColor: '#334155', borderWidth: '1px', color: '#4A4A4A'
+                            backgroundColor: '#050505', 
+                            borderColor: `${getAuraColor()}40`, 
+                            borderWidth: '1px', 
+                            color: '#64748b',
+                            boxShadow: `inset 0 0 15px ${getAuraColor()}15`
                           }}
                         >
-                          {tx.visibility === 'Private' ? <EyeOff size={12} /> : <Eye size={12} />}
+                          {tx.visibility === 'Private' ? <EyeOff size={12} className="opacity-50" /> : <Eye size={12} />}
                           {tx.visibility}
                         </button>
                       </td>

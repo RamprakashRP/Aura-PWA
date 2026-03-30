@@ -7,17 +7,23 @@ def detect_bank(pdf_path):
     try:
         import pdfplumber
         with pdfplumber.open(pdf_path) as pdf:
-            # Join text from first page
-            text = pdf.pages[0].extract_text().upper() if pdf.pages else ""
+            # Join text from first page and remove spaces to make it robust
+            raw_text = pdf.pages[0].extract_text() if pdf.pages else ""
+            clean_text = raw_text.upper().replace(" ", "").replace("\n", "")
             
-            # Use specific signatures to avoid false-positives (e.g., a "Jio" recharge in Kotat)
-            if "KOTAK MAHINDRA" in text or "KOTAK BANK" in text: return "kotak"
-            if "HDFC BANK" in text: return "hdfc"
-            if "JIO PAYMENTS BANK" in text: return "jio"
-            if "UNION BANK" in text: return "union"
+            # 1. Primary High-Fidelity Signatures (Official Names)
+            if "KOTAKMAHINDRA" in clean_text: return "kotak"
+            if "JIOPAYMENTS" in clean_text: return "jio"
+            if "HDFCBANK" in clean_text: return "hdfc"
+            if "UNIONBANK" in clean_text: return "union"
             
-            # Simple fallback keywords if specific ones fail
-            if "KOTAK" in text: return "kotak"
+            # 2. Secondary High-Fidelity (IFSC Codes / Unique IDs)
+            if "KKBK" in clean_text: return "kotak" # Kotak IFSC code
+            if "JIOP00" in clean_text: return "jio" # Jio IFSC prefix
+            
+            # 3. Final Fallbacks (Only if no primary match found)
+            if "KOTAK" in clean_text: return "kotak"
+            if "JIO" in clean_text and not "KOTAK" in clean_text: return "jio"
             return None
     except:
         return None
