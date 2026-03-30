@@ -410,12 +410,15 @@ const Upload = () => {
                       <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-slate-400 font-mono w-full md:w-64 whitespace-normal break-words max-w-none md:max-w-[250px] align-top order-1 md:order-2">{tx.raw_description}</td>
                       <td className="hidden md:table-cell px-4 py-3 text-xs text-slate-500 font-mono align-top md:order-3">{tx.transaction_id}</td>
                       
-                      <div className="flex gap-4 md:table-cell px-0 md:px-4 py-1 md:py-3 font-mono font-black order-2 md:order-4">
-                        <span className="text-[#FF4D4D]">{tx.withdrawal !== "0" ? `-${tx.withdrawal}` : ""}</span>
-                        <span className="text-[#00FF41]">{tx.deposit !== "0" ? `+${tx.deposit}` : ""}</span>
-                      </div>
-                      <td className="hidden md:table-cell px-4 py-3 font-mono font-black text-[#00FF41] align-top">
-                         {tx.deposit !== "0" ? tx.deposit : "-"}
+                      <td className="px-4 py-3 font-mono font-black align-top order-2 md:order-4">
+                        <span className="text-[#FF4D4D]">
+                          {Number(tx.withdrawal) !== 0 ? `-${tx.withdrawal}` : <span className="opacity-30">-</span>}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono font-black align-top order-2 md:order-5">
+                        <span className="text-[#00FF41]">
+                          {Number(tx.deposit) !== 0 ? `+${tx.deposit}` : <span className="opacity-30">-</span>}
+                        </span>
                       </td>
                       <td className="hidden md:table-cell px-4 py-3 font-mono text-slate-500 text-xs align-top">{tx.balance}</td>
                       
