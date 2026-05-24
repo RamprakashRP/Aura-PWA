@@ -2,9 +2,9 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LayoutDashboard, Receipt, Upload, Settings, LogOut, Activity } from 'lucide-react';
-import { useTheme, type AuraType } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { p: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -16,12 +16,30 @@ const navItems = [
 const ANIME_PLACEHOLDER = "https://api.dicebear.com/7.x/avataaars/svg?seed=AuraMonarch&backgroundColor=transparent";
 
 const Layout = () => {
-  const { user } = useAuth();
-  const { aura, setAura, getAuraColor, getAuraGlow } = useTheme();
+  const { user, loading } = useAuth();
+  const { getAuraColor, getAuraGlow } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [orbOpen, setOrbOpen] = useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/login');
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[#020617]">
+        <div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: getAuraColor(), borderTopColor: 'transparent' }}></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

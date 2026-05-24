@@ -90,7 +90,7 @@ const Transactions = () => {
     if (!user) return;
     const { data } = await supabase.from('transactions').select('*').eq('user_id', user.id);
     if (data) {
-       const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+       const sorted = data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
        setTransactions(sorted);
     }
   };

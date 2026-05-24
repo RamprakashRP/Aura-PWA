@@ -100,3 +100,52 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
+-- 4. Budgets Table
+CREATE TABLE IF NOT EXISTS public.budgets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  category text NOT NULL,
+  budget_limit numeric NOT NULL,
+  currency text NOT NULL DEFAULT 'CAD',
+  UNIQUE (user_id, category)
+);
+ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own budgets"
+ON public.budgets FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+
+-- 5. Pending SMS Table (Ingestion Queue)
+CREATE TABLE IF NOT EXISTS public.pending_sms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id text UNIQUE NOT NULL,
+  date date NOT NULL,
+  description text NOT NULL,
+  category text NOT NULL,
+  amount numeric NOT NULL,
+  currency text NOT NULL DEFAULT 'CAD',
+  visibility text DEFAULT 'Private' CHECK (visibility IN ('Private', 'Shared')),
+  bank text NOT NULL,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  processed boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.pending_sms ENABLE ROW LEVEL SECURITY;
+
+-- Anonymous webhooks from mobile devices can insert new uncommitted transactions
+CREATE POLICY "Anyone can insert pending SMS alerts"
+ON public.pending_sms FOR INSERT
+WITH CHECK (true);
+
+-- Authenticated users can read, update, or delete pending transactions belonging to them or unassigned
+CREATE POLICY "Users can manage their own or unassigned pending SMS alerts"
+ON public.pending_sms FOR ALL
+TO authenticated
+USING (user_id = auth.uid() OR user_id IS NULL)
+WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
+

@@ -1,9 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
 import { Sparkles, TrendingUp, AlertCircle, RefreshCw, UploadCloud, Terminal, Settings, Receipt, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -12,6 +12,24 @@ const getCurrencySymbol = (cur: string) => {
   if (cur === 'EUR') return '€';
   if (cur === 'GBP') return '£';
   return '$';
+};
+
+const convertCurrency = (amount: number, from: string, to: string, rates: Record<string, number>) => {
+  if (from === to) return amount;
+  if (rates && rates[from]) {
+    return amount / rates[from];
+  }
+  const staticRates: Record<string, number> = {
+     'CAD': 1,
+     'INR': 60,
+     'USD': 1.35,
+     'EUR': 1.45,
+     'GBP': 1.70
+  };
+  const fromRate = staticRates[from] || 1;
+  const toRate = staticRates[to] || 1;
+  const amountInCad = amount / fromRate;
+  return amountInCad * toRate;
 };
 
 const Dashboard = () => {
@@ -28,6 +46,12 @@ const Dashboard = () => {
   const [activeCurrency, setActiveCurrency] = useState('CAD');
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [ratesLoading, setRatesLoading] = useState(false);
+  const [budgets, setBudgets] = useState<Record<string, number>>({});
+
+  // Webhook SMS Ingestion Queue States
+  const [pendingSmsTxs, setPendingSmsTxs] = useState<any[]>([]);
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [syncingSms, setSyncingSms] = useState(false);
 
   // Dashboard Controls
   type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL' | 'CUSTOM';
@@ -51,6 +75,125 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  // Call pending SMS database queue check
+  const checkPendingSms = useCallback(async () => {
+    if (!user) return;
+    try {
+      // Query unprocessed pending SMS transactions
+      const { data, error } = await supabase
+        .from('pending_sms')
+        .select('*')
+        .eq('processed', false);
+
+      if (error) {
+        // Fallback to local JSON queue endpoint if database table is missing
+        if (error.code === 'PGRST205' || error.message?.includes("Could not find the table") || error.code === '42P01') {
+          console.warn("pending_sms table not found in Supabase. Falling back to local pending_sms.json polling.");
+          try {
+            const res = await fetch('/api/pending-sms?t=' + Date.now());
+            const localQueue = await res.json();
+            if (Array.isArray(localQueue) && localQueue.length > 0) {
+              setPendingSmsTxs(prev => {
+                const all = [...prev, ...localQueue];
+                const seen = new Set();
+                return all.filter(tx => {
+                  if (seen.has(tx.transaction_id)) return false;
+                  seen.add(tx.transaction_id);
+                  return true;
+                });
+              });
+              setShowSmsModal(true);
+            }
+          } catch (e) {
+            console.error("Local JSON fallback queue fetch failed:", e);
+          }
+          return;
+        }
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        // Filter to include both user-specific items and globally visible sandbox/unassigned items
+        const relevantTxs = data.filter((tx: any) => !tx.user_id || tx.user_id === user.id || tx.user_id === 'sandbox-monarch-id');
+        
+        // Also check local pending_sms.json backup for development robustness
+        let localQueue: any[] = [];
+        try {
+          const res = await fetch('/api/pending-sms?t=' + Date.now());
+          localQueue = await res.json();
+        } catch (e) {}
+
+        const combined = [...relevantTxs, ...(Array.isArray(localQueue) ? localQueue : [])];
+        const seen = new Set();
+        const unique = combined.filter(tx => {
+          if (seen.has(tx.transaction_id)) return false;
+          seen.add(tx.transaction_id);
+          return true;
+        });
+
+        if (unique.length > 0) {
+          setPendingSmsTxs(unique);
+          setShowSmsModal(true);
+        } else {
+          setPendingSmsTxs([]);
+          setShowSmsModal(false);
+        }
+      } else {
+        // No rows in database, but still check local queue backup
+        try {
+          const res = await fetch('/api/pending-sms?t=' + Date.now());
+          const localQueue = await res.json();
+          if (Array.isArray(localQueue) && localQueue.length > 0) {
+            setPendingSmsTxs(prev => {
+              const all = [...prev, ...localQueue];
+              const seen = new Set();
+              return all.filter(tx => {
+                if (seen.has(tx.transaction_id)) return false;
+                seen.add(tx.transaction_id);
+                return true;
+              });
+            });
+            setShowSmsModal(true);
+            return;
+          }
+        } catch (e) {}
+
+        setPendingSmsTxs([]);
+        setShowSmsModal(false);
+      }
+    } catch (err) {
+      console.error("Failed to check pending SMS queue from Supabase", err);
+    }
+  }, [user]);
+
+  // Set up real-time polling and Postgres listener for pending_sms inserts
+  useEffect(() => {
+    if (!user) return;
+    checkPendingSms();
+
+    // 3-second polling interval
+    const intervalId = setInterval(() => {
+      checkPendingSms();
+    }, 3000);
+
+    // Supabase Real-time Postgres changes subscription
+    const channel = supabase
+      .channel('pending_sms_realtime_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pending_sms' },
+        () => {
+          checkPendingSms();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(intervalId);
+      supabase.removeChannel(channel);
+    };
+  }, [user, checkPendingSms]);
+
   // 2. Real-time Exchange Rate Fetcher
   useEffect(() => {
     fetchExchangeRates(activeCurrency);
@@ -71,7 +214,10 @@ const Dashboard = () => {
   };
 
   const fetchDashboardData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -93,11 +239,77 @@ const Dashboard = () => {
       if (txs) {
         setTransactions(txs);
       }
+
+      // Fetch category budgets
+      const { data: budgetsData } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      if (budgetsData) {
+         const budgetMap: Record<string, number> = {};
+         budgetsData.forEach((b: any) => {
+            budgetMap[b.category] = Number(b.budget_limit) || 0;
+         });
+         setBudgets(budgetMap);
+      }
+
       setLoading(false);
     } catch (err) {
       console.error("Error fetching dashboard data", err);
       setLoading(false);
     }
+  };
+
+  const handleCommitPendingSms = async () => {
+    if (!user || pendingSmsTxs.length === 0) return;
+    setSyncingSms(true);
+    
+    const payload = pendingSmsTxs.map(tx => ({
+       transaction_id: tx.transaction_id,
+       date: tx.date,
+       description: tx.description,
+       category: tx.category,
+       amount: tx.amount,
+       currency: tx.currency,
+       visibility: tx.visibility,
+       bank: tx.bank,
+       user_id: user.id
+    }));
+
+    const { error } = await supabase.from('transactions').upsert(payload, { onConflict: 'transaction_id' });
+    
+    if (error) {
+       console.error("SMS sync upsert failed:", error);
+       alert("Synchronisation error: " + error.message);
+    } else {
+        // Clear matched rows from pending_sms table in Supabase
+        const pendingIds = pendingSmsTxs.map(tx => tx.transaction_id);
+        const { error: deleteError } = await supabase
+          .from('pending_sms')
+          .delete()
+          .in('transaction_id', pendingIds);
+
+        if (deleteError) {
+          console.error("Failed to clear pending SMS queue from Supabase:", deleteError);
+        }
+
+        // Clear local backup fallback queue
+        await fetch('/api/pending-sms', { method: 'DELETE' }).catch(err => {
+          console.error("Failed to clear local fallback queue via API:", err);
+        });
+
+        // Update transaction state immutably using array spread
+        setTransactions(prev => {
+          const newIds = new Set(payload.map(p => p.transaction_id));
+          const filtered = prev.filter(t => !newIds.has(t.transaction_id));
+          return [...payload, ...filtered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        });
+
+        setShowSmsModal(false);
+        setPendingSmsTxs([]);
+     }
+    setSyncingSms(false);
   };
 
   // --- CROSS-CURRENCY BUDGET NORMALIZATION ---
@@ -156,16 +368,74 @@ const Dashboard = () => {
     }
     const dailyMap: Record<string, number> = {};
     result.forEach(tx => {
-      let normalizedAmount = tx.amount;
-      if (tx.currency !== activeCurrency && exchangeRates[tx.currency]) {
-         normalizedAmount = tx.amount / exchangeRates[tx.currency];
-      }
+      const normalizedAmount = convertCurrency(tx.amount, tx.currency || homeCurrency || 'INR', activeCurrency, exchangeRates);
       const absAmount = Math.abs(normalizedAmount);
       if (dailyMap[tx.date]) dailyMap[tx.date] += absAmount;
       else dailyMap[tx.date] = absAmount;
     });
     return Object.entries(dailyMap).map(([name, spend]) => ({ name, spend })).sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
   }, [transactions, activeCurrency, exchangeRates, timeRange, customDateFrom, customDateTo]);
+
+  const categorySpends = useMemo(() => {
+     const spends: Record<string, number> = {};
+     
+     // Get transactions in active time range
+     let result = [...transactions];
+     if (timeRange === 'CUSTOM') {
+       if (customDateFrom) {
+          const fromTime = new Date(customDateFrom + "T00:00:00").getTime();
+          result = result.filter(t => new Date(t.date).getTime() >= fromTime);
+       }
+       if (customDateTo) {
+          const toTime = new Date(customDateTo + "T23:59:59").getTime();
+          result = result.filter(t => new Date(t.date).getTime() <= toTime);
+       }
+     } else if (timeRange !== 'ALL' && result.length > 0) {
+       const latestEpoch = Math.max(...result.map(t => new Date(t.date).getTime()));
+       const multiplier = timeRange === '1M' ? 1 : timeRange === '3M' ? 3 : timeRange === '6M' ? 6 : 12;
+       const windowMs = multiplier * 30 * 24 * 60 * 60 * 1000;
+       result = result.filter(t => new Date(t.date).getTime() >= (latestEpoch - windowMs));
+     }
+
+     result.forEach(tx => {
+        const normalizedAmount = convertCurrency(tx.amount, tx.currency || homeCurrency || 'INR', activeCurrency, exchangeRates);
+        // spent amount is negative in database, sum absolute value
+        const absAmount = Math.abs(normalizedAmount);
+        const cat = tx.category || 'Miscellaneous';
+        spends[cat] = (spends[cat] || 0) + absAmount;
+     });
+     
+     return spends;
+  }, [transactions, activeCurrency, exchangeRates, timeRange, customDateFrom, customDateTo]);
+
+  // Dynamically compute global balance: baseline balance + all deposits - all withdrawals
+  const totalBalance = useMemo(() => {
+     let baseline = 10000;
+     if (user?.id) {
+        const savedBaseline = localStorage.getItem(`aura_baseline_balance_${user.id}`);
+        if (savedBaseline) {
+           baseline = Number(savedBaseline);
+        } else if (homeCurrency === 'INR') {
+           baseline = 600000;
+        }
+     }
+     
+     const normalizedBaseline = convertCurrency(baseline, homeCurrency || 'INR', activeCurrency, exchangeRates);
+
+     let depositsSum = 0;
+     let withdrawalsSum = 0;
+
+     transactions.forEach(tx => {
+        const normalizedAmt = convertCurrency(tx.amount, tx.currency || homeCurrency || 'INR', activeCurrency, exchangeRates);
+        if (normalizedAmt > 0) {
+           depositsSum += normalizedAmt;
+        } else if (normalizedAmt < 0) {
+           withdrawalsSum += Math.abs(normalizedAmt);
+        }
+     });
+
+     return normalizedBaseline + depositsSum - withdrawalsSum;
+  }, [transactions, activeCurrency, homeCurrency, exchangeRates, user]);
 
   const totalSpend = aggregatedData.reduce((sum: number, day: any) => sum + day.spend, 0);
   const healthPercent = dynamicBudgetLimit > 0 ? Math.min((totalSpend / dynamicBudgetLimit) * 100, 100) : 0;
@@ -228,8 +498,9 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Stats Grid - Horizonally compressed for Mobile */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 z-10 relative">
+      {/* Stats Grid - Horizontally compressed for Mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 z-10 relative">
+        {/* Total Balance Card */}
         <motion.div 
           animate={{ boxShadow: activeGlow }}
           transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
@@ -237,10 +508,24 @@ const Dashboard = () => {
           style={{ borderLeftColor: activeColor }}
         >
           <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${activeColor}20` }}></div>
-          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Normalized Output</p>
+          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Total Balance</p>
+          <div className="text-lg md:text-4xl font-black text-white flex items-baseline gap-1 md:gap-2">
+            {symbol}{totalBalance.toFixed(0)}
+            <span className="text-[10px] md:text-sm font-medium flex items-center opacity-60 ml-1" style={{ color: activeColor }}><TrendingUp size={12}/></span>
+          </div>
+        </motion.div>
+
+        {/* Range Spend Card */}
+        <motion.div 
+          animate={{ boxShadow: `0 0 15px ${getAuraColor()}20` }}
+          className="glass p-3 md:p-6 rounded-xl md:rounded-2xl relative overflow-hidden group border-l-2 md:border-l-4 col-span-1"
+          style={{ borderLeftColor: getAuraColor() }}
+        >
+          <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${getAuraColor()}10` }}></div>
+          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Range Spend</p>
           <div className="text-lg md:text-4xl font-black text-white flex items-baseline gap-1 md:gap-2">
             {symbol}{totalSpend.toFixed(0)}
-            <span className="text-[10px] md:text-sm font-medium flex items-center opacity-60 ml-1" style={{ color: activeColor }}><TrendingUp size={12}/></span>
+            <span className="text-[10px] md:text-sm font-medium flex items-center opacity-60 ml-1" style={{ color: getAuraColor() }}><TrendingUp size={12}/></span>
           </div>
         </motion.div>
 
@@ -275,7 +560,7 @@ const Dashboard = () => {
 
         <motion.div 
           animate={{ boxShadow: `0 0 15px ${getAuraColor()}20` }}
-          className="glass p-3 md:p-6 rounded-xl md:rounded-2xl relative overflow-hidden border-l-2 md:border-l-4 shadow-2xl flex flex-col justify-center col-span-2 md:col-span-1"
+          className="glass p-3 md:p-6 rounded-xl md:rounded-2xl relative overflow-hidden border-l-2 md:border-l-4 shadow-2xl flex flex-col justify-center col-span-2 lg:col-span-1"
           style={{ borderLeftColor: getAuraColor() }}
         >
           <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${getAuraColor()}15` }}></div>
@@ -377,6 +662,68 @@ const Dashboard = () => {
         </div>
       </motion.div>
 
+      {/* Sector Budgets (Aura Resonance) Grid */}
+      <motion.div 
+         animate={{ boxShadow: activeGlow }}
+         className="glass p-4 md:p-6 mb-4 md:mb-8 rounded-xl md:rounded-2xl border-t-2 shadow-xl md:shadow-2xl flex flex-col w-full overflow-hidden"
+         style={{ borderTopColor: activeColor }}
+      >
+        <h3 className="text-[10px] md:text-sm font-bold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+          <Sparkles size={14} style={{ color: activeColor }} />
+          Sector Budgets (Aura Resonance)
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {Object.entries(budgets).map(([cat, limit]) => {
+             if (limit <= 0) return null;
+             const spent = categorySpends[cat] || 0;
+             const rawPercent = (spent / limit) * 100;
+             const percent = Math.min(rawPercent, 100);
+             const isOverThreshold = rawPercent >= 80;
+             
+             // Dynamic track colors
+             const trackColor = isOverThreshold ? "#FF0000" : activeColor;
+             const glowShadow = isOverThreshold ? "0 0 15px #FF0000" : `0 0 10px ${activeColor}`;
+             
+             return (
+                <div key={cat} className="p-3 bg-[#0a0f1a] border border-slate-800 rounded-xl flex flex-col justify-center">
+                   <div className="flex justify-between items-center text-[10px] md:text-xs mb-2 uppercase font-black tracking-widest">
+                      <span className="text-white">{cat}</span>
+                      <span style={{ color: trackColor }} className="font-mono">
+                         {symbol}{spent.toFixed(0)} / {symbol}{limit.toFixed(0)}
+                      </span>
+                   </div>
+                   
+                   <div className="w-full h-2 bg-[#020617] rounded-full overflow-hidden border border-slate-800">
+                      <motion.div 
+                         initial={{ width: 0 }}
+                         animate={{ width: `${percent}%` }}
+                         transition={{ duration: 1 }}
+                         className="h-full rounded-full"
+                         style={{ backgroundColor: trackColor, boxShadow: glowShadow }}
+                      />
+                   </div>
+                   
+                   <div className="flex justify-between items-center text-[8px] text-slate-500 font-mono mt-1 font-bold">
+                      <span>{rawPercent.toFixed(0)}% Utilised</span>
+                      {isOverThreshold && (
+                         <span className="text-[#FF0000] font-black uppercase tracking-widest animate-pulse">
+                            [WARNING: EXTREME BUDGET OVERLOAD]
+                         </span>
+                      )}
+                   </div>
+                </div>
+             );
+          })}
+          
+          {Object.values(budgets).every(limit => limit <= 0) && (
+             <p className="text-xs text-slate-500 font-mono py-4 col-span-2 text-center">
+                No active category thresholds loaded. Commission allocations in System Parameters.
+             </p>
+          )}
+        </div>
+      </motion.div>
+
       {/* Recent Hunter Activity (Mobile Only Glance) */}
       <div className="glass p-4 rounded-xl md:hidden mb-20 bg-[#0a0f1a]/50">
          <div className="flex justify-between items-center mb-3">
@@ -384,8 +731,8 @@ const Dashboard = () => {
             <Link to="/transactions" className="text-[9px] uppercase font-bold px-2 py-1 rounded bg-slate-800" style={{ color: getAuraColor() }}>Archive</Link>
          </div>
          <div className="space-y-2.5">
-            {transactions.slice(-4).reverse().map(tx => (
-               <div key={tx.id} className="flex justify-between items-center p-2 rounded-lg border border-slate-800/80 bg-[#020617]/50 active:scale-95 transition-transform" onClick={() => navigate('/transactions')}>
+            {transactions.slice(-4).reverse().map((tx, idx) => (
+               <div key={tx.transaction_id || idx} className="flex justify-between items-center p-2 rounded-lg border border-slate-800/80 bg-[#020617]/50 active:scale-95 transition-transform" onClick={() => navigate('/transactions')}>
                   <div className="flex items-center gap-2 overflow-hidden flex-1">
                      <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${getAuraColor()}15`, border: `1px solid ${getAuraColor()}40` }}>
                         <Receipt size={10} style={{ color: getAuraColor() }} />
@@ -403,6 +750,75 @@ const Dashboard = () => {
          </div>
       </div>
       <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+      
+      {/* Pending SMS Sync Modal Overlay */}
+      <AnimatePresence>
+        {showSmsModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              className="glass p-6 md:p-8 rounded-2xl border-2 border-emerald-500/50 bg-[#0a0f1a] shadow-[0_0_50px_rgba(16,185,129,0.25)] max-w-lg w-full text-center relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
+              
+              <h2 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 mb-4 tracking-widest uppercase flex items-center justify-center gap-3">
+                 <Sparkles className="text-emerald-400" />
+                 [SYSTEM: TELEPORTATION GATE]
+                 <Sparkles className="text-emerald-400" />
+              </h2>
+              
+              <p className="text-xs md:text-sm text-slate-300 font-mono mb-6 leading-relaxed">
+                 Aura has intercepted <span className="text-emerald-400 font-bold font-mono">{pendingSmsTxs.length}</span> new bank transactions forwarded securely from your mobile device!
+              </p>
+              
+              {/* List pending messages */}
+              <div className="max-h-48 overflow-y-auto mb-6 space-y-2 text-left hide-scrollbar border-y border-slate-800 py-3">
+                 {pendingSmsTxs.map((tx, idx) => (
+                    <div key={idx} className="p-2.5 bg-[#020617] rounded-xl border border-slate-800 text-[10px] font-mono flex justify-between items-center gap-3">
+                       <div className="truncate flex-1">
+                          <p className="text-white font-bold truncate">{tx.description.replace(/SMS\s+from\s+[A-Z0-9-]+\s*:\s*/i, '')}</p>
+                          <span className="text-[8px] text-slate-500">{tx.date} • {tx.category}</span>
+                       </div>
+                       <span className="text-[#FF4D4D] font-bold whitespace-nowrap">
+                          {tx.currency} {Math.abs(tx.amount).toFixed(2)}
+                       </span>
+                    </div>
+                 ))}
+              </div>
+              
+              <div className="flex gap-4">
+                 <button 
+                    disabled={syncingSms}
+                    onClick={async () => {
+                       setShowSmsModal(false);
+                       setPendingSmsTxs([]);
+                       await fetch('/api/pending-sms', { method: 'DELETE' }).catch(err => {
+                          console.error("Failed to clear local fallback queue via API on dismissal:", err);
+                       });
+                    }}
+                    className="flex-1 py-3 border border-slate-700 bg-transparent text-slate-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors min-h-[44px]"
+                 >
+                    Dismiss Grid
+                 </button>
+                 <button 
+                    disabled={syncingSms}
+                    onClick={handleCommitPendingSms}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-colors flex justify-center items-center shadow-[0_0_15px_rgba(16,185,129,0.3)] min-h-[44px]"
+                 >
+                    {syncingSms ? 'Resonating...' : 'Awaken Ingestion'}
+                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

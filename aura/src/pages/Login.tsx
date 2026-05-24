@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Mail, Lock, Sparkles, User, AlertCircle } from 'lucide-react';
+import { Activity, Mail, Lock, Sparkles, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Login = () => {
@@ -26,6 +26,7 @@ const Login = () => {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.removeItem('aura_sandbox_mode'); // Clear local sandbox mode to route queries to real resumed Supabase
     setLoading(true);
     setError(null);
     
@@ -60,6 +61,7 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     setError(null);
+    localStorage.removeItem('aura_sandbox_mode'); // Clear local sandbox mode to route queries to real resumed Supabase
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -71,6 +73,20 @@ const Login = () => {
     if (error) {
       setError(error.message);
     }
+  };
+
+  const handleSandboxLogin = () => {
+    localStorage.setItem('aura_sandbox_mode', 'true');
+    // Save a mock user so the app behaves as logged in
+    const mockUser = {
+      id: 'sandbox-monarch-id',
+      email: 'monarch@aura.local',
+      user_metadata: { name: 'Aura Monarch' }
+    };
+    localStorage.setItem('aura_mock_user', JSON.stringify(mockUser));
+    
+    // Trigger window reload to apply Sandbox Mode on boot cleanly
+    window.location.reload();
   };
 
   return (
@@ -100,10 +116,10 @@ const Login = () => {
                 <Sparkles className="text-blue-400" />
               </h2>
               <motion.div 
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 transition={{ delay: 1.5, duration: 1 }}
-                 className="text-lg text-slate-300 font-mono typing-effect"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5, duration: 1 }}
+                className="text-lg text-slate-300 font-mono typing-effect"
               >
                 [SYSTEM: You have been chosen as the Monarch of Finance.]
               </motion.div>
@@ -182,6 +198,8 @@ const Login = () => {
                 <div className="relative">
                   <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    id="email"
+                    name="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -194,6 +212,8 @@ const Login = () => {
                 <div className="relative">
                   <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    id="password"
+                    name="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -212,6 +232,22 @@ const Login = () => {
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl uppercase tracking-widest transition-colors flex justify-center items-center shadow-[0_0_20px_rgba(37,99,235,0.3)] disabled:opacity-50"
               >
                 {loading ? 'Initializing...' : 'Enter the Gate'}
+              </motion.button>
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t border-slate-800/80"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-600 text-[10px] font-bold uppercase tracking-widest">or bypass requirements</span>
+                <div className="flex-grow border-t border-slate-800/80"></div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16,185,129,0.3)" }}
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                onClick={handleSandboxLogin}
+                className="w-full bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-black py-3 rounded-xl uppercase tracking-widest text-xs transition-colors flex justify-center items-center shadow-lg"
+              >
+                Awaken Sandbox Mode (Local/Offline)
               </motion.button>
             </form>
           </div>

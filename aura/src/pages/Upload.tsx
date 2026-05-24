@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload as UploadIcon, FileJson, CheckCircle, Edit2, Play, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -14,10 +14,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   Wearables: "#00FFFF", // Neon Cyan
   Groceries: "#FF8C00", // Sunset Orange
   Entertainment: "#8A2BE2", // Hollow Purple
+  'Rent/Housing': "#FF00FF", // Neon Fuchsia
   Miscellaneous: "#4A4A4A" // Void Black
 };
-
-const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS);
 
 const categorize = (desc: string) => {
   const d = desc.toLowerCase();
@@ -45,9 +44,28 @@ const Upload = () => {
   
   // State for Review Screen
   const [parsedData, setParsedData] = useState<any[]>([]);
+  const [hasDuplicatesOnly, setHasDuplicatesOnly] = useState(false);
   const [statementCurrency, setStatementCurrency] = useState('INR');
   const [bankType, setBankType] = useState('auto');
   const [detectedBank, setDetectedBank] = useState<string>('');
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (user?.id) {
+       const saved = localStorage.getItem(`aura_custom_categories_${user.id}`);
+       if (saved) {
+          try {
+             setCustomCategories(JSON.parse(saved));
+          } catch(e) {}
+       }
+    }
+  }, [user]);
+
+  const dynamicCategoryOptions = Array.from(new Set([
+    'Food', 'Transport', 'Studies', 'Shopping', 'Wearables', 
+    'Groceries', 'Entertainment', 'Rent/Housing', 'Miscellaneous',
+    ...customCategories
+  ]));
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -71,6 +89,7 @@ const Upload = () => {
   const handleProcess = async () => {
     if (!file) return;
     setStatus('processing');
+    setHasDuplicatesOnly(false);
     
     try {
       const reader = new FileReader();
@@ -102,6 +121,19 @@ const Upload = () => {
             incomingTransactions = Array.isArray(result) ? result : [];
           }
 
+          // Dynamic field mapping & auto-categorization on the frontend
+          incomingTransactions = incomingTransactions.map((tx: any) => {
+            const rawDesc = tx.description || tx.raw_description || "Bank Transaction";
+            return {
+              ...tx,
+              description: rawDesc,
+              merchant: rawDesc, // Keep description strictly 1:1
+              reason: tx.reason || "General",
+              category: tx.category || categorize(rawDesc),
+              visibility: tx.visibility || 'Private'
+            };
+          });
+
           // Neural Duplicate Detection: cross-reference with existing DB records
           if (user && incomingTransactions.length > 0) {
              const { data: existingRecords, error: fetchError } = await supabase
@@ -110,13 +142,17 @@ const Upload = () => {
                .eq('user_id', user.id);
              
              if (!fetchError && existingRecords) {
-                const existingIds = new Set(existingRecords.map(r => r.transaction_id));
+                const existingIds = new Set(existingRecords.map((r: any) => r.transaction_id));
                 // Filter out those already in the matrix
                 const freshTransactions = incomingTransactions.filter((tx: any) => !existingIds.has(tx.transaction_id));
                 
                 const duplicateCount = incomingTransactions.length - freshTransactions.length;
                 if (duplicateCount > 0) {
                    console.log(`Neural Filter: Purged ${duplicateCount} duplicate records found in the ledger.`);
+                }
+                
+                if (incomingTransactions.length > 0 && freshTransactions.length === 0) {
+                   setHasDuplicatesOnly(true);
                 }
                 setParsedData(freshTransactions);
              } else {
@@ -180,8 +216,8 @@ const Upload = () => {
     const payload = parsedData.map(tx => ({
       transaction_id: tx.transaction_id,
       date: tx.date,
-      description: tx.reason || tx.merchant || tx.raw_description, // Map cleanly to UI Reason
-      category: tx.category, // Map AI category
+      description: tx.description || tx.raw_description || "Bank Transaction", // strictly 1:1 raw string
+      category: tx.category || "Miscellaneous", // Map AI category
       amount: tx.amount,
       currency: statementCurrency, // Master override using user-selected native Statement Currency
       visibility: tx.visibility,
@@ -289,12 +325,12 @@ const Upload = () => {
               <button 
                 onClick={handleProcess}
                 disabled={status !== 'idle'}
-                className="w-full md:w-auto rounded-xl px-4 py-3 md:py-3 font-black text-[10px] md:text-sm uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 border fixed md:relative bottom-24 left-4 right-4 md:bottom-auto md:left-auto md:right-auto z-50 md:z-auto min-h-[44px] shadow-2xl md:shadow-none bg-[#0a0f1a] md:bg-transparent"
+                className="w-full md:w-auto rounded-xl px-6 py-3 font-black text-[10px] md:text-xs uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 border relative min-h-[44px] mt-4 md:mt-0 bg-[#0a0f1a]/40 hover:bg-slate-900 border-slate-700 hover:border-slate-500 shadow-xl"
                 style={{ 
                   color: getAuraColor(),
                   borderColor: `${getAuraColor()}40`,
-                  boxShadow: status === 'idle' ? `0 10px 30px ${getAuraColor()}40` : 'none',
-                  backgroundColor: status === 'idle' ? `${getAuraColor()}15` : undefined
+                  boxShadow: status === 'idle' ? `0 4px 20px ${getAuraColor()}20` : 'none',
+                  backgroundColor: status === 'idle' ? `${getAuraColor()}10` : undefined
                 }}
               >
                 {status === 'idle' && 'Execute Neural Parse'}
@@ -441,12 +477,12 @@ const Upload = () => {
                             onChange={(e) => handleCategoryChange(idx, e.target.value)}
                             className="w-full text-[10px] md:text-xs font-bold uppercase tracking-widest py-2 md:py-1 px-3 md:px-2 rounded-lg cursor-pointer appearance-none text-center bg-[#020617] bg-opacity-80 focus:outline-none transition-all shadow-lg border border-slate-700 hover:border-current inline-block min-h-[44px] md:min-h-0"
                             style={{ 
-                               color: CATEGORY_COLORS[tx.category] || CATEGORY_COLORS["Miscellaneous"],
-                               borderColor: `${CATEGORY_COLORS[tx.category] || CATEGORY_COLORS["Miscellaneous"]}50`
+                               color: CATEGORY_COLORS[tx.category] || "#ff69b4",
+                               borderColor: `${CATEGORY_COLORS[tx.category] || "#ff69b4"}50`
                             }}
                          >
-                            {CATEGORY_OPTIONS.map(cat => (
-                               <option key={cat} value={cat} className="bg-[#020617] font-bold text-white text-left tracking-widest uppercase text-[10px]">
+                            {dynamicCategoryOptions.map(cat => (
+                               <option key={cat} value={cat} className="bg-[#020617] font-bold text-white text-left tracking-widest uppercase text-[10px]" style={{ color: CATEGORY_COLORS[cat] || "#ff69b4" }}>
                                    {cat}
                                </option>
                             ))}
@@ -456,7 +492,11 @@ const Upload = () => {
                   ))}
                   {parsedData.length === 0 && (
                      <tr>
-                        <td colSpan={7} className="text-center p-8 text-slate-500 font-mono">No valid transactions extracted. Verify PDF format.</td>
+                        <td colSpan={8} className="text-center p-8 text-slate-500 font-mono">
+                           {hasDuplicatesOnly 
+                             ? "All transactions from this statement have already been imported (duplicates filtered)." 
+                             : "No valid transactions extracted. Verify PDF format."}
+                        </td>
                      </tr>
                   )}
                 </tbody>

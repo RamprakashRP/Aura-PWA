@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, type AuraType } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
-import { Save, Globe, Users, Shield, Sparkles, CheckCircle, LogOut } from 'lucide-react';
+import { Save, Globe, Users, Shield, Sparkles, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AURA_COLORS: Record<AuraType, string> = {
@@ -22,6 +22,25 @@ const Settings = () => {
   
   const [currency, setCurrency] = useState('CAD');
   const [budget, setBudget] = useState('3000');
+  const [baselineBalance, setBaselineBalance] = useState('10000');
+  
+  const [categories, setCategories] = useState<string[]>([
+    'Food', 'Transport', 'Studies', 'Shopping', 'Wearables', 
+    'Groceries', 'Entertainment', 'Rent/Housing', 'Miscellaneous'
+  ]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  
+  const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>({
+    Food: '',
+    Transport: '',
+    Studies: '',
+    Shopping: '',
+    Wearables: '',
+    Groceries: '',
+    Entertainment: '',
+    'Rent/Housing': '',
+    Miscellaneous: ''
+  });
   
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   
@@ -37,11 +56,19 @@ const Settings = () => {
   }, []);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndBudgets = async () => {
       if (!user) return;
       
       const savedBudget = localStorage.getItem(`aura_budget_${user.id}`);
       if (savedBudget) setBudget(savedBudget);
+      
+      const savedBaseline = localStorage.getItem(`aura_baseline_balance_${user.id}`);
+      if (savedBaseline) {
+         setBaselineBalance(savedBaseline);
+      } else {
+         setBaselineBalance(currency === 'INR' ? '600000' : '10000');
+      }
+      
       const { data } = await supabase
         .from('profiles')
         .select('home_currency')
@@ -49,8 +76,38 @@ const Settings = () => {
         .single();
       
       if (data?.home_currency) setCurrency(data.home_currency);
+
+      // Load dynamic custom categories from localStorage
+      const saved = localStorage.getItem(`aura_custom_categories_${user.id}`);
+      let currentCategories = ['Food', 'Transport', 'Studies', 'Shopping', 'Wearables', 'Groceries', 'Entertainment', 'Rent/Housing', 'Miscellaneous'];
+      if (saved) {
+         try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+               currentCategories = Array.from(new Set([...currentCategories, ...parsed]));
+            }
+         } catch(e) {}
+      }
+      setCategories(currentCategories);
+
+      // Fetch category budgets
+      const { data: budgetsData } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      const budgetMap: Record<string, string> = {};
+      currentCategories.forEach(cat => {
+         budgetMap[cat] = '';
+      });
+      if (budgetsData) {
+         budgetsData.forEach((b: any) => {
+            budgetMap[b.category] = String(b.budget_limit);
+         });
+      }
+      setCategoryBudgets(budgetMap);
     };
-    fetchProfile();
+    fetchProfileAndBudgets();
   }, [user]);
 
   const handleCurrencyChange = (newCurrency: string) => {
@@ -59,8 +116,42 @@ const Settings = () => {
          const cadBase = numBudget / exchangeRates[currency]; 
          const newBudget = cadBase * exchangeRates[newCurrency]; 
          setBudget(String(Math.round(newBudget))); 
+         
+         const numBaseline = Number(baselineBalance) || 0;
+         const baselineCad = numBaseline / exchangeRates[currency];
+         const newBaseline = baselineCad * exchangeRates[newCurrency];
+         setBaselineBalance(String(Math.round(newBaseline)));
+
+         // Auto-scale category budgets too
+         const updatedBudgets = { ...categoryBudgets };
+         Object.entries(updatedBudgets).forEach(([cat, val]) => {
+            if (val && !isNaN(Number(val))) {
+               const valCad = Number(val) / exchangeRates[currency];
+               updatedBudgets[cat] = String(Math.round(valCad * exchangeRates[newCurrency]));
+            }
+         });
+         setCategoryBudgets(updatedBudgets);
      }
      setCurrency(newCurrency);
+  };
+
+  const handleAddCustomCategory = () => {
+    const cleanName = newCategoryName.trim();
+    if (!cleanName) return;
+    
+    // Capitalize first letter of each word
+    const capitalized = cleanName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    
+    if (!categories.includes(capitalized)) {
+      setCategories([...categories, capitalized]);
+      setCategoryBudgets({
+        ...categoryBudgets,
+        [capitalized]: ''
+      });
+      setNewCategoryName('');
+    } else {
+      alert("Category already exists!");
+    }
   };
 
   const saveSettings = async () => {
@@ -70,7 +161,11 @@ const Settings = () => {
     
     if (budget && !isNaN(Number(budget))) {
        localStorage.setItem(`aura_budget_${user.id}`, budget);
-    }
+     }
+
+    if (baselineBalance && !isNaN(Number(baselineBalance))) {
+       localStorage.setItem(`aura_baseline_balance_${user.id}`, baselineBalance);
+     }
 
     const { error } = await supabase
       .from('profiles')
@@ -83,7 +178,28 @@ const Settings = () => {
       
     localStorage.setItem(`aura_home_currency_${user.id}`, currency);
 
+    // Save custom categories to local storage
+    const defaults = ['Food', 'Transport', 'Studies', 'Shopping', 'Wearables', 'Groceries', 'Entertainment', 'Rent/Housing', 'Miscellaneous'];
+    const customCats = categories.filter(c => !defaults.includes(c));
+    localStorage.setItem(`aura_custom_categories_${user.id}`, JSON.stringify(customCats));
+
     if (error) console.error("Failed to update profile", error);
+
+    // Save category budgets
+    const budgetPayloads = Object.entries(categoryBudgets).map(([cat, limit]) => ({
+       user_id: user.id,
+       category: cat,
+       budget_limit: Number(limit) || 0,
+       currency: currency
+    }));
+    
+    if (budgetPayloads.length > 0) {
+       const { error: budgetError } = await supabase
+         .from('budgets')
+         .upsert(budgetPayloads, { onConflict: 'user_id,category' });
+         
+       if (budgetError) console.error("Failed to update budgets", budgetError);
+    }
     
     setSaving(false);
     setSaved(true);
@@ -172,7 +288,7 @@ const Settings = () => {
           </div>
           
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full items-end">
               <div className="flex-1 w-full relative">
                 <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
                   Base Config Node
@@ -208,9 +324,87 @@ const Settings = () => {
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-[10px] tracking-widest" style={{ color: getAuraColor() }}>{currency}</span>
                 </div>
               </div>
+
+              <div className="flex-1 w-full relative">
+                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 flex justify-between">
+                  Baseline Balance
+                  <span className="text-[8px] text-slate-600">Auto-Scaling</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                  <input 
+                    type="number"
+                    value={baselineBalance}
+                    onChange={(e) => setBaselineBalance(e.target.value)}
+                    className="w-full bg-[#0a0f1a] border border-slate-700 rounded-xl pl-8 pr-12 py-0 text-white font-mono font-bold text-sm md:text-base tracking-widest focus:outline-none transition-colors min-h-[44px]"
+                    style={{ borderColor: `${getAuraColor()}40` }}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-[10px] tracking-widest" style={{ color: getAuraColor() }}>{currency}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Dynamic Category Budget Allocation Core */}
+        <div className="glass p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group shadow-lg">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl group-hover:bg-red-500/10 transition-colors"></div>
+          
+          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-slate-800 pb-3 md:pb-4">
+            <Sparkles size={20} style={{ color: getAuraColor() }} className="flex-shrink-0" />
+            <h2 className="text-lg md:text-xl font-bold text-white tracking-wide">Category Budget Allocation</h2>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {categories.map((cat) => (
+              <div key={cat} className="flex flex-col gap-1.5 relative">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  {cat}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">$</span>
+                  <input 
+                    type="number"
+                    value={categoryBudgets[cat] || ''}
+                    onChange={(e) => {
+                      setCategoryBudgets({
+                        ...categoryBudgets,
+                        [cat]: e.target.value
+                      });
+                    }}
+                    placeholder="Infinite"
+                    className="w-full bg-[#020617] border border-slate-800 rounded-xl pl-6 pr-10 py-2 text-xs text-white font-mono font-bold tracking-widest focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-[9px] tracking-widest opacity-60" style={{ color: getAuraColor() }}>{currency}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Dynamic Custom Category Addition Form */}
+          <div className="flex gap-3 border-t border-slate-800/50 pt-4 items-end">
+            <div className="flex-1">
+              <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-1.5">
+                New Custom Category
+              </label>
+              <input 
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="e.g. Subscriptions, Gifts"
+                className="w-full bg-[#020617] border border-slate-800 focus:border-slate-600 rounded-xl px-4 py-2 text-xs text-white tracking-wider focus:outline-none min-h-[44px]"
+              />
+            </div>
+            <button
+              onClick={handleAddCustomCategory}
+              className="px-4 py-2 border rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors min-h-[44px] bg-[#020617] hover:bg-slate-900"
+              style={{ borderColor: `${getAuraColor()}40`, color: getAuraColor() }}
+            >
+              + Add Custom Category
+            </button>
+          </div>
+        </div>
+
 
         {/* Access Control (Compact Toggles) */}
         <div className="glass p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group shadow-lg">
