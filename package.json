@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "dev": "npm --prefix aura run dev",
+    "build": "npm --prefix aura run build",
+    "preview": "npm --prefix aura run preview",
+    "lint": "npm --prefix aura run lint"
+  },
   "dependencies": {
     "react-is": "^19.2.4"
   }

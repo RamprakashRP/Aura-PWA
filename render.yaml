@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: aura
-    buildCommand: npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm start
     envVars:
       - key: VITE_SUPABASE_URL
