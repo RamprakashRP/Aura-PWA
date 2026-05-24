@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: aura-finance-pwa
+    runtime: node
+    plan: free
+    rootDir: aura
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+        placeholder: "Your Supabase Project URL (e.g. https://xxxx.supabase.co)"
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+        placeholder: "Your Supabase Anonymous Key"
