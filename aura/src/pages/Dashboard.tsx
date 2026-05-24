@@ -52,6 +52,7 @@ const Dashboard = () => {
   const [pendingSmsTxs, setPendingSmsTxs] = useState<any[]>([]);
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [syncingSms, setSyncingSms] = useState(false);
+  const [engineStatus, setEngineStatus] = useState<'connecting' | 'awakening' | 'active' | 'offline'>('connecting');
 
   // Dashboard Controls
   type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL' | 'CUSTOM';
@@ -198,6 +199,28 @@ const Dashboard = () => {
   useEffect(() => {
     fetchExchangeRates(activeCurrency);
   }, [activeCurrency]);
+
+  // 3. Cloud Engine Wakeup Ping (Anti-Cold Start)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setEngineStatus('awakening');
+    }, 1500); // Transition to "awakening" if slower than 1.5s (meaning cold-starting)
+
+    fetch('/api/health?t=' + Date.now())
+      .then(res => res.json())
+      .then(data => {
+        clearTimeout(timeoutId);
+        if (data && data.status === 'resonating') {
+          setEngineStatus('active');
+        } else {
+          setEngineStatus('offline');
+        }
+      })
+      .catch(() => {
+        clearTimeout(timeoutId);
+        setEngineStatus('offline');
+      });
+  }, []);
 
   const fetchExchangeRates = async (base: string) => {
     setRatesLoading(true);
@@ -483,6 +506,32 @@ const Dashboard = () => {
              {ratesLoading && <RefreshCw size={14} className="animate-spin text-slate-500" />}
           </h1>
           <p className="text-slate-400 mt-1 md:mt-2 font-mono text-[8px] md:text-[10px] uppercase tracking-widest truncate max-w-[150px] md:max-w-none"><Sparkles size={10} className="inline mr-1" style={{ color: getAuraColor() }}/> {user?.email}</p>
+          
+          {/* Cloud Engine Status Indicator */}
+          <div className="mt-2 flex items-center gap-1.5 font-mono text-[8px] md:text-[9px] uppercase tracking-wider font-bold">
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              engineStatus === 'active' ? 'bg-emerald-500 animate-pulse' :
+              engineStatus === 'awakening' ? 'bg-amber-500 animate-pulse' :
+              engineStatus === 'connecting' ? 'bg-blue-500 animate-pulse' :
+              'bg-red-500'
+            }`} style={{
+              boxShadow: engineStatus === 'active' ? '0 0 8px #10b981' :
+                         engineStatus === 'awakening' ? '0 0 8px #f59e0b' :
+                         engineStatus === 'connecting' ? '0 0 8px #3b82f6' :
+                         'none'
+            }}></span>
+            <span className={
+              engineStatus === 'active' ? 'text-emerald-400' :
+              engineStatus === 'awakening' ? 'text-amber-400' :
+              engineStatus === 'connecting' ? 'text-blue-400' :
+              'text-red-500'
+            }>
+              {engineStatus === 'active' && 'Aura Engine: Resonating'}
+              {engineStatus === 'awakening' && 'Aura Engine: Awakening Core Node...'}
+              {engineStatus === 'connecting' && 'Aura Engine: Connecting...'}
+              {engineStatus === 'offline' && 'Aura Engine: Safe Offline Mode'}
+            </span>
+          </div>
         </div>
         
         <div className="text-right">
