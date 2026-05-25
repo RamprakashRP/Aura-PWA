@@ -29,6 +29,7 @@
   - [ ] Transaction Ledger UI (List views, filtering, Privacy toggle: Private/Shared)
   - [ ] Statement Upload Center (File dropzone for CSV/PDF)
   - [ ] Settings (Home Currency preference: INR/CAD, Ledger management)
-- [ ] **Deployment**
-  - [ ] Finalize production build setup
-  - [ ] Prepare for one-click Vercel/Netlify deployment
+- [/] **Deployment**
+  - [x] Create and configure `render.yaml` for Blueprint deployment
+  - [x] Configure server to run `python3` parser on cloud
+  - [/] Push changes to GitHub and trigger Render rebuild
