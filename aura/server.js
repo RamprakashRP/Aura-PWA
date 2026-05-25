@@ -47,6 +47,68 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'resonating' });
 });
 
+// Diagnostic Python Endpoint
+app.get('/api/diagnose-python', (req, res) => {
+  try {
+    const diagScript = path.join(os.tmpdir(), `diag_${Date.now()}.py`);
+    const code = `import sys
+import os
+import json
+
+pdfplumber_status = "Not installed"
+try:
+    import pdfplumber
+    pdfplumber_status = f"Installed at {pdfplumber.__file__}"
+except Exception as e:
+    pdfplumber_status = f"ImportError: {str(e)}"
+
+pymupdf_status = "Not installed"
+try:
+    import fitz
+    pymupdf_status = f"Installed at {fitz.__file__}"
+except Exception as e:
+    pymupdf_status = f"ImportError: {str(e)}"
+
+info = {
+    "version": sys.version,
+    "executable": sys.executable,
+    "path": sys.path,
+    "pdfplumber": pdfplumber_status,
+    "pymupdf": pymupdf_status,
+    "cwd": os.getcwd(),
+    "env": {k: v for k, v in os.environ.items() if "KEY" not in k.upper() and "SECRET" not in k.upper() and "PASSWORD" not in k.upper() and "URL" not in k.upper()}
+}
+print(json.dumps(info))
+`;
+    fs.writeFileSync(diagScript, code);
+    exec(`python3 "${diagScript}"`, { timeout: 10000 }, (error, stdout, stderr) => {
+      try { fs.unlinkSync(diagScript); } catch(e) {}
+      if (error) {
+        fs.writeFileSync(diagScript, code);
+        exec(`python "${diagScript}"`, { timeout: 10000 }, (error2, stdout2, stderr2) => {
+          try { fs.unlinkSync(diagScript); } catch(e) {}
+          if (error2) {
+            return res.status(500).json({ error: "Failed to run python3 and python", error1_msg: error.message, error2_msg: error2.message, stderr1: stderr, stderr2: stderr2 });
+          }
+          try {
+            res.status(200).json(JSON.parse(stdout2.trim()));
+          } catch(e) {
+            res.status(500).json({ error: "JSON parse failed", stdout: stdout2, stderr: stderr2 });
+          }
+        });
+        return;
+      }
+      try {
+        res.status(200).json(JSON.parse(stdout.trim()));
+      } catch(e) {
+        res.status(500).json({ error: "JSON parse failed", stdout, stderr });
+      }
+    });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 1. Bank Statement Parse PDF
 app.post('/api/parse', (req, res) => {
   try {

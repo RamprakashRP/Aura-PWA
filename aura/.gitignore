@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python build cache & vendor packages
+.python_packages/
+__pycache__/
+*.pyc

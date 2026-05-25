@@ -1,4 +1,11 @@
 import sys
+import os
+# Insert local packages to sys.path if they exist
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_local_packages = os.path.join(_current_dir, '.python_packages')
+if os.path.exists(_local_packages):
+    sys.path.insert(0, _local_packages)
+
 import json
 import re
 import hashlib
