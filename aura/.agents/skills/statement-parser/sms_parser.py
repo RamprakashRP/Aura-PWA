@@ -13,13 +13,13 @@ from datetime import datetime
 
 # Category keywords (similar to front-end and Kotak parser)
 CATEGORY_KEYWORDS = {
-    "Groceries": ["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton"],
-    "Food": ["food", "zomato", "swiggy", "starbucks", "tim", "restaurant", "kozhi", "dosa", "idli", "biryani", "meals", "pizza", "burger", "fries", "cafe", "bakery", "kitchen"],
-    "Transport": ["uber", "ola", "metro", "transit", "petrol", "shell", "presto", "cab"],
+    "Groceries": ["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton", "zepto", "blinkit", "instamart", "bigbasket", "dunzo", "market"],
+    "Food": ["food", "zomato", "swiggy", "starbucks", "tim", "restaurant", "kozhi", "dosa", "idli", "biryani", "meals", "pizza", "burger", "fries", "cafe", "bakery", "kitchen", "kfc", "mcdonalds", "dominos"],
+    "Transport": ["uber", "ola", "metro", "transit", "petrol", "shell", "presto", "cab", "emirates", "irctc", "indigo", "airindia", "flight", "railway"],
     "Studies": ["srm", "university", "coursera", "books", "ielts"],
     "Shopping": ["amazon", "flipkart", "walmart", "myntra"],
     "Wearables": ["dress", "belt", "shirt", "pant", "shoe", "clothing", "apparel", "wear", "zara", "h&m", "uniqlo"],
-    "Entertainment": ["netflix", "valorant", "steam", "cinema"]
+    "Entertainment": ["netflix", "valorant", "steam", "cinema", "spotify", "youtube", "hotstar", "prime", "disney"]
 }
 
 def auto_categorize(description):
@@ -80,7 +80,11 @@ def parse_sms(sender, message):
     # 3. Merchant/Receiver Extraction
     merchant = ""
     # Look for patterns starting with to, at, or towards
-    merchant_match = re.search(r'\b(?:to|at|towards)\s+([a-zA-Z0-9\s\.\&\-\']+)', message_clean, re.IGNORECASE)
+    merchant_match = re.search(r'\b(?:to|at|towards)\s+([a-zA-Z0-9\s\.\&\-\'\@\_\/]+)', message_clean, re.IGNORECASE)
+    if not merchant_match and is_incoming:
+        # Fallback for incoming transactions: check who sent it using "by" or "from"
+        merchant_match = re.search(r'\b(?:by|from)\s+([a-zA-Z0-9\s\.\&\-\'\@\_\/]+)', message_clean, re.IGNORECASE)
+        
     if merchant_match:
         raw_merchant = merchant_match.group(1).strip()
         
@@ -88,7 +92,8 @@ def parse_sms(sender, message):
         fluff_keywords = [
             r'\bref\b', r'\bavl\b', r'\bbal\b', r'\bbalance\b', r'\bon\b', 
             r'\bvia\b', r'\bfrom\b', r'\blink\b', r'\burl\b', r'\bwith\b', 
-            r'\bfor\b', r'\bdt\b', r'\bdate\b', r'\bupi\b', r'\bac\b', r'\baccount\b'
+            r'\bfor\b', r'\bdt\b', r'\bdate\b', r'\bupi\b', r'\bac\b', r'\baccount\b',
+            r'\bimps\b', r'\bneft\b'
         ]
         
         cleaned_merchant = raw_merchant
@@ -99,8 +104,19 @@ def parse_sms(sender, message):
                 
         # Strip trailing punctuation or spaces
         cleaned_merchant = re.sub(r'[\s\-\.,]+$', '', cleaned_merchant).strip()
+        
+        # Clean up VPA / UPI address structures (e.g. spotify.bdsi@hdfcbank -> spotify)
+        if "@" in cleaned_merchant:
+            parts = cleaned_merchant.split("@")
+            cleaned_merchant = parts[0].strip()
+            # If subpart has dots (like spotify.bdsi), take the first domain if meaningful
+            if "." in cleaned_merchant:
+                subparts = cleaned_merchant.split(".")
+                if len(subparts[0]) > 2:
+                    cleaned_merchant = subparts[0].strip()
+                    
         if cleaned_merchant:
-            merchant = cleaned_merchant
+            merchant = cleaned_merchant.title() # Convert to beautiful Title Case (e.g. "Zeptomarketplace" or "Spotify")
             print(f"[DEBUG] Extracted merchant after anchors: \"{merchant}\"", file=sys.stderr)
             
     # Default fallback for UI resilience
