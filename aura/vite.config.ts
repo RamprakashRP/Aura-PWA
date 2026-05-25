@@ -49,7 +49,7 @@ const pythonParserPlugin = () => ({
             const parserPath = path.join(__dirname, '.agents', 'skills', 'statement-parser', 'parser.py');
             
             // Execute: python parser.py <bankType> <tmpPath>
-            exec(`python "${parserPath}" "${bankType}" "${tmpPath}"`, { timeout: 15000 }, (error, stdout, stderr) => {
+            exec(`python "${parserPath}" "${bankType}" "${tmpPath}"`, { timeout: 90000 }, (error, stdout, stderr) => {
               try { fs.unlinkSync(tmpPath); } catch(e) {} // Clean up
               
               if (error) {
@@ -87,7 +87,7 @@ const pythonParserPlugin = () => ({
             const safeSender = sender.replace(/"/g, '\\"');
             const safeMessage = message.replace(/"/g, '\\"');
             
-            exec(`python "${smsParserPath}" "${safeSender}" "${safeMessage}"`, { timeout: 15000 }, async (error, stdout, stderr) => {
+            exec(`python "${smsParserPath}" "${safeSender}" "${safeMessage}"`, { timeout: 30000 }, async (error, stdout, stderr) => {
               if (stderr) {
                 console.error(stderr);
               }
