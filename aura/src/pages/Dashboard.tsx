@@ -482,21 +482,6 @@ const Dashboard = () => {
     return <div className="h-64 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: getAuraColor(), borderTopColor: 'transparent' }}></div></div>;
   }
 
-  if (transactions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-lg mx-auto animate-in fade-in duration-700">
-        <div className="w-48 h-48 mb-6 relative">
-          <div className="absolute inset-0 rounded-full animate-pulse opacity-20 blur-2xl" style={{ backgroundColor: getAuraColor() }}></div>
-          <div className="w-full h-full border-2 border-dashed rounded-full flex items-center justify-center" style={{ borderColor: getAuraColor() }}>
-            <Sparkles size={48} style={{ color: getAuraColor() }} />
-          </div>
-        </div>
-        <h2 className="text-2xl font-black text-white mb-2">Aura Inactive</h2>
-        <p className="text-slate-400 mb-8">Your financial aura is quiet. Upload a real Kotak statement to awaken it.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-x-hidden md:px-0 pb-16 md:pb-0">
       <header className="flex justify-between items-end mb-2 md:mb-6">
@@ -673,6 +658,21 @@ const Dashboard = () => {
          </button>
       </div>
 
+      {transactions.length === 0 ? (
+         <div className="flex flex-col items-center justify-center min-h-[35vh] text-center max-w-lg mx-auto py-8 animate-in fade-in duration-700 bg-[#0a0f1a]/30 rounded-xl p-6 border border-slate-800/40 mt-4 relative">
+           <div className="absolute inset-0 rounded-full animate-pulse opacity-5 blur-2xl" style={{ backgroundColor: getAuraColor() }}></div>
+           <div className="w-12 h-12 mb-3 relative flex items-center justify-center mx-auto">
+             <div className="w-full h-full border border-dashed rounded-full flex items-center justify-center" style={{ borderColor: `${getAuraColor()}40` }}>
+               <Sparkles size={16} style={{ color: getAuraColor() }} />
+             </div>
+           </div>
+           <h2 className="text-xs font-black text-white mb-1 uppercase tracking-widest">[AURA ENGINE: COLD CORE]</h2>
+           <p className="text-[10px] text-slate-400 font-mono max-w-[280px] mx-auto leading-relaxed">
+              Your financial aura is quiet. Forward an SMS webhook or upload a statement to awaken the ledger.
+           </p>
+         </div>
+      ) : (
+         <>
       {/* Chart Section */}
       <motion.div 
          animate={{ boxShadow: activeGlow }}
@@ -799,6 +799,8 @@ const Dashboard = () => {
          </div>
       </div>
       <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+      </>
+      )}
       
       {/* Pending SMS Sync Modal Overlay */}
       <AnimatePresence>
