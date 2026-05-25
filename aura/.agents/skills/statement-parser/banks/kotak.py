@@ -1,5 +1,7 @@
 import re
 import hashlib
+import sys
+import os
 from datetime import datetime
 
 def categorize(desc):
