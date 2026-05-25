@@ -99,7 +99,7 @@ const Upload = () => {
           const base64 = (reader.result as string).split(',')[1];
           
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds max timeout
+          const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 seconds max timeout
           
           const response = await fetch('/api/parse', {
             method: 'POST',
