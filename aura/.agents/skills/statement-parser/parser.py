@@ -37,6 +37,8 @@ def detect_bank(pdf_path):
 
 def run_parser(bank_type, pdf_path):
     try:
+        sys.stderr.write(f"[PYTHON INFO] Parser started with bank_type={bank_type}, pdf_path={pdf_path}\n")
+        sys.stderr.flush()
         # Help Python find the banks module in the current directory if needed
         import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -44,22 +46,32 @@ def run_parser(bank_type, pdf_path):
             sys.path.append(current_dir)
         # Auto-detect if bank_type is missing or generic
         if not bank_type or bank_type.lower() == "auto":
+            sys.stderr.write("[PYTHON INFO] Auto-detecting bank type from PDF...\n")
+            sys.stderr.flush()
             detected = detect_bank(pdf_path)
             if detected:
                 bank_type = detected
             else:
                 # Default fallback if detection fails
                 bank_type = "kotak" 
+            sys.stderr.write(f"[PYTHON INFO] Detected bank_type={bank_type}\n")
+            sys.stderr.flush()
 
         # Dynamic import based on bank type
         module_path = f"banks.{bank_type.lower()}"
+        sys.stderr.write(f"[PYTHON INFO] Loading module: {module_path}\n")
+        sys.stderr.flush()
         try:
             bank_module = importlib.import_module(module_path)
         except ImportError:
+            sys.stderr.write(f"[PYTHON ERROR] Failed to import module: {module_path}\n")
+            sys.stderr.flush()
             return {"error": f"Bank module '{bank_type}' not found in the matrix. Map it in banks/{bank_type.lower()}.py"}
 
         # Call the standard parse() function in that module
         if hasattr(bank_module, 'parse'):
+            sys.stderr.write(f"[PYTHON INFO] Dispatching parse call to bank_module.parse()...\n")
+            sys.stderr.flush()
             data = bank_module.parse(pdf_path)
             
             # Post-process for global deduplication

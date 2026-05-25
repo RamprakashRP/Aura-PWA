@@ -23,15 +23,25 @@ def categorize(desc):
 
 def parse(pdf_path):
     extracted_data = []
+    sys.stderr.write(f"[KOTAK INFO] Initializing pdfplumber, target={pdf_path}\n")
+    sys.stderr.flush()
     try:
         import pdfplumber
     except ImportError:
+        sys.stderr.write("[KOTAK ERROR] pdfplumber import failed!\n")
+        sys.stderr.flush()
         return {"error": "pdfplumber is not installed."}
         
     date_pattern = re.compile(r'\b\d{2}\s+[A-Za-z]{3}\s+\d{4}\b')
 
+    sys.stderr.write("[KOTAK INFO] pdfplumber successfully imported. Opening PDF...\n")
+    sys.stderr.flush()
     with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
+        sys.stderr.write(f"[KOTAK INFO] PDF opened. Total pages={len(pdf.pages)}. Extracting tables...\n")
+        sys.stderr.flush()
+        for page_idx, page in enumerate(pdf.pages):
+            sys.stderr.write(f"[KOTAK INFO] Extracting table from Page {page_idx + 1}...\n")
+            sys.stderr.flush()
             table = page.extract_table({
                 "vertical_strategy": "lines",
                 "horizontal_strategy": "lines",
@@ -39,7 +49,12 @@ def parse(pdf_path):
                 "snap_x_tolerance": 5
             })
             if not table:
+                sys.stderr.write(f"[KOTAK WARN] No table detected on Page {page_idx + 1}.\n")
+                sys.stderr.flush()
                 continue
+            
+            sys.stderr.write(f"[KOTAK INFO] Extracted table from Page {page_idx + 1} successfully. Total rows={len(table)}. Parsing rows...\n")
+            sys.stderr.flush()
             
             for idx, row in enumerate(table):
                 try:
@@ -112,7 +127,11 @@ def parse(pdf_path):
                         "category": category,
                         "visibility": "Private"
                     })
-                except Exception:
+                except Exception as e:
+                    sys.stderr.write(f"[KOTAK ERROR] Error parsing row {idx}: {str(e)}\n")
+                    sys.stderr.flush()
                     continue
                     
+    sys.stderr.write(f"[KOTAK INFO] Parsing complete. Successfully extracted {len(extracted_data)} transactions.\n")
+    sys.stderr.flush()
     return extracted_data

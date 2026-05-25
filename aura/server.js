@@ -131,6 +131,10 @@ app.post('/api/parse', (req, res) => {
     exec(`python3 "${parserPath}" "${bankType}" "${tmpPath}"`, { timeout: 90000 }, (error, stdout, stderr) => {
       try { fs.unlinkSync(tmpPath); } catch(e) {} // Clean up
       
+      if (stderr) {
+        console.warn("[PARSER STDERR LOG]:", stderr);
+      }
+      
       if (error) {
         console.error("[SERVER ERROR] Python parser failed:", stderr || error.message);
         return res.status(500).json({ error: stderr || stdout || error.message });
