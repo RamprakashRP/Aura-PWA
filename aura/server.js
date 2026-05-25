@@ -61,7 +61,7 @@ app.post('/api/parse', (req, res) => {
     const parserPath = path.join(__dirname, '.agents', 'skills', 'statement-parser', 'parser.py');
     
     console.log(`[SERVER] Dispatching statement parse request: bankType=${bankType}`);
-    exec(`python "${parserPath}" "${bankType}" "${tmpPath}"`, { timeout: 15000 }, (error, stdout, stderr) => {
+    exec(`python3 "${parserPath}" "${bankType}" "${tmpPath}"`, { timeout: 15000 }, (error, stdout, stderr) => {
       try { fs.unlinkSync(tmpPath); } catch(e) {} // Clean up
       
       if (error) {
@@ -97,7 +97,7 @@ app.post('/api/webhook/sms', (req, res) => {
     const safeSender = sender.replace(/"/g, '\\"');
     const safeMessage = message.replace(/"/g, '\\"');
     
-    exec(`python "${smsParserPath}" "${safeSender}" "${safeMessage}"`, { timeout: 15000 }, async (error, stdout, stderr) => {
+    exec(`python3 "${smsParserPath}" "${safeSender}" "${safeMessage}"`, { timeout: 15000 }, async (error, stdout, stderr) => {
       if (stderr) {
         console.error("[SERVER WEBHOOK PYTHON STDERR]:", stderr);
       }
