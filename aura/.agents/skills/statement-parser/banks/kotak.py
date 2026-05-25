@@ -32,7 +32,12 @@ def parse(pdf_path):
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            table = page.extract_table()
+            table = page.extract_table({
+                "vertical_strategy": "lines",
+                "horizontal_strategy": "lines",
+                "snap_y_tolerance": 5,
+                "snap_x_tolerance": 5
+            })
             if not table:
                 continue
             

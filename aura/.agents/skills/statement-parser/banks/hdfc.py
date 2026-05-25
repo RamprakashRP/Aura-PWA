@@ -23,7 +23,12 @@ def parse(pdf_path):
         # TODO: Implement HDFC specific table extraction logic here
         # Users can edit this file without affecting Kotak or ICICI logic
         for page in pdf.pages:
-            table = page.extract_table()
+            table = page.extract_table({
+                "vertical_strategy": "lines",
+                "horizontal_strategy": "lines",
+                "snap_y_tolerance": 5,
+                "snap_x_tolerance": 5
+            })
             if not table: continue
             
             # HDFC typically has a different column count/index

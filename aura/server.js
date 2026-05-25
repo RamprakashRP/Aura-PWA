@@ -55,6 +55,11 @@ app.get('/api/diagnose-python', (req, res) => {
 import os
 import json
 
+# Append Render-specific local packages to sys.path
+_local_packages = "/opt/render/project/src/aura/.agents/skills/statement-parser/.python_packages"
+if os.path.exists(_local_packages) and _local_packages not in sys.path:
+    sys.path.insert(0, _local_packages)
+
 pdfplumber_status = "Not installed"
 try:
     import pdfplumber
