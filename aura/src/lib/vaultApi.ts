@@ -300,6 +300,42 @@ export const vaultApi = {
     saveLocalReminders(list);
   },
 
+  // 6b. Email OTP Code Verification for Passkey Enrollment
+  async sendPasskeyVerificationCode(email: string): Promise<{ success: boolean; code: string }> {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+    localStorage.setItem('aura_passkey_otp', JSON.stringify({ email, code, expiry }));
+
+    // Send via server webhook if server is up
+    try {
+      await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, type: 'passkey_enrollment' }),
+      });
+    } catch {}
+
+    console.log('[AURA SECURITY] Passkey enrollment code for ' + email + ' is: ' + code);
+    return { success: true, code };
+  },
+
+  async verifyPasskeyOtp(email: string, enteredCode: string): Promise<boolean> {
+    const raw = localStorage.getItem('aura_passkey_otp');
+    if (!raw) return false;
+    try {
+      const { email: storedEmail, code: storedCode, expiry } = JSON.parse(raw);
+      if (Date.now() > expiry) {
+        localStorage.removeItem('aura_passkey_otp');
+        return false;
+      }
+      if (storedEmail.toLowerCase() === email.toLowerCase() && storedCode.trim() === enteredCode.trim()) {
+        localStorage.removeItem('aura_passkey_otp');
+        return true;
+      }
+    } catch {}
+    return false;
+  },
+
   // 6. Passkeys WebAuthn
   async getPasskeys(): Promise<PasskeyInfo[]> {
     try {
