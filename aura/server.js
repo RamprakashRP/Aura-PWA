@@ -125,6 +125,14 @@ app.post('/api/parse', (req, res) => {
     const tmpPath = path.join(os.tmpdir(), `${bankType}_${Date.now()}.pdf`);
     fs.writeFileSync(tmpPath, buffer);
 
+    // Explicit ping to keep Supabase active
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+      supabaseServer.from('transactions').select('id', { count: 'exact', head: true }).limit(1).then(() => {
+        console.log("[SERVER] Supabase pinged on PDF parse to maintain active status.");
+      }).catch(err => console.error("[SERVER] Supabase ping failed:", err));
+    }
+
     const parserPath = path.join(__dirname, '.agents', 'skills', 'statement-parser', 'parser.py');
     
     console.log(`[SERVER] Dispatching statement parse request: bankType=${bankType}`);
@@ -161,6 +169,14 @@ app.post('/api/webhook/sms', (req, res) => {
     }
 
     console.log(`[SERVER WEBHOOK] Received payload: sender="${sender}", message="${message}"`);
+
+    // Explicit ping to keep Supabase active
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+      supabaseServer.from('pending_sms').select('id', { count: 'exact', head: true }).limit(1).then(() => {
+        console.log("[SERVER] Supabase pinged on SMS webhook to maintain active status.");
+      }).catch(err => console.error("[SERVER] Supabase ping failed:", err));
+    }
 
     const smsParserPath = path.join(__dirname, '.agents', 'skills', 'statement-parser', 'sms_parser.py');
     

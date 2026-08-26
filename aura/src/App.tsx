@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Upload from './pages/Upload';
 import Settings from './pages/Settings';
+import Vault from './pages/Vault';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/transactions" element={<Transactions />} />
+              <Route path="/vault" element={<Vault />} />
               <Route path="/upload" element={<Upload />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
