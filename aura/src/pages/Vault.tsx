@@ -8,6 +8,9 @@ import { FeeTransitionManager } from '../components/vault/FeeTransitionManager';
 import { ReturnWarrantyTracker } from '../components/vault/ReturnWarrantyTracker';
 import { TelegramConnectModal } from '../components/vault/TelegramConnectModal';
 import { PasskeyManagerModal } from '../components/vault/PasskeyManagerModal';
+import { AccountManager } from '../components/accounts/AccountManager';
+import { CanadianExpenseIngestion } from '../components/expenses/CanadianExpenseIngestion';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { 
   Plus, 
@@ -17,13 +20,22 @@ import {
   Layers,
   GraduationCap,
   Package,
-  DollarSign,
   Flame,
   Fingerprint,
-  Calendar
+  Calendar,
+  Zap,
+  PiggyBank
 } from 'lucide-react';
 
-type TabType = 'overview' | 'credit_cards' | 'bank_offers' | 'fee_transitions' | 'returns_warranties' | 'subscriptions';
+type TabType = 
+  | 'accounts'
+  | 'ingestion'
+  | 'overview' 
+  | 'credit_cards' 
+  | 'bank_offers' 
+  | 'fee_transitions' 
+  | 'returns_warranties' 
+  | 'subscriptions';
 
 export default function Vault() {
   const { getAuraColor } = useTheme();
@@ -31,7 +43,7 @@ export default function Vault() {
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [notifSettings, setNotifSettings] = useState<UserNotificationSettings>({});
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('accounts');
 
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -89,15 +101,48 @@ export default function Vault() {
     await loadData();
   };
 
+  const handleAddTransactionFromIngestion = async (tx: {
+    description: string;
+    amount: number;
+    category: string;
+    date: string;
+    payment_method: string;
+  }) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user;
+      if (user && !localStorage.getItem('aura_sandbox_mode')) {
+        await supabase.from('transactions').insert([{
+          user_id: user.id,
+          description: tx.description,
+          amount: tx.amount,
+          category: tx.category,
+          date: tx.date,
+          currency: 'CAD',
+          payment_method: tx.payment_method,
+        }]);
+      }
+    } catch (e) {
+      console.warn('Transaction insert fallback:', e);
+    }
+
+    // Save to local storage mock transactions as well
+    const localTxs = JSON.parse(localStorage.getItem('aura_mock_transactions') || '[]');
+    localTxs.unshift({
+      id: 'tx-' + Date.now(),
+      ...tx,
+      currency: 'CAD',
+    });
+    localStorage.setItem('aura_mock_transactions', JSON.stringify(localTxs));
+  };
+
   const creditCards = reminders.filter((r) => r.reminderType === 'credit_card');
   const bankOffers = reminders.filter((r) => r.reminderType === 'bank_offer');
   const feeTransitions = reminders.filter((r) => r.reminderType === 'fee_transition');
   const returnsWarranties = reminders.filter((r) => r.reminderType === 'return_warranty');
   const subscriptions = reminders.filter((r) => r.reminderType === 'subscription' || !r.reminderType);
 
-  const totalEstimatedSavings = reminders
-    .filter((r) => r.status === 'active' && r.estimatedSavings)
-    .reduce((sum, r) => sum + (Number(r.estimatedSavings) || 0), 0);
+
 
   return (
     <div className="space-y-6 pb-24 text-slate-100">
@@ -115,7 +160,7 @@ export default function Vault() {
               VAULT // Money Command
             </h1>
             <p className="text-xs text-slate-400">
-              Credit Cards • Bank Bonuses • Student Transitions • Deadlines
+              Canadian Accounts • Chequing Waivers • HISA Rates • e-Transfers • Deadlines
             </p>
           </div>
         </div>
@@ -159,57 +204,36 @@ export default function Vault() {
         </div>
       </div>
 
-      {/* Telemetry Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800/80 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-rose-500/10 text-rose-400">
-            <Layers size={20} />
-          </div>
-          <div>
-            <div className="text-xl md:text-2xl font-black text-white">{reminders.length}</div>
-            <div className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400">Active Items</div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800/80 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-cyan-500/10 text-cyan-400">
-            <CreditCard size={20} />
-          </div>
-          <div>
-            <div className="text-xl md:text-2xl font-black text-white">{creditCards.length}</div>
-            <div className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400">Credit Cards</div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800/80 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-500/10 text-amber-400">
-            <GraduationCap size={20} />
-          </div>
-          <div>
-            <div className="text-xl md:text-2xl font-black text-white">{feeTransitions.length}</div>
-            <div className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400">Fee Transitions</div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800/80 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-400">
-            <DollarSign size={20} />
-          </div>
-          <div>
-            <div className="text-xl md:text-2xl font-black text-emerald-400">
-              ${totalEstimatedSavings.toFixed(0)}
-            </div>
-            <div className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400">Money Saved</div>
-          </div>
-        </div>
-      </div>
-
       {/* Segmented Desktop Navigation Tabs */}
       <div className="flex items-center gap-1 p-1 bg-slate-900/90 border border-slate-800 rounded-xl overflow-x-auto">
         <button
           type="button"
+          onClick={() => setActiveTab('accounts')}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'accounts' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+          }`}
+          style={{ background: activeTab === 'accounts' ? auraColor : 'transparent' }}
+        >
+          <Landmark size={14} />
+          <span>🇨🇦 Bank Accounts & Rates</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('ingestion')}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'ingestion' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+          }`}
+          style={{ background: activeTab === 'ingestion' ? auraColor : 'transparent' }}
+        >
+          <Zap size={14} />
+          <span>⚡ Quick Tap & e-Transfer</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'overview' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'overview' ? auraColor : 'transparent' }}
@@ -221,7 +245,7 @@ export default function Vault() {
         <button
           type="button"
           onClick={() => setActiveTab('credit_cards')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'credit_cards' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'credit_cards' ? auraColor : 'transparent' }}
@@ -233,19 +257,19 @@ export default function Vault() {
         <button
           type="button"
           onClick={() => setActiveTab('bank_offers')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'bank_offers' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'bank_offers' ? auraColor : 'transparent' }}
         >
-          <Landmark size={14} />
+          <PiggyBank size={14} />
           <span>Bonuses ({bankOffers.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('fee_transitions')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'fee_transitions' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'fee_transitions' ? auraColor : 'transparent' }}
@@ -257,7 +281,7 @@ export default function Vault() {
         <button
           type="button"
           onClick={() => setActiveTab('returns_warranties')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'returns_warranties' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'returns_warranties' ? auraColor : 'transparent' }}
@@ -269,7 +293,7 @@ export default function Vault() {
         <button
           type="button"
           onClick={() => setActiveTab('subscriptions')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'subscriptions' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'subscriptions' ? auraColor : 'transparent' }}
@@ -282,6 +306,10 @@ export default function Vault() {
       {/* Tab Views */}
       {isLoading ? (
         <div className="text-center py-16 text-slate-400">Loading Money Saver command center...</div>
+      ) : activeTab === 'accounts' ? (
+        <AccountManager />
+      ) : activeTab === 'ingestion' ? (
+        <CanadianExpenseIngestion onAddTransaction={handleAddTransactionFromIngestion} />
       ) : activeTab === 'credit_cards' ? (
         <CreditCardWallet
           cards={creditCards}
