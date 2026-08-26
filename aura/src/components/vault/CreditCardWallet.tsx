@@ -1,14 +1,19 @@
 import type { Reminder } from '../../lib/vaultApi';
 import { format, differenceInDays } from 'date-fns';
 import { CreditCard, ExternalLink, Edit3 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface CreditCardWalletProps {
   cards: Reminder[];
   onEdit: (reminder: Reminder) => void;
   onStatusChange: (id: string, status: string) => void;
+  onCreateNew?: () => void;
 }
 
-export function CreditCardWallet({ cards, onEdit }: CreditCardWalletProps) {
+export function CreditCardWallet({ cards, onEdit, onCreateNew }: CreditCardWalletProps) {
+  const { getAuraColor } = useTheme();
+  const auraColor = getAuraColor();
+
   const getDaysUntil = (dateStr?: string | null) => {
     if (!dateStr) return null;
     const target = new Date(dateStr);
@@ -20,142 +25,122 @@ export function CreditCardWallet({ cards, onEdit }: CreditCardWalletProps) {
 
   const getBankGradient = (bank?: string | null) => {
     const b = (bank || '').toLowerCase();
+    if (b.includes('td')) return 'linear-gradient(135deg, #008a00, #047857)';
+    if (b.includes('rbc')) return 'linear-gradient(135deg, #0051a5, #1d4ed8)';
+    if (b.includes('scotia')) return 'linear-gradient(135deg, #ec111a, #991b1b)';
+    if (b.includes('bmo')) return 'linear-gradient(135deg, #0079c1, #1e3a8a)';
+    if (b.includes('cibc')) return 'linear-gradient(135deg, #8b1d41, #4c0519)';
+    if (b.includes('tangerine')) return 'linear-gradient(135deg, #ea7024, #c2410c)';
     if (b.includes('chase')) return 'linear-gradient(135deg, #1e3a8a, #0284c7)';
-    if (b.includes('amex') || b.includes('american express')) return 'linear-gradient(135deg, #047857, #10b981)';
-    if (b.includes('citi')) return 'linear-gradient(135deg, #1d4ed8, #ef4444)';
-    if (b.includes('capital one')) return 'linear-gradient(135deg, #b91c1c, #d97706)';
-    if (b.includes('discover')) return 'linear-gradient(135deg, #ea580c, #f59e0b)';
-    if (b.includes('wells fargo')) return 'linear-gradient(135deg, #991b1b, #dc2626)';
-    if (b.includes('apple')) return 'linear-gradient(135deg, #374151, #1f2937)';
-    return 'linear-gradient(135deg, #6366f1, #a855f7)';
+    if (b.includes('amex') || b.includes('american express')) return 'linear-gradient(135deg, #065f46, #047857)';
+    return 'linear-gradient(135deg, #334155, #1e293b)';
   };
 
   if (cards.length === 0) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">
-          <CreditCard size={28} />
+      <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
+        <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-cyan-400 flex items-center justify-center mx-auto shadow-xl">
+          <CreditCard size={26} />
         </div>
-        <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>No Credit Cards Added Yet</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: '400px', margin: '0 auto' }}>
-          Track your credit card statement generation dates and payment due dates to never miss a payment or incur interest!
-        </p>
+        <div>
+          <h3 className="text-base font-bold text-white">No Credit Card Due Dates Tracked Yet</h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            Never miss a payment or credit card statement cycle date. Track dual deadlines: Statement Closing Date and Payment Due Date.
+          </p>
+        </div>
+        {onCreateNew && (
+          <button
+            type="button"
+            onClick={onCreateNew}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg cursor-pointer transition-all hover:scale-105"
+            style={{ background: `linear-gradient(135deg, ${auraColor}, #b91c1c)` }}
+          >
+            + Add First Credit Card
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {cards.map((card) => {
         const daysUntilDue = getDaysUntil(card.paymentDueDate || card.renewalDate);
         const daysUntilStatement = getDaysUntil(card.statementDate);
-        const isUrgent = daysUntilDue !== null && daysUntilDue <= 3;
+        const cardGradient = getBankGradient(card.issuerBank);
 
         return (
           <div
             key={card.id}
-            style={{
-              borderRadius: 'var(--radius-lg)',
-              background: getBankGradient(card.issuerBank),
-              padding: '1.5rem',
-              color: '#ffffff',
-              boxShadow: 'var(--shadow-lg)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: '220px',
-              border: isUrgent ? '2px solid #fda4af' : '1px solid rgba(255, 255, 255, 0.2)',
-            }}
+            className="rounded-2xl p-5 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[220px] border border-white/10"
+            style={{ background: cardGradient }}
           >
-            {/* Card Top */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="flex justify-between items-start">
               <div>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.85 }}>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
                   {card.issuerBank || 'Credit Card'}
                 </span>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '0.25rem', color: '#ffffff' }}>
-                  {card.title}
-                </h3>
+                <h4 className="text-lg font-black tracking-tight mt-0.5">{card.title}</h4>
               </div>
-              <div style={{ background: 'rgba(255, 255, 255, 0.2)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                <CreditCard size={20} />
+              <div className="px-2.5 py-1 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-[11px] font-mono font-bold">
+                •••• {card.last4Digits || '0000'}
               </div>
             </div>
 
-            {/* Middle: Last 4 & Balance */}
-            <div style={{ margin: '1rem 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.125rem', letterSpacing: '0.15em' }}>
-                  •••• •••• •••• {card.last4Digits || '••••'}
+            <div className="grid grid-cols-2 gap-3 my-4 p-3 rounded-xl bg-black/25 backdrop-blur-md border border-white/10 text-xs">
+              <div>
+                <span className="text-[10px] text-white/70 uppercase font-bold block">Statement Date</span>
+                <span className="font-mono font-bold text-sm">
+                  {card.statementDate ? format(new Date(card.statementDate), 'MMM d') : '—'}
                 </span>
-                {card.amount && (
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.7rem', opacity: 0.8, display: 'block' }}>Statement Balance</span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
-                      ${Number(card.amount).toFixed(2)}
-                    </span>
-                  </div>
+                {daysUntilStatement !== null && (
+                  <span className="text-[10px] text-white/60 block mt-0.5">
+                    {daysUntilStatement >= 0 ? `in ${daysUntilStatement}d` : 'Closed'}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <span className="text-[10px] text-white/70 uppercase font-bold block">Payment Due</span>
+                <span className="font-mono font-black text-sm text-rose-200">
+                  {card.paymentDueDate || card.renewalDate ? format(new Date(card.paymentDueDate || card.renewalDate), 'MMM d, yyyy') : '—'}
+                </span>
+                {daysUntilDue !== null && (
+                  <span className="text-[10px] font-bold text-amber-200 block mt-0.5">
+                    {daysUntilDue === 0 ? 'Due Today!' : daysUntilDue > 0 ? `Due in ${daysUntilDue} days` : 'Past due'}
+                  </span>
                 )}
               </div>
             </div>
 
-            {/* Deadlines Section */}
-            <div
-              style={{
-                background: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '0.625rem 0.875rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '0.8125rem',
-              }}
-            >
-              {card.statementDate && (
-                <div>
-                  <span style={{ opacity: 0.75, fontSize: '0.7rem', display: 'block' }}>Bill Generates</span>
-                  <span style={{ fontWeight: 600 }}>
-                    {format(new Date(card.statementDate), 'MMM dd')}
-                    {daysUntilStatement !== null && ` (${daysUntilStatement}d)`}
-                  </span>
-                </div>
-              )}
-
+            <div className="flex justify-between items-center pt-2 border-t border-white/15">
               <div>
-                <span style={{ opacity: 0.75, fontSize: '0.7rem', display: 'block' }}>Payment Due</span>
-                <span style={{ fontWeight: 700, color: isUrgent ? '#fde047' : '#ffffff' }}>
-                  {format(new Date(card.paymentDueDate || card.renewalDate), 'MMM dd')}
-                  {daysUntilDue !== null && (
-                    <span style={{ marginLeft: '0.25rem' }}>
-                      {daysUntilDue === 0 ? '(TODAY!)' : `(in ${daysUntilDue}d)`}
-                    </span>
-                  )}
+                <span className="text-[10px] text-white/70 uppercase font-bold block">Balance Due</span>
+                <span className="font-mono font-black text-base">
+                  ${Number(card.amount || 0).toFixed(2)} {card.currency || 'CAD'}
                 </span>
               </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-              {card.url && (
-                <a
-                  href={card.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-sm"
-                  style={{ flex: 1, background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', border: 'none' }}
+              <div className="flex items-center gap-2">
+                {card.actionUrl && (
+                  <a
+                    href={card.actionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-xs font-bold transition-all flex items-center gap-1"
+                  >
+                    <span>Pay Bill</span>
+                    <ExternalLink size={12} />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onEdit(card)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white"
                 >
-                  <ExternalLink size={13} /> Pay / Portal
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => onEdit(card)}
-                className="btn btn-sm"
-                style={{ flex: 1, background: 'rgba(0, 0, 0, 0.25)', color: '#ffffff', border: 'none' }}
-              >
-                <Edit3 size={13} /> Edit
-              </button>
+                  <Edit3 size={14} />
+                </button>
+              </div>
             </div>
           </div>
         );

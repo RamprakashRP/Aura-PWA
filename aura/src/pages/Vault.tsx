@@ -7,7 +7,6 @@ import { BankMilestoneTracker } from '../components/vault/BankMilestoneTracker';
 import { FeeTransitionManager } from '../components/vault/FeeTransitionManager';
 import { ReturnWarrantyTracker } from '../components/vault/ReturnWarrantyTracker';
 import { TelegramConnectModal } from '../components/vault/TelegramConnectModal';
-import { PasskeyManagerModal } from '../components/vault/PasskeyManagerModal';
 import { useTheme } from '../context/ThemeContext';
 import { 
   Plus, 
@@ -17,7 +16,6 @@ import {
   GraduationCap,
   Package,
   Flame,
-  Fingerprint,
   Calendar,
   PiggyBank
 } from 'lucide-react';
@@ -41,7 +39,6 @@ export default function Vault() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
-  const [showPasskeyModal, setShowPasskeyModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
 
   useEffect(() => {
@@ -101,7 +98,7 @@ export default function Vault() {
   const subscriptions = reminders.filter((r) => r.reminderType === 'subscription' || !r.reminderType);
 
   return (
-    <div className="space-y-6 pb-24 text-slate-100">
+    <div className="space-y-6 pb-24 text-slate-100 max-w-7xl mx-auto">
       {/* Top Vault Command Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl shadow-xl">
         <div className="flex items-center gap-3">
@@ -123,16 +120,6 @@ export default function Vault() {
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Passkey Security Pill */}
-          <button
-            type="button"
-            onClick={() => setShowPasskeyModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-900/50 transition-all cursor-pointer"
-          >
-            <Fingerprint size={14} />
-            <span>Passkeys</span>
-          </button>
-
           {/* Telegram Status Button */}
           <button
             type="button"
@@ -155,7 +142,7 @@ export default function Vault() {
             style={{ background: `linear-gradient(135deg, ${auraColor}, #b91c1c)` }}
           >
             <Plus size={15} />
-            <span>New Reminder</span>
+            <span>+ New Reminder</span>
           </button>
         </div>
       </div>
@@ -237,12 +224,13 @@ export default function Vault() {
 
       {/* Tab Views */}
       {isLoading ? (
-        <div className="text-center py-16 text-slate-400">Loading Money Saver reminders...</div>
+        <div className="text-center py-16 text-slate-400 font-mono text-xs">Loading Money Saver reminders...</div>
       ) : activeTab === 'credit_cards' ? (
         <CreditCardWallet
           cards={creditCards}
           onEdit={(card) => setEditingReminder(card)}
           onStatusChange={handleStatusChange}
+          onCreateNew={() => setShowCreateModal(true)}
         />
       ) : activeTab === 'bank_offers' ? (
         <BankMilestoneTracker
@@ -250,6 +238,7 @@ export default function Vault() {
           onToggleMilestone={handleToggleMilestone}
           onEdit={(offer) => setEditingReminder(offer)}
           onDelete={handleDeleteReminder}
+          onCreateNew={() => setShowCreateModal(true)}
         />
       ) : activeTab === 'fee_transitions' ? (
         <FeeTransitionManager
@@ -258,6 +247,7 @@ export default function Vault() {
           onEdit={(item) => setEditingReminder(item)}
           onDelete={handleDeleteReminder}
           onStatusChange={handleStatusChange}
+          onCreateNew={() => setShowCreateModal(true)}
         />
       ) : activeTab === 'returns_warranties' ? (
         <ReturnWarrantyTracker
@@ -265,6 +255,7 @@ export default function Vault() {
           onEdit={(item) => setEditingReminder(item)}
           onDelete={handleDeleteReminder}
           onStatusChange={handleStatusChange}
+          onCreateNew={() => setShowCreateModal(true)}
         />
       ) : (
         <ReminderList
@@ -272,6 +263,7 @@ export default function Vault() {
           onEdit={(reminder) => setEditingReminder(reminder)}
           onDelete={handleDeleteReminder}
           onStatusChange={handleStatusChange}
+          onCreateNew={() => setShowCreateModal(true)}
         />
       )}
 
@@ -324,14 +316,6 @@ export default function Vault() {
             />
           </div>
         </div>
-      )}
-
-      {/* PASSKEY MANAGER MODAL */}
-      {showPasskeyModal && (
-        <PasskeyManagerModal
-          onClose={() => setShowPasskeyModal(false)}
-          onPasskeyAdded={() => loadData()}
-        />
       )}
 
       {/* TELEGRAM CONNECT MODAL */}

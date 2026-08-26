@@ -1,3 +1,4 @@
+import { PasskeyManagerModal } from '../components/vault/PasskeyManagerModal';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, type AuraType } from '../context/ThemeContext';
@@ -46,6 +47,7 @@ const Settings = () => {
   
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showPasskeysModal, setShowPasskeysModal] = useState(false);
 
   useEffect(() => {
     fetch('https://api.exchangerate-api.com/v4/latest/CAD')
@@ -470,6 +472,10 @@ const Settings = () => {
         </div>
 
       </div>
+      {showPasskeysModal && (
+        <PasskeyManagerModal onClose={() => setShowPasskeysModal(false)} />
+      )}
+
       <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
     </div>
   );

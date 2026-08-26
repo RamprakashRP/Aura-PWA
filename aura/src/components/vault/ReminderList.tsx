@@ -2,11 +2,6 @@ import { useState } from 'react';
 import type { Reminder } from '../../lib/vaultApi';
 import { format, differenceInDays } from 'date-fns';
 import { 
-  Tv, 
-  Zap, 
-  Globe, 
-  Key, 
-  Server, 
   CreditCard,
   Landmark,
   GraduationCap,
@@ -21,17 +16,22 @@ import {
   Filter, 
   Calendar, 
   AlertTriangle,
-  CheckSquare
+  Plus
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface ReminderListProps {
   reminders: Reminder[];
   onEdit: (reminder: Reminder) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onCreateNew?: () => void;
 }
 
-export function ReminderList({ reminders, onEdit, onDelete, onStatusChange }: ReminderListProps) {
+export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCreateNew }: ReminderListProps) {
+  const { getAuraColor } = useTheme();
+  const auraColor = getAuraColor();
+
   const [filter, setFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
@@ -69,76 +69,92 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange }: Re
 
   const getUrgencyBadge = (days: number, status: string) => {
     if (status === 'cancelled' || status === 'returned' || status === 'completed') {
-      return { className: 'urgency-badge expired', text: status.toUpperCase(), icon: <CheckCircle size={13} /> };
+      return { 
+        bg: 'bg-slate-800/80 text-slate-400 border-slate-700', 
+        text: status.toUpperCase(), 
+        icon: <CheckCircle size={12} /> 
+      };
     }
     if (days < 0) {
-      return { className: 'urgency-badge expired', text: 'Overdue / Passed', icon: <AlertTriangle size={13} /> };
+      return { 
+        bg: 'bg-rose-950/80 text-rose-300 border-rose-500/40', 
+        text: 'Overdue / Passed', 
+        icon: <AlertTriangle size={12} /> 
+      };
     }
     if (days === 0) {
-      return { className: 'urgency-badge urgent', text: 'Due Today!', icon: <AlertTriangle size={13} /> };
+      return { 
+        bg: 'bg-rose-600 text-white border-rose-500 animate-pulse', 
+        text: 'Due Today!', 
+        icon: <AlertTriangle size={12} /> 
+      };
     }
     if (days === 1) {
-      return { className: 'urgency-badge urgent', text: 'Due Tomorrow!', icon: <AlertTriangle size={13} /> };
+      return { 
+        bg: 'bg-rose-500/30 text-rose-300 border-rose-500/40', 
+        text: 'Due Tomorrow!', 
+        icon: <AlertTriangle size={12} /> 
+      };
     }
     if (days <= 3) {
-      return { className: 'urgency-badge warning', text: `In ${days} days`, icon: <Clock size={13} /> };
+      return { 
+        bg: 'bg-amber-500/20 text-amber-300 border-amber-500/40', 
+        text: `In ${days} days`, 
+        icon: <Clock size={12} /> 
+      };
     }
     if (days <= 7) {
-      return { className: 'urgency-badge upcoming', text: `In ${days} days`, icon: <Clock size={13} /> };
+      return { 
+        bg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40', 
+        text: `In ${days} days`, 
+        icon: <Clock size={12} /> 
+      };
     }
-    return { className: 'urgency-badge safe', text: `In ${days} days`, icon: <Calendar size={13} /> };
+    return { 
+      bg: 'bg-slate-800/60 text-slate-300 border-slate-700', 
+      text: `In ${days} days`, 
+      icon: <Calendar size={12} /> 
+    };
   };
 
-  const getTypeIcon = (type: string, category?: string | null) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case 'credit_card':
-        return <CreditCard size={14} style={{ color: 'var(--accent-cyan)' }} />;
+        return <CreditCard size={14} className="text-cyan-400" />;
       case 'bank_offer':
-        return <Landmark size={14} style={{ color: 'var(--accent-emerald)' }} />;
+        return <Landmark size={14} className="text-emerald-400" />;
       case 'fee_transition':
-        return <GraduationCap size={14} style={{ color: 'var(--accent-amber)' }} />;
+        return <GraduationCap size={14} className="text-amber-400" />;
       case 'return_warranty':
-        return <Package size={14} style={{ color: '#ff4d6d' }} />;
+        return <Package size={14} className="text-pink-400" />;
       default:
-        if (category === 'trial') return <Zap size={14} style={{ color: 'var(--accent-amber)' }} />;
-        if (category === 'domain') return <Globe size={14} style={{ color: 'var(--accent-cyan)' }} />;
-        if (category === 'license') return <Key size={14} style={{ color: '#a855f7' }} />;
-        if (category === 'cloud') return <Server size={14} style={{ color: '#38bdf8' }} />;
-        return <Tv size={14} style={{ color: 'var(--crimson-primary)' }} />;
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'credit_card': return 'Credit Card';
-      case 'bank_offer': return 'Bank Offer';
-      case 'fee_transition': return 'Fee Expiry';
-      case 'return_warranty': return 'Return Window';
-      default: return 'Subscription';
+        return <Calendar size={14} className="text-rose-400" />;
     }
   };
 
   return (
-    <div style={{ width: '100%' }}>
+    <div className="space-y-4">
       {/* Search & Filter Toolbar */}
-      <div className="toolbar-container">
-        <div className="search-box">
-          <Search size={16} className="search-icon" />
+      <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl flex flex-col md:flex-row items-center gap-3">
+        {/* Search Input */}
+        <div className="relative flex-1 w-full">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
-            placeholder="Search subscriptions, credit cards, bank bonuses, returns..."
+            placeholder="Search subscriptions, card due dates, bank bonuses, returns..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="search-input"
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-700 transition-all"
           />
         </div>
 
-        <div className="filter-group">
+        {/* Filter Dropdowns */}
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
           {/* Type Filter */}
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="select-control"
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
           >
             <option value="all">All Types</option>
             <option value="credit_card">💳 Credit Cards</option>
@@ -152,18 +168,18 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange }: Re
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="select-control"
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
-            <option value="cancelled">Archived / Cancelled</option>
+            <option value="cancelled">Archived</option>
           </select>
 
           {/* Sort By */}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'date' | 'amount' | 'name')}
-            className="select-control"
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
           >
             <option value="date">Sort: Soonest Due</option>
             <option value="amount">Sort: Highest Cost/Reward</option>
@@ -172,21 +188,34 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange }: Re
         </div>
       </div>
 
-      {/* Grid of Reminder Cards */}
+      {/* Empty State or Grid */}
       {filteredReminders.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <Filter size={28} />
+        <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto shadow-xl">
+            <Filter size={26} />
           </div>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>No matching items found</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: '400px', margin: '0 auto' }}>
-            {search || filter !== 'all' || typeFilter !== 'all'
-              ? 'Try adjusting your search query or reset filter tags.'
-              : 'Add your first credit card, bank bonus, return window, or subscription!'}
-          </p>
+          <div>
+            <h3 className="text-base font-bold text-white">No Reminders Found</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+              {search || filter !== 'all' || typeFilter !== 'all'
+                ? 'Try adjusting your search query or reset filter tags.'
+                : 'Protect your money: add your credit card billing dates, bank bonuses, 1-year free checking conversions, return windows, or subscriptions.'}
+            </p>
+          </div>
+          {onCreateNew && (
+            <button
+              type="button"
+              onClick={onCreateNew}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg cursor-pointer transition-all hover:scale-105 inline-flex items-center gap-1.5"
+              style={{ background: `linear-gradient(135deg, ${auraColor}, #b91c1c)` }}
+            >
+              <Plus size={14} />
+              <span>+ Create First Reminder</span>
+            </button>
+          )}
         </div>
       ) : (
-        <div className="reminders-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredReminders.map((reminder) => {
             const targetDate = reminder.paymentDueDate || reminder.renewalDate;
             const daysUntil = getDaysUntil(targetDate);
@@ -195,180 +224,110 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange }: Re
             return (
               <div
                 key={reminder.id}
-                className="reminder-card"
+                className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all group"
                 style={{ opacity: reminder.status === 'cancelled' || reminder.status === 'completed' ? 0.75 : 1 }}
               >
                 <div>
-                  {/* Top Bar */}
-                  <div className="card-top">
-                    <span className="card-category-tag">
-                      {getTypeIcon(reminder.reminderType, reminder.category)}
-                      <span>{getTypeLabel(reminder.reminderType)}</span>
-                    </span>
-
-                    <span className={urgency.className}>
+                  {/* Top Bar: Urgency badge & Type */}
+                  <div className="flex justify-between items-center mb-3">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 ${urgency.bg}`}>
                       {urgency.icon}
                       <span>{urgency.text}</span>
                     </span>
+
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 capitalize bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+                      {getTypeIcon(reminder.reminderType)}
+                      <span>{reminder.reminderType.replace('_', ' ')}</span>
+                    </span>
                   </div>
 
-                  {/* Title & Bank details */}
-                  <h3 className="card-title">{reminder.title}</h3>
+                  {/* Title & Bank */}
+                  <h4 className="font-bold text-white text-base group-hover:text-rose-400 transition-colors">
+                    {reminder.title}
+                  </h4>
                   {reminder.issuerBank && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>
-                      {reminder.reminderType === 'return_warranty' ? 'Store: ' : 'Bank: '}
-                      <b style={{ color: 'var(--text-main)' }}>{reminder.issuerBank}</b>{' '}
-                      {reminder.last4Digits ? `(••• ${reminder.last4Digits})` : ''}
-                    </div>
+                    <span className="text-xs text-slate-400 mt-0.5 block">
+                      {reminder.issuerBank} {reminder.last4Digits ? `• (••• ${reminder.last4Digits})` : ''}
+                    </span>
                   )}
 
-                  {reminder.description && <p className="card-desc">{reminder.description}</p>}
+                  {/* Description / Notes */}
+                  {(reminder.description || reminder.notes) && (
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-2 bg-slate-950/40 p-2 rounded-lg border border-slate-800/60">
+                      {reminder.description || reminder.notes}
+                    </p>
+                  )}
 
-                  {/* Metrics Box */}
-                  <div className="card-metrics">
-                    {reminder.reminderType === 'credit_card' ? (
-                      <>
-                        {reminder.statementDate && (
-                          <div className="metric-row">
-                            <span className="metric-label">Statement Close:</span>
-                            <span className="metric-value">{format(new Date(reminder.statementDate), 'MMM dd')}</span>
-                          </div>
-                        )}
-                        <div className="metric-row">
-                          <span className="metric-label"><Clock size={13} /> Payment Due:</span>
-                          <span className="metric-value" style={{ color: daysUntil <= 3 ? '#ff4d6d' : '#ffffff', fontWeight: 700 }}>
-                            {format(new Date(targetDate), 'MMM dd, yyyy')}
-                          </span>
-                        </div>
-                        {reminder.amount && (
-                          <div className="metric-row">
-                            <span className="metric-label">Statement Balance:</span>
-                            <span className="amount-highlight">${Number(reminder.amount).toFixed(2)}</span>
-                          </div>
-                        )}
-                      </>
-                    ) : reminder.reminderType === 'bank_offer' ? (
-                      <>
-                        <div className="metric-row">
-                          <span className="metric-label"><Calendar size={13} /> Target Deadline:</span>
-                          <span className="metric-value">{format(new Date(targetDate), 'MMM dd, yyyy')}</span>
-                        </div>
-                        {reminder.estimatedSavings && (
-                          <div className="metric-row">
-                            <span className="metric-label">Bonus Reward:</span>
-                            <span className="amount-highlight" style={{ color: 'var(--accent-emerald)' }}>
-                              +${Number(reminder.estimatedSavings).toFixed(0)}
-                            </span>
-                          </div>
-                        )}
-                        {reminder.milestones && (
-                          <div className="metric-row">
-                            <span className="metric-label"><CheckSquare size={13} /> Tasks:</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {reminder.milestones.filter((m) => m.completed).length} / {reminder.milestones.length} Done
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ) : reminder.reminderType === 'fee_transition' ? (
-                      <>
-                        <div className="metric-row">
-                          <span className="metric-label"><Calendar size={13} /> Fee Cutoff Date:</span>
-                          <span className="metric-value">{format(new Date(targetDate), 'MMM dd, yyyy')}</span>
-                        </div>
-                        {reminder.estimatedSavings && (
-                          <div className="metric-row">
-                            <span className="metric-label">Fee Avoided:</span>
-                            <span className="amount-highlight" style={{ color: 'var(--accent-amber)' }}>
-                              ${Number(reminder.estimatedSavings).toFixed(0)}/yr
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ) : reminder.reminderType === 'return_warranty' ? (
-                      <>
-                        <div className="metric-row">
-                          <span className="metric-label"><Clock size={13} /> Return Deadline:</span>
-                          <span className="metric-value" style={{ color: daysUntil <= 3 ? '#ff4d6d' : '#ffffff', fontWeight: 700 }}>
-                            {format(new Date(targetDate), 'MMM dd, yyyy')}
-                          </span>
-                        </div>
-                        {reminder.amount && (
-                          <div className="metric-row">
-                            <span className="metric-label">Refundable Sum:</span>
-                            <span className="amount-highlight" style={{ color: 'var(--accent-emerald)' }}>
-                              ${Number(reminder.amount).toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="metric-row">
-                          <span className="metric-label"><Calendar size={13} /> Renewal Date:</span>
-                          <span className="metric-value">{format(new Date(targetDate), 'MMM dd, yyyy')}</span>
-                        </div>
-                        {reminder.amount !== undefined && reminder.amount !== null && (
-                          <div className="metric-row">
-                            <span className="metric-label">Cost ({reminder.billingCycle || 'cycle'}):</span>
-                            <span className="amount-highlight">${Number(reminder.amount).toFixed(2)}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
+                  {/* Financial Value (Amount or Estimated Savings) */}
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                        {reminder.estimatedSavings ? 'Potential Savings' : 'Amount Due'}
+                      </span>
+                      <span className="font-mono font-black text-sm text-white">
+                        {reminder.estimatedSavings
+                          ? `+$${Number(reminder.estimatedSavings).toFixed(2)}`
+                          : reminder.amount
+                          ? `$${Number(reminder.amount).toFixed(2)} ${reminder.currency || 'CAD'}`
+                          : '—'}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Target Deadline</span>
+                      <span className="font-mono font-semibold text-xs text-slate-300">
+                        {format(new Date(targetDate), 'MMM d, yyyy')}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Bottom Action Toolbar */}
-                <div className="card-actions">
-                  {(reminder.actionUrl || reminder.url) && (
+                {/* Card Actions */}
+                <div className="flex items-center justify-end gap-1.5 mt-4 pt-3 border-t border-slate-800">
+                  {reminder.actionUrl && (
                     <a
-                      href={reminder.actionUrl || reminder.url || '#'}
+                      href={reminder.actionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn btn-outline btn-sm"
-                      style={{ flex: 1 }}
+                      className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                      title="Open Direct Portal Link"
                     >
-                      <ExternalLink size={13} /> Portal
+                      <ExternalLink size={14} />
                     </a>
                   )}
 
                   <button
                     type="button"
-                    onClick={() => onEdit(reminder)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ flex: 1 }}
+                    onClick={() => onStatusChange(reminder.id, reminder.status === 'active' ? 'completed' : 'active')}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 hover:bg-slate-700 flex items-center gap-1"
                   >
-                    <Edit3 size={13} /> Edit
+                    {reminder.status === 'active' ? (
+                      <>
+                        <CheckCircle size={12} className="text-emerald-400" /> Done
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={12} className="text-cyan-400" /> Reactivate
+                      </>
+                    )}
                   </button>
 
-                  {reminder.status === 'active' ? (
-                    <button
-                      type="button"
-                      onClick={() => onStatusChange(reminder.id, 'cancelled')}
-                      className="btn btn-outline btn-sm"
-                      title="Archive or mark completed"
-                    >
-                      <CheckCircle size={13} style={{ color: 'var(--accent-emerald)' }} />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onStatusChange(reminder.id, 'active')}
-                      className="btn btn-outline btn-sm"
-                      title="Reactivate"
-                    >
-                      <RotateCcw size={13} style={{ color: 'var(--crimson-primary)' }} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onEdit(reminder)}
+                    className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                    title="Edit"
+                  >
+                    <Edit3 size={14} />
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => onDelete(reminder.id)}
-                    className="btn btn-danger btn-sm"
-                    title="Delete entry"
+                    className="p-1.5 rounded-lg bg-rose-950/40 text-rose-400 hover:bg-rose-900/60 border border-rose-500/20"
+                    title="Delete"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>

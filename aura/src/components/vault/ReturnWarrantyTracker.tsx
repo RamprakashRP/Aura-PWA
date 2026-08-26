@@ -1,30 +1,20 @@
 import type { Reminder } from '../../lib/vaultApi';
 import { format, differenceInDays } from 'date-fns';
-import { 
-  Package, 
-  Clock, 
-  ExternalLink, 
-  Edit3, 
-  Trash2, 
-  CheckCircle2, 
-  DollarSign,
-  AlertTriangle,
-  ShoppingBag
-} from 'lucide-react';
+import { Package, CheckCircle, RotateCcw, Edit3, Trash2, ExternalLink } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface ReturnWarrantyTrackerProps {
   items: Reminder[];
-  onEdit: (reminder: Reminder) => void;
+  onEdit: (item: Reminder) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onCreateNew?: () => void;
 }
 
-export function ReturnWarrantyTracker({
-  items,
-  onEdit,
-  onDelete,
-  onStatusChange,
-}: ReturnWarrantyTrackerProps) {
+export function ReturnWarrantyTracker({ items, onEdit, onDelete, onStatusChange, onCreateNew }: ReturnWarrantyTrackerProps) {
+  const { getAuraColor } = useTheme();
+  const auraColor = getAuraColor();
+
   const getDaysUntil = (dateStr: string) => {
     const target = new Date(dateStr);
     const today = new Date();
@@ -35,179 +25,95 @@ export function ReturnWarrantyTracker({
 
   if (items.length === 0) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6' }}>
-          <Package size={28} />
+      <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
+        <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-pink-400 flex items-center justify-center mx-auto shadow-xl">
+          <Package size={26} />
         </div>
-        <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>No Return Windows or Warranties Tracked</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: '440px', margin: '0 auto' }}>
-          Bought an item online with a 14-day or 30-day money-back guarantee? Track return deadlines so you never get stuck paying for things you intended to return!
-        </p>
+        <div>
+          <h3 className="text-base font-bold text-white">No Return Windows Tracked</h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            Bought something on Amazon, Best Buy, or Apple? Track 14-day and 30-day return windows so you never get stuck with unwanted items.
+          </p>
+        </div>
+        {onCreateNew && (
+          <button
+            type="button"
+            onClick={onCreateNew}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg cursor-pointer transition-all hover:scale-105"
+            style={{ background: `linear-gradient(135deg, ${auraColor}, #b91c1c)` }}
+          >
+            + Track Return Window
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {items.map((item) => {
         const daysLeft = getDaysUntil(item.renewalDate);
-        const isUrgent = daysLeft <= 3 && daysLeft >= 0;
-        const isExpired = daysLeft < 0;
 
         return (
           <div
             key={item.id}
-            className="reminder-card"
-            style={{
-              borderColor: isUrgent ? 'rgba(244, 63, 94, 0.5)' : 'var(--border)',
-            }}
+            className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all"
           >
             <div>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'rgba(236, 72, 153, 0.15)',
-                      color: '#f472b6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <ShoppingBag size={18} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{item.title}</h3>
-                    {item.issuerBank && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Merchant/Store: <b>{item.issuerBank}</b>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {item.amount && (
-                  <span
-                    style={{
-                      background: 'rgba(16, 185, 129, 0.15)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      color: '#6ee7b7',
-                      padding: '0.25rem 0.625rem',
-                      borderRadius: 'var(--radius-full)',
-                      fontWeight: 700,
-                      fontSize: '0.8125rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                    }}
-                  >
-                    <DollarSign size={13} /> ${Number(item.amount).toFixed(2)} Refundable
-                  </span>
-                )}
-              </div>
-
-              {/* Urgency Badge */}
-              <div
-                style={{
-                  background: isUrgent
-                    ? 'rgba(244, 63, 94, 0.15)'
-                    : isExpired
-                    ? 'rgba(100, 116, 139, 0.15)'
-                    : 'rgba(99, 102, 241, 0.1)',
-                  border: isUrgent
-                    ? '1px solid rgba(244, 63, 94, 0.3)'
-                    : '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.8125rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  margin: '0.75rem 0',
-                }}
-              >
-                {isUrgent ? (
-                  <AlertTriangle size={15} color="#fda4af" />
-                ) : (
-                  <Clock size={15} color="var(--text-muted)" />
-                )}
-                <span style={{ fontWeight: 600, color: isUrgent ? '#fda4af' : '#ffffff' }}>
-                  {isExpired
-                    ? 'Return window closed'
-                    : daysLeft === 0
-                    ? 'Last day to return TODAY!'
-                    : daysLeft === 1
-                    ? 'Last day to return TOMORROW!'
-                    : `Return window closes in ${daysLeft} days`}
+              <div className="flex justify-between items-start mb-2">
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-pink-950/60 text-pink-300 border border-pink-500/30">
+                  {item.issuerBank || 'Store Purchase'}
+                </span>
+                <span className="font-mono font-black text-pink-300 text-base">
+                  ${Number(item.amount || 0).toFixed(2)} {item.currency || 'CAD'}
                 </span>
               </div>
 
-              {/* Dates and Order Info */}
-              <div className="card-metrics">
-                <div className="metric-row">
-                  <span className="metric-label">Return Deadline:</span>
-                  <span className="metric-value">{format(new Date(item.renewalDate), 'MMMM dd, yyyy')}</span>
-                </div>
-                {item.startDate && (
-                  <div className="metric-row">
-                    <span className="metric-label">Purchased On:</span>
-                    <span className="metric-value">{format(new Date(item.startDate), 'MMM dd, yyyy')}</span>
-                  </div>
-                )}
-              </div>
+              <h4 className="font-bold text-white text-base">{item.title}</h4>
+              <span className="text-xs text-slate-400 block mt-0.5">
+                Return Deadline: {format(new Date(item.renewalDate), 'MMM d, yyyy')} ({daysLeft >= 0 ? `${daysLeft} days remaining` : 'Window Closed'})
+              </span>
 
               {item.notes && (
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.5rem 0', lineHeight: '1.4' }}>
-                  <b>Order / Return Notes:</b> {item.notes}
+                <p className="text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl border border-slate-800 my-3">
+                  📦 {item.notes}
                 </p>
               )}
             </div>
 
             {/* Actions */}
-            <div className="card-actions" style={{ marginTop: '1rem' }}>
-              {(item.actionUrl || item.url) && (
+            <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-800">
+              {item.actionUrl && (
                 <a
-                  href={item.actionUrl || item.url || '#'}
+                  href={item.actionUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-outline btn-sm"
-                  style={{ flex: 1 }}
+                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
                 >
-                  <ExternalLink size={13} /> Order / Return Portal
+                  <ExternalLink size={14} />
                 </a>
               )}
-
               <button
                 type="button"
                 onClick={() => onStatusChange(item.id, item.status === 'active' ? 'returned' : 'active')}
-                className="btn btn-sm"
-                style={{
-                  background: item.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--border)',
-                  color: item.status === 'returned' ? 'var(--accent-emerald)' : 'var(--text-main)',
-                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 hover:bg-slate-700 flex items-center gap-1"
               >
-                <CheckCircle2 size={13} /> {item.status === 'returned' ? 'Returned' : 'Mark Returned'}
+                {item.status === 'active' ? <CheckCircle size={12} className="text-emerald-400" /> : <RotateCcw size={12} className="text-cyan-400" />}
+                <span>{item.status === 'active' ? 'Returned' : 'Reactivate'}</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => onEdit(item)}
-                className="btn btn-secondary btn-sm"
+                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
               >
-                <Edit3 size={13} /> Edit
+                <Edit3 size={14} />
               </button>
-
               <button
                 type="button"
                 onClick={() => onDelete(item.id)}
-                className="btn btn-danger btn-sm"
+                className="p-1.5 rounded-lg bg-rose-950/40 text-rose-400 hover:bg-rose-900/60 border border-rose-500/20"
               >
-                <Trash2 size={13} />
+                <Trash2 size={14} />
               </button>
             </div>
           </div>
