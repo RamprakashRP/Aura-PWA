@@ -161,41 +161,70 @@ app.post('/api/parse', (req, res) => {
 });
 
 
-// 2b. Direct Real-Time Zero-Touch Payment Webhook (iOS Apple Pay Shortcut / Android Google Wallet / Tasker)
+// 2b. Direct Real-Time Zero-Touch Payment Webhook (Samsung / Android Google Wallet / Apple Pay)
 app.post('/api/webhook/transaction', async (req, res) => {
   try {
-    const { 
+    let { 
       amount, 
-      merchant = 'Unknown Merchant', 
+      merchant, 
       description,
       category, 
       currency = 'CAD', 
-      card = 'Apple Pay / Card',
+      card = 'Google Wallet (Samsung Pay / NFC)',
       payment_method,
       date = new Date().toISOString().split('T')[0],
-      user_id 
+      user_id,
+      // Raw notification fields from MacroDroid / Android
+      message,
+      title,
+      text,
+      notification
     } = req.body;
 
-    const parsedAmount = Math.abs(parseFloat(amount) || 0);
-    if (parsedAmount === 0) {
-      return res.status(400).json({ error: 'Invalid or missing amount' });
+    let parsedAmount = Math.abs(parseFloat(amount) || 0);
+    let txDesc = description || merchant || '';
+
+    // Handle raw Android / Google Wallet notification text (e.g. "Paid $4.25 to Tim Hortons")
+    const rawText = message || text || notification || req.body.body || (typeof req.body === 'string' ? req.body : '');
+    if (rawText && parsedAmount === 0) {
+      // 1. Extract Amount: "$4.25", "CAD 4.25", "4.25 CAD"
+      const amtMatch = rawText.match(/\$\s*([0-9]+(?:\.[0-9]{2})?)/i) ||
+                       rawText.match(/(?:CAD|USD|INR)\s*([0-9]+(?:\.[0-9]{2})?)/i) ||
+                       rawText.match(/([0-9]+(?:\.[0-9]{2})?)\s*(?:CAD|dollars)/i);
+      if (amtMatch) {
+        parsedAmount = parseFloat(amtMatch[1]);
+      }
+
+      // 2. Extract Merchant: "to Tim Hortons", "at Costco Wholesale", "spent at Shoppers"
+      const mMatch = rawText.match(/(?:to|at|from|spent at|paid to)\s+([A-Za-z0-9\s&'.-]{2,35})(?:\s+with|\s+on|\.|\n|$)/i);
+      if (mMatch) {
+        txDesc = mMatch[1].trim();
+      } else {
+        txDesc = rawText.slice(0, 40);
+      }
     }
 
-    const txDesc = description || merchant;
+    if (parsedAmount === 0) {
+      return res.status(400).json({ error: 'Could not detect valid amount from payload' });
+    }
+
+    if (!txDesc) {
+      txDesc = 'Google Wallet Payment';
+    }
     
-    // Auto-categorize if not provided
+    // Auto-categorize intelligently
     let autoCategory = category;
     if (!autoCategory) {
-      const lower = txDesc.toLowerCase();
-      if (/tim hortons|starbucks|mcdonald|restaurant|subway|chipotle|cafe|coffee|dining|food|pizza/i.test(lower)) {
+      const lower = (txDesc + ' ' + (rawText || '')).toLowerCase();
+      if (/tim hortons|tims|starbucks|mcdonald|restaurant|subway|chipotle|cafe|coffee|dining|food|pizza|burger|sushi/i.test(lower)) {
         autoCategory = 'Food';
-      } else if (/costco|loblaws|metro|walmart|sobeys|no frills|grocery|superstore|freshco/i.test(lower)) {
+      } else if (/costco|loblaws|metro|walmart|sobeys|no frills|grocery|superstore|freshco|farm boy|food basics/i.test(lower)) {
         autoCategory = 'Groceries';
-      } else if (/ttc|presto|uber|lyft|gas|esso|petro|shell|transit|flight/i.test(lower)) {
+      } else if (/ttc|presto|uber|lyft|gas|esso|petro|shell|transit|flight|train|via rail/i.test(lower)) {
         autoCategory = 'Transport';
-      } else if (/amazon|shoppers|winners|best buy|apple|mall|clothing|h&m/i.test(lower)) {
+      } else if (/amazon|shoppers|winners|best buy|apple|mall|clothing|h&m|zara|uniqlo|dollarama/i.test(lower)) {
         autoCategory = 'Shopping';
-      } else if (/netflix|spotify|cinema|cineplex|lcbo|pub|bar/i.test(lower)) {
+      } else if (/netflix|spotify|cinema|cineplex|lcbo|pub|bar|beer/i.test(lower)) {
         autoCategory = 'Entertainment';
       } else {
         autoCategory = 'Miscellaneous';
@@ -207,15 +236,15 @@ app.post('/api/webhook/transaction', async (req, res) => {
       amount: parsedAmount,
       category: autoCategory,
       currency: currency.toUpperCase(),
-      payment_method: payment_method || card,
+      payment_method: payment_method || card || (title ? `Google Wallet (${title})` : 'Google Wallet'),
       date: date,
       user_id: user_id || req.query.user_id || null,
       created_at: new Date().toISOString()
     };
 
-    console.log('[REAL-TIME ZERO-TOUCH WEBHOOK] Ingested payment:', payload);
+    console.log('[REAL-TIME ZERO-TOUCH WEBHOOK] Automatically ingested payment from Samsung / Google Wallet:', payload);
 
-    // Save directly to Supabase if credentials available
+    // Save directly to Supabase
     if (supabaseUrl && supabaseAnonKey) {
       const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
       const { error: dbError } = await supabaseServer.from('transactions').insert(payload);
@@ -235,7 +264,11 @@ app.post('/api/webhook/transaction', async (req, res) => {
     queue.unshift(payload);
     fs.writeFileSync(queuePath, JSON.stringify(queue.slice(0, 100), null, 2), 'utf8');
 
-    res.status(200).json({ status: 'success', message: 'Transaction ingested automatically in 0-seconds', transaction: payload });
+    res.status(200).json({ 
+      status: 'success', 
+      message: 'Transaction ingested in 0-seconds from Google Wallet', 
+      transaction: payload 
+    });
   } catch (err) {
     console.error('[ZERO-TOUCH WEBHOOK ERROR]:', err);
     res.status(500).json({ error: err.message });

@@ -1,3 +1,4 @@
+import { SmartTransactionAnnotator } from '../components/expenses/SmartTransactionAnnotator';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -246,6 +247,8 @@ const Transactions = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      {/* Real-Time Transaction Annotator Prompt */}
+      <SmartTransactionAnnotator />
       
       {/* FILTER OVERLAY POPUP */}
       <AnimatePresence>

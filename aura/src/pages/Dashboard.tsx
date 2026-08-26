@@ -1,3 +1,4 @@
+import { SmartTransactionAnnotator } from '../components/expenses/SmartTransactionAnnotator';
 import { AccountManager } from '../components/accounts/AccountManager';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
@@ -532,6 +533,9 @@ const Dashboard = () => {
           </select>
         </div>
       </header>
+
+      {/* Smart Real-Time Transaction Annotator Prompt */}
+      <SmartTransactionAnnotator />
 
       {/* Stats Grid - Horizontally compressed for Mobile */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 z-10 relative">
