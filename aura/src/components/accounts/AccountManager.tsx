@@ -1,3 +1,5 @@
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import React, { useState, useEffect } from 'react';
 import { BANK_CATALOG, getBankById } from '../../data/bankCatalog';
 import { 
@@ -49,9 +51,9 @@ export interface BankAccount {
   createdAt: string;
 }
 
-const LOCAL_STORAGE_ACCOUNTS_KEY = 'aura_bank_accounts';
 
 export function AccountManager() {
+  const { user } = useAuth();
   const { getAuraColor } = useTheme();
   const auraColor = getAuraColor();
 
@@ -76,24 +78,57 @@ export function AccountManager() {
     isGoogleWallet: false,
   });
 
-  useEffect(() => {
-    loadAccounts();
-  }, []);
+  const getStorageKey = () => (user?.id ? `aura_bank_accounts_${user.id}` : 'aura_bank_accounts_guest');
 
-    const loadAccounts = () => {
-    const data = localStorage.getItem(LOCAL_STORAGE_ACCOUNTS_KEY);
+  useEffect(() => {
+    // Purge old global demo seed from user's browser
+    const legacy = localStorage.getItem('aura_bank_accounts');
+    if (legacy && (legacy.includes('acc-1') || legacy.includes('TD All-Inclusive Chequing'))) {
+      localStorage.removeItem('aura_bank_accounts');
+    }
+    loadAccounts();
+  }, [user]);
+
+  const loadAccounts = async () => {
+    // 1. Try Supabase if user is logged in
+    try {
+      if (user?.id && !localStorage.getItem('aura_sandbox_mode')) {
+        const { data, error } = await supabase
+          .from('bank_accounts')
+          .select('*')
+          .eq('user_id', user.id);
+        if (!error && data) {
+          setAccounts(data);
+          return;
+        }
+      }
+    } catch {}
+
+    // 2. User-scoped local storage fallback
+    const key = getStorageKey();
+    const data = localStorage.getItem(key);
     if (data) {
       try {
-        setAccounts(JSON.parse(data));
+        const parsed = JSON.parse(data);
+        // Filter out legacy demo items if any
+        const clean = parsed.filter((a: any) => !['acc-1', 'acc-2', 'acc-3', 'acc-4'].includes(a.id));
+        setAccounts(clean);
         return;
       } catch {}
     }
     setAccounts([]);
   };
 
-  const saveAccounts = (newAccounts: BankAccount[]) => {
+  const saveAccounts = async (newAccounts: BankAccount[]) => {
     setAccounts(newAccounts);
-    localStorage.setItem(LOCAL_STORAGE_ACCOUNTS_KEY, JSON.stringify(newAccounts));
+    const key = getStorageKey();
+    localStorage.setItem(key, JSON.stringify(newAccounts));
+
+    if (user?.id && !localStorage.getItem('aura_sandbox_mode')) {
+      try {
+        await supabase.from('bank_accounts').upsert(newAccounts.map(a => ({ ...a, user_id: user.id })));
+      } catch {}
+    }
   };
 
   const handleBankChange = (bankId: string) => {

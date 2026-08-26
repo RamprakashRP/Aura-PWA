@@ -103,10 +103,17 @@ const LOCAL_STORAGE_PASSKEYS_KEY = 'aura_vault_passkeys';
 const LOCAL_STORAGE_NOTIFS_KEY = 'aura_vault_notifications';
 
 function getLocalReminders(): Reminder[] {
+  // Purge legacy demo seed
+  const legacy = localStorage.getItem('aura_vault_reminders');
+  if (legacy && (legacy.includes('demo-1') || legacy.includes('Chase Sapphire'))) {
+    localStorage.removeItem('aura_vault_reminders');
+  }
+
   const data = localStorage.getItem(LOCAL_STORAGE_REMINDERS_KEY);
   if (data) {
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return parsed.filter((r: any) => !['demo-1', 'demo-2', 'demo-3', 'demo-4', 'demo-5'].includes(r.id));
     } catch {
       return [];
     }
