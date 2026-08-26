@@ -80,7 +80,7 @@ export function AccountManager() {
     loadAccounts();
   }, []);
 
-  const loadAccounts = () => {
+    const loadAccounts = () => {
     const data = localStorage.getItem(LOCAL_STORAGE_ACCOUNTS_KEY);
     if (data) {
       try {
@@ -88,67 +88,7 @@ export function AccountManager() {
         return;
       } catch {}
     }
-
-    // Default Seed for Canada
-    const initialSeed: BankAccount[] = [
-      {
-        id: 'acc-1',
-        bankId: 'td',
-        accountName: 'TD All-Inclusive Chequing',
-        accountType: 'chequing',
-        balance: 4350.00,
-        currency: 'CAD',
-        last4Digits: '8912',
-        monthlyFee: 16.95,
-        minBalanceForFeeWaiver: 4000,
-        isApplePay: true,
-        notes: 'Keep >= $4,000 to waive $16.95/mo fee & get free premium credit card rebate.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'acc-2',
-        bankId: 'tangerine',
-        accountName: 'Tangerine High-Interest Savings',
-        accountType: 'savings',
-        balance: 8500.00,
-        currency: 'CAD',
-        interestRateApy: 2.25,
-        promoInterestRateApy: 5.50,
-        promoExpiryDate: '2026-11-30',
-        notes: '5.50% promotional rate until Nov 30. Moves back to 2.25% after.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'acc-3',
-        bankId: 'scotia',
-        accountName: 'Scotia Momentum Visa Infinite',
-        accountType: 'credit',
-        balance: -680.45,
-        currency: 'CAD',
-        last4Digits: '4419',
-        creditLimit: 5000,
-        statementDateDay: 14,
-        paymentDueDateDay: 5,
-        isApplePay: true,
-        notes: '4% groceries & recurring bills, 2% gas & transit.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'acc-4',
-        bankId: 'wealthsimple',
-        accountName: 'Wealthsimple Cash (4.0% APY)',
-        accountType: 'savings',
-        balance: 2100.00,
-        currency: 'CAD',
-        interestRateApy: 4.00,
-        isApplePay: true,
-        isGoogleWallet: true,
-        notes: '1% cashback on all spending, 4.0% automated interest payout monthly.',
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    setAccounts(initialSeed);
-    localStorage.setItem(LOCAL_STORAGE_ACCOUNTS_KEY, JSON.stringify(initialSeed));
+    setAccounts([]);
   };
 
   const saveAccounts = (newAccounts: BankAccount[]) => {
