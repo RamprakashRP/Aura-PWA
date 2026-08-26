@@ -1,3 +1,4 @@
+import { AccountManager } from '../components/accounts/AccountManager';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -802,6 +803,11 @@ const Dashboard = () => {
       </>
       )}
       
+      {/* 🇨🇦 Canadian Bank Accounts, Chequing Waivers & HISA Rates */}
+      <div className="mt-8 mb-6">
+        <AccountManager />
+      </div>
+
       {/* Pending SMS Sync Modal Overlay */}
       <AnimatePresence>
         {showSmsModal && (

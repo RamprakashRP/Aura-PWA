@@ -8,28 +8,21 @@ import { FeeTransitionManager } from '../components/vault/FeeTransitionManager';
 import { ReturnWarrantyTracker } from '../components/vault/ReturnWarrantyTracker';
 import { TelegramConnectModal } from '../components/vault/TelegramConnectModal';
 import { PasskeyManagerModal } from '../components/vault/PasskeyManagerModal';
-import { AccountManager } from '../components/accounts/AccountManager';
-import { CanadianExpenseIngestion } from '../components/expenses/CanadianExpenseIngestion';
-import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { 
   Plus, 
   Send,
   CreditCard,
-  Landmark,
   Layers,
   GraduationCap,
   Package,
   Flame,
   Fingerprint,
   Calendar,
-  Zap,
   PiggyBank
 } from 'lucide-react';
 
 type TabType = 
-  | 'accounts'
-  | 'ingestion'
   | 'overview' 
   | 'credit_cards' 
   | 'bank_offers' 
@@ -43,7 +36,7 @@ export default function Vault() {
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [notifSettings, setNotifSettings] = useState<UserNotificationSettings>({});
-  const [activeTab, setActiveTab] = useState<TabType>('accounts');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -90,7 +83,7 @@ export default function Vault() {
   };
 
   const handleDeleteReminder = async (id: string) => {
-    if (confirm('Are you sure you want to delete this tracked item?')) {
+    if (confirm('Are you sure you want to delete this tracked reminder?')) {
       await vaultApi.deleteReminder(id);
       await loadData();
     }
@@ -101,48 +94,11 @@ export default function Vault() {
     await loadData();
   };
 
-  const handleAddTransactionFromIngestion = async (tx: {
-    description: string;
-    amount: number;
-    category: string;
-    date: string;
-    payment_method: string;
-  }) => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const user = sessionData?.session?.user;
-      if (user && !localStorage.getItem('aura_sandbox_mode')) {
-        await supabase.from('transactions').insert([{
-          user_id: user.id,
-          description: tx.description,
-          amount: tx.amount,
-          category: tx.category,
-          date: tx.date,
-          currency: 'CAD',
-          payment_method: tx.payment_method,
-        }]);
-      }
-    } catch (e) {
-      console.warn('Transaction insert fallback:', e);
-    }
-
-    // Save to local storage mock transactions as well
-    const localTxs = JSON.parse(localStorage.getItem('aura_mock_transactions') || '[]');
-    localTxs.unshift({
-      id: 'tx-' + Date.now(),
-      ...tx,
-      currency: 'CAD',
-    });
-    localStorage.setItem('aura_mock_transactions', JSON.stringify(localTxs));
-  };
-
   const creditCards = reminders.filter((r) => r.reminderType === 'credit_card');
   const bankOffers = reminders.filter((r) => r.reminderType === 'bank_offer');
   const feeTransitions = reminders.filter((r) => r.reminderType === 'fee_transition');
   const returnsWarranties = reminders.filter((r) => r.reminderType === 'return_warranty');
   const subscriptions = reminders.filter((r) => r.reminderType === 'subscription' || !r.reminderType);
-
-
 
   return (
     <div className="space-y-6 pb-24 text-slate-100">
@@ -157,10 +113,10 @@ export default function Vault() {
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-              VAULT // Money Command
+              VAULT // Reminder Command
             </h1>
             <p className="text-xs text-slate-400">
-              Canadian Accounts • Chequing Waivers • HISA Rates • e-Transfers • Deadlines
+              Bill Due Dates • Bank Bonus Deadlines • 1-Yr Free Checking Conversions • Return Windows
             </p>
           </div>
         </div>
@@ -199,37 +155,13 @@ export default function Vault() {
             style={{ background: `linear-gradient(135deg, ${auraColor}, #b91c1c)` }}
           >
             <Plus size={15} />
-            <span>New Entry</span>
+            <span>New Reminder</span>
           </button>
         </div>
       </div>
 
       {/* Segmented Desktop Navigation Tabs */}
       <div className="flex items-center gap-1 p-1 bg-slate-900/90 border border-slate-800 rounded-xl overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab('accounts')}
-          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'accounts' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-          }`}
-          style={{ background: activeTab === 'accounts' ? auraColor : 'transparent' }}
-        >
-          <Landmark size={14} />
-          <span>🇨🇦 Bank Accounts & Rates</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('ingestion')}
-          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'ingestion' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-          }`}
-          style={{ background: activeTab === 'ingestion' ? auraColor : 'transparent' }}
-        >
-          <Zap size={14} />
-          <span>⚡ Quick Tap & e-Transfer</span>
-        </button>
-
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
@@ -239,7 +171,7 @@ export default function Vault() {
           style={{ background: activeTab === 'overview' ? auraColor : 'transparent' }}
         >
           <Layers size={14} />
-          <span>All Items ({reminders.length})</span>
+          <span>All Reminders ({reminders.length})</span>
         </button>
 
         <button
@@ -251,7 +183,7 @@ export default function Vault() {
           style={{ background: activeTab === 'credit_cards' ? auraColor : 'transparent' }}
         >
           <CreditCard size={14} />
-          <span>Cards ({creditCards.length})</span>
+          <span>Card Deadlines ({creditCards.length})</span>
         </button>
 
         <button
@@ -263,7 +195,7 @@ export default function Vault() {
           style={{ background: activeTab === 'bank_offers' ? auraColor : 'transparent' }}
         >
           <PiggyBank size={14} />
-          <span>Bonuses ({bankOffers.length})</span>
+          <span>Bank Bonuses ({bankOffers.length})</span>
         </button>
 
         <button
@@ -275,7 +207,7 @@ export default function Vault() {
           style={{ background: activeTab === 'fee_transitions' ? auraColor : 'transparent' }}
         >
           <GraduationCap size={14} />
-          <span>Fee Waivers ({feeTransitions.length})</span>
+          <span>1-Yr Fee Transitions ({feeTransitions.length})</span>
         </button>
 
         <button
@@ -287,7 +219,7 @@ export default function Vault() {
           style={{ background: activeTab === 'returns_warranties' ? auraColor : 'transparent' }}
         >
           <Package size={14} />
-          <span>Returns ({returnsWarranties.length})</span>
+          <span>Return Windows ({returnsWarranties.length})</span>
         </button>
 
         <button
@@ -305,11 +237,7 @@ export default function Vault() {
 
       {/* Tab Views */}
       {isLoading ? (
-        <div className="text-center py-16 text-slate-400">Loading Money Saver command center...</div>
-      ) : activeTab === 'accounts' ? (
-        <AccountManager />
-      ) : activeTab === 'ingestion' ? (
-        <CanadianExpenseIngestion onAddTransaction={handleAddTransactionFromIngestion} />
+        <div className="text-center py-16 text-slate-400">Loading Money Saver reminders...</div>
       ) : activeTab === 'credit_cards' ? (
         <CreditCardWallet
           cards={creditCards}
@@ -352,7 +280,7 @@ export default function Vault() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
-              <h2 className="text-lg font-bold text-white">Create New Tracking Entry</h2>
+              <h2 className="text-lg font-bold text-white">Create New Tracking Reminder</h2>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
@@ -375,7 +303,7 @@ export default function Vault() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
-              <h2 className="text-lg font-bold text-white">Edit Entry: {editingReminder.title}</h2>
+              <h2 className="text-lg font-bold text-white">Edit Reminder: {editingReminder.title}</h2>
               <button
                 type="button"
                 onClick={() => setEditingReminder(null)}
@@ -392,7 +320,7 @@ export default function Vault() {
               }}
               onSubmit={handleUpdateReminder}
               onCancel={() => setEditingReminder(null)}
-              submitLabel="Update Entry"
+              submitLabel="Update Reminder"
             />
           </div>
         </div>

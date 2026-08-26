@@ -160,6 +160,88 @@ app.post('/api/parse', (req, res) => {
   }
 });
 
+
+// 2b. Direct Real-Time Zero-Touch Payment Webhook (iOS Apple Pay Shortcut / Android Google Wallet / Tasker)
+app.post('/api/webhook/transaction', async (req, res) => {
+  try {
+    const { 
+      amount, 
+      merchant = 'Unknown Merchant', 
+      description,
+      category, 
+      currency = 'CAD', 
+      card = 'Apple Pay / Card',
+      payment_method,
+      date = new Date().toISOString().split('T')[0],
+      user_id 
+    } = req.body;
+
+    const parsedAmount = Math.abs(parseFloat(amount) || 0);
+    if (parsedAmount === 0) {
+      return res.status(400).json({ error: 'Invalid or missing amount' });
+    }
+
+    const txDesc = description || merchant;
+    
+    // Auto-categorize if not provided
+    let autoCategory = category;
+    if (!autoCategory) {
+      const lower = txDesc.toLowerCase();
+      if (/tim hortons|starbucks|mcdonald|restaurant|subway|chipotle|cafe|coffee|dining|food|pizza/i.test(lower)) {
+        autoCategory = 'Food';
+      } else if (/costco|loblaws|metro|walmart|sobeys|no frills|grocery|superstore|freshco/i.test(lower)) {
+        autoCategory = 'Groceries';
+      } else if (/ttc|presto|uber|lyft|gas|esso|petro|shell|transit|flight/i.test(lower)) {
+        autoCategory = 'Transport';
+      } else if (/amazon|shoppers|winners|best buy|apple|mall|clothing|h&m/i.test(lower)) {
+        autoCategory = 'Shopping';
+      } else if (/netflix|spotify|cinema|cineplex|lcbo|pub|bar/i.test(lower)) {
+        autoCategory = 'Entertainment';
+      } else {
+        autoCategory = 'Miscellaneous';
+      }
+    }
+
+    const payload = {
+      description: txDesc,
+      amount: parsedAmount,
+      category: autoCategory,
+      currency: currency.toUpperCase(),
+      payment_method: payment_method || card,
+      date: date,
+      user_id: user_id || req.query.user_id || null,
+      created_at: new Date().toISOString()
+    };
+
+    console.log('[REAL-TIME ZERO-TOUCH WEBHOOK] Ingested payment:', payload);
+
+    // Save directly to Supabase if credentials available
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+      const { error: dbError } = await supabaseServer.from('transactions').insert(payload);
+      if (dbError) {
+        console.error('[SERVER] Supabase transaction insert failed:', dbError);
+      } else {
+        console.log('[SERVER] Transaction logged automatically to Supabase.');
+      }
+    }
+
+    // Fallback local queue
+    const queuePath = path.join(os.tmpdir(), 'aura_realtime_transactions.json');
+    let queue = [];
+    if (fs.existsSync(queuePath)) {
+      try { queue = JSON.parse(fs.readFileSync(queuePath, 'utf8') || '[]'); } catch (e) { queue = []; }
+    }
+    queue.unshift(payload);
+    fs.writeFileSync(queuePath, JSON.stringify(queue.slice(0, 100), null, 2), 'utf8');
+
+    res.status(200).json({ status: 'success', message: 'Transaction ingested automatically in 0-seconds', transaction: payload });
+  } catch (err) {
+    console.error('[ZERO-TOUCH WEBHOOK ERROR]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 2. Incoming SMS Webhook
 app.post('/api/webhook/sms', (req, res) => {
   try {

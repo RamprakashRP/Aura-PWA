@@ -1,3 +1,4 @@
+import { ZeroTouchSync } from '../components/automation/ZeroTouchSync';
 import { useState, useEffect } from 'react';
 import { Upload as UploadIcon, FileJson, CheckCircle, Edit2, Play, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -253,7 +254,15 @@ const Upload = () => {
       </header>
 
       {status === 'idle' || status === 'processing' ? (
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* 100% Zero-Touch Real-Time Sync (Apple Pay / Google Wallet) */}
+          <ZeroTouchSync />
+
+          <div className="pt-6 border-t border-slate-800">
+            <h3 className="text-xs uppercase font-bold tracking-widest text-slate-400 mb-3">
+              Batch Statement Parsing Dropzone
+            </h3>
+          </div>
           <motion.div 
             animate={dragActive ? { boxShadow: getAuraGlow(), borderColor: getAuraColor() } : { borderColor: '#334155' }}
             className="glass p-6 md:p-12 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all bg-[#0a0f1a] relative md:h-auto h-[25vh] min-h-[160px]"
