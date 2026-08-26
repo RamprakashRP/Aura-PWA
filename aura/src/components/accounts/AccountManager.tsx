@@ -52,6 +52,56 @@ export interface BankAccount {
 }
 
 
+
+// Helper to map Supabase snake_case rows to BankAccount
+function mapDbToAccount(row: any): BankAccount {
+  return {
+    id: row.id,
+    bankId: row.bank_id || row.bankId || 'other',
+    accountName: row.account_name || row.accountName || 'Account',
+    accountType: row.account_type || row.accountType || 'chequing',
+    balance: Number(row.balance) || 0,
+    currency: row.currency || 'CAD',
+    last4Digits: row.last_4_digits || row.last4Digits,
+    monthlyFee: row.monthly_fee !== undefined ? Number(row.monthly_fee) : row.monthlyFee,
+    minBalanceForFeeWaiver: row.min_balance_for_fee_waiver !== undefined ? Number(row.min_balance_for_fee_waiver) : row.minBalanceForFeeWaiver,
+    interestRateApy: row.interest_rate_apy !== undefined ? Number(row.interest_rate_apy) : row.interestRateApy,
+    promoInterestRateApy: row.promo_interest_rate_apy !== undefined ? Number(row.promo_interest_rate_apy) : row.promoInterestRateApy,
+    promoExpiryDate: row.promo_expiry_date || row.promoExpiryDate,
+    statementDateDay: row.statement_date_day || row.statementDateDay,
+    paymentDueDateDay: row.payment_due_date_day || row.paymentDueDateDay,
+    creditLimit: row.credit_limit !== undefined ? Number(row.credit_limit) : row.creditLimit,
+    isApplePay: row.is_apple_pay !== undefined ? row.is_apple_pay : row.isApplePay,
+    isGoogleWallet: row.is_google_wallet !== undefined ? row.is_google_wallet : row.isGoogleWallet,
+    notes: row.notes,
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+  };
+}
+
+function mapAccountToDb(acc: BankAccount, userId: string): any {
+  return {
+    id: acc.id,
+    user_id: userId,
+    bank_id: acc.bankId,
+    account_name: acc.accountName,
+    account_type: acc.accountType,
+    balance: acc.balance,
+    currency: acc.currency || 'CAD',
+    last_4_digits: acc.last4Digits || null,
+    monthly_fee: acc.monthlyFee || 0,
+    min_balance_for_fee_waiver: acc.minBalanceForFeeWaiver || 0,
+    interest_rate_apy: acc.interestRateApy || 0,
+    promo_interest_rate_apy: acc.promoInterestRateApy || 0,
+    promo_expiry_date: acc.promoExpiryDate || null,
+    statement_date_day: acc.statementDateDay || null,
+    payment_due_date_day: acc.paymentDueDateDay || null,
+    credit_limit: acc.creditLimit || null,
+    is_apple_pay: !!acc.isApplePay,
+    is_google_wallet: !!acc.isGoogleWallet,
+    notes: acc.notes || null,
+  };
+}
+
 export function AccountManager() {
   const { user } = useAuth();
   const { getAuraColor } = useTheme();
@@ -97,12 +147,16 @@ export function AccountManager() {
           .from('bank_accounts')
           .select('*')
           .eq('user_id', user.id);
-        if (!error && data) {
-          setAccounts(data);
+        if (!error && data && data.length > 0) {
+          const mapped = data.map(mapDbToAccount);
+          setAccounts(mapped);
+          localStorage.setItem(getStorageKey(), JSON.stringify(mapped));
           return;
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn('Supabase accounts fetch error:', err);
+    }
 
     // 2. User-scoped local storage fallback
     const key = getStorageKey();
@@ -110,8 +164,7 @@ export function AccountManager() {
     if (data) {
       try {
         const parsed = JSON.parse(data);
-        // Filter out legacy demo items if any
-        const clean = parsed.filter((a: any) => !['acc-1', 'acc-2', 'acc-3', 'acc-4'].includes(a.id));
+        const clean = parsed.filter((a: any) => !['acc-1', 'acc-2', 'acc-3', 'acc-4'].includes(a.id)).map(mapDbToAccount);
         setAccounts(clean);
         return;
       } catch {}
@@ -126,10 +179,20 @@ export function AccountManager() {
 
     if (user?.id && !localStorage.getItem('aura_sandbox_mode')) {
       try {
-        await supabase.from('bank_accounts').upsert(newAccounts.map(a => ({ ...a, user_id: user.id })));
-      } catch {}
+        const payloads = newAccounts.map(a => mapAccountToDb(a, user.id));
+        const { error } = await supabase.from('bank_accounts').upsert(payloads, { onConflict: 'id' });
+        if (error) {
+          console.error('[SUPABASE ERROR] Failed to upsert bank_accounts:', error.message);
+        } else {
+          console.log('[SUPABASE SUCCESS] Bank accounts synced to cloud.');
+        }
+      } catch (e) {
+        console.error('Supabase sync exception:', e);
+      }
     }
   };
+
+
 
   const handleBankChange = (bankId: string) => {
     const bank = getBankById(bankId);

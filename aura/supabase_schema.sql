@@ -149,3 +149,110 @@ TO authenticated
 USING (user_id = auth.uid() OR user_id IS NULL)
 WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
 
+
+-- 6. Bank Accounts Table (Canadian Big 5 + Digital Banks, Chequing Waivers & HISA)
+CREATE TABLE IF NOT EXISTS public.bank_accounts (
+  id text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  bank_id text,
+  account_name text NOT NULL,
+  account_type text NOT NULL,
+  balance numeric NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'CAD',
+  last_4_digits text,
+  monthly_fee numeric DEFAULT 0,
+  min_balance_for_fee_waiver numeric DEFAULT 0,
+  interest_rate_apy numeric DEFAULT 0,
+  promo_interest_rate_apy numeric DEFAULT 0,
+  promo_expiry_date text,
+  statement_date_day integer,
+  payment_due_date_day integer,
+  credit_limit numeric,
+  is_apple_pay boolean DEFAULT false,
+  is_google_wallet boolean DEFAULT false,
+  notes text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.bank_accounts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own bank accounts"
+ON public.bank_accounts FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- 7. Money Saver Vault Reminders & Deadlines
+CREATE TABLE IF NOT EXISTS public.reminders (
+  id text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  description text,
+  category text,
+  reminder_type text NOT NULL DEFAULT 'credit_card',
+  start_date text,
+  renewal_date text NOT NULL,
+  cancellation_deadline text,
+  statement_date text,
+  payment_due_date text,
+  issuer_bank text,
+  last_4_digits text,
+  milestones jsonb DEFAULT '[]'::jsonb,
+  estimated_savings numeric DEFAULT 0,
+  action_url text,
+  remind_days_before integer[] DEFAULT '{14,7,2,1}',
+  amount numeric DEFAULT 0,
+  currency text DEFAULT 'CAD',
+  billing_cycle text DEFAULT 'monthly',
+  auto_renew boolean DEFAULT true,
+  status text DEFAULT 'active',
+  last_reminded_at text,
+  url text,
+  notes text,
+  tags text[] DEFAULT '{}',
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own reminders"
+ON public.reminders FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- 8. Biometric Passkeys (WebAuthn)
+CREATE TABLE IF NOT EXISTS public.passkeys (
+  id text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  device_type text DEFAULT 'platform',
+  backed_up boolean DEFAULT true,
+  credential_id text,
+  public_key text,
+  counter bigint DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  last_used_at timestamp with time zone
+);
+ALTER TABLE public.passkeys ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own passkeys"
+ON public.passkeys FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- 9. User Notification Settings (Telegram & Push)
+CREATE TABLE IF NOT EXISTS public.user_notifications (
+  user_id uuid PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  telegram_chat_id text,
+  push_enabled boolean DEFAULT true,
+  telegram_enabled boolean DEFAULT true,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their notification settings"
+ON public.user_notifications FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
