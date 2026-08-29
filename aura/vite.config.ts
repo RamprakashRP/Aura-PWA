@@ -67,6 +67,113 @@ const pythonParserPlugin = () => ({
             res.end(JSON.stringify({ error: err.message }));
           }
         });
+            } else if (url.startsWith('/api/plaid/create-link-token') && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk.toString() });
+        req.on('end', async () => {
+          try {
+            const { clientId, secret, env = 'development', userId = 'aura_user_1' } = JSON.parse(body || '{}');
+            const baseUrl = env === 'sandbox' ? 'https://sandbox.plaid.com' : 'https://development.plaid.com';
+            
+            const payload = {
+              client_id: clientId,
+              secret: secret,
+              client_name: 'Aura Financial',
+              country_codes: ['CA', 'US'],
+              language: 'en',
+              user: { client_user_id: userId },
+              products: ['transactions', 'auth'],
+            };
+
+            const response = await fetch(`${baseUrl}/link/token/create`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            const data: any = await response.json();
+            if (data.error_code) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: data.error_message || data.error_code }));
+              return;
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ link_token: data.link_token }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
+      } else if (url.startsWith('/api/plaid/exchange-public-token') && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk.toString() });
+        req.on('end', async () => {
+          try {
+            const { publicToken, clientId, secret, env = 'development', userId } = JSON.parse(body || '{}');
+            const baseUrl = env === 'sandbox' ? 'https://sandbox.plaid.com' : 'https://development.plaid.com';
+
+            const exchangeRes = await fetch(`${baseUrl}/item/public_token/exchange`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                client_id: clientId,
+                secret: secret,
+                public_token: publicToken,
+              }),
+            });
+            const exchangeData: any = await exchangeRes.json();
+            if (exchangeData.error_code) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: exchangeData.error_message }));
+              return;
+            }
+
+            const accessToken = exchangeData.access_token;
+            const itemId = exchangeData.item_id;
+
+            const accRes = await fetch(`${baseUrl}/accounts/get`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                client_id: clientId,
+                secret: secret,
+                access_token: accessToken,
+              }),
+            });
+            const accData: any = await accRes.json();
+            const accounts = accData.accounts || [];
+
+            if (supabaseUrl && supabaseAnonKey && userId && accounts.length > 0) {
+              const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+              for (const a of accounts) {
+                const accType = a.type === 'credit' ? 'Credit Card' : a.subtype === 'savings' ? 'Savings Account' : 'Checking Account';
+                await supabaseServer.from('bank_accounts').upsert({
+                  id: 'acc_plaid_' + a.account_id,
+                  user_id: userId,
+                  bank_id: 'other',
+                  account_name: a.name || 'Plaid Bank Account',
+                  account_type: accType,
+                  balance: a.balances?.current || a.balances?.available || 0,
+                  currency: a.balances?.iso_currency_code || 'CAD',
+                  last_4_digits: a.mask || '0000',
+                  credit_limit: a.balances?.limit || null,
+                  notes: `Connected via Plaid Open Banking`,
+                }, { onConflict: 'id' });
+              }
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ status: 'connected', accounts, itemId }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
       } else if (url.startsWith('/api/webhook/sms') && req.method === 'POST') {
         let body = '';
         req.on('data', (chunk: any) => { body += chunk.toString() });

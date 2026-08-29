@@ -162,6 +162,112 @@ app.post('/api/parse', (req, res) => {
 
 
 // 2b. Direct Real-Time Zero-Touch Payment Webhook (Samsung / Android Google Wallet / Apple Pay)
+
+// 3. Plaid Link Token Creation
+app.post('/api/plaid/create-link-token', async (req, res) => {
+  try {
+    const { clientId, secret, env = 'development', userId = 'aura_user_1' } = req.body;
+    const effectiveClientId = clientId || process.env.PLAID_CLIENT_ID || '';
+    const effectiveSecret = secret || process.env.PLAID_SECRET || '';
+    const baseUrl = env === 'sandbox' ? 'https://sandbox.plaid.com' : 'https://development.plaid.com';
+
+    if (!effectiveClientId || !effectiveSecret) {
+      return res.status(400).json({ error: 'Missing Plaid Client ID or Secret' });
+    }
+
+    const payload = {
+      client_id: effectiveClientId,
+      secret: effectiveSecret,
+      client_name: 'Aura Financial',
+      country_codes: ['CA', 'US'],
+      language: 'en',
+      user: { client_user_id: userId },
+      products: ['transactions', 'auth'],
+    };
+
+    const response = await fetch(`${baseUrl}/link/token/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (data.error_code) {
+      return res.status(400).json({ error: data.error_message || data.error_code });
+    }
+
+    res.status(200).json({ link_token: data.link_token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Plaid Public Token Exchange & Account Ingestion
+app.post('/api/plaid/exchange-public-token', async (req, res) => {
+  try {
+    const { publicToken, clientId, secret, env = 'development', userId } = req.body;
+    const effectiveClientId = clientId || process.env.PLAID_CLIENT_ID || '';
+    const effectiveSecret = secret || process.env.PLAID_SECRET || '';
+    const baseUrl = env === 'sandbox' ? 'https://sandbox.plaid.com' : 'https://development.plaid.com';
+
+    // 1. Exchange public_token for access_token
+    const exchangeRes = await fetch(`${baseUrl}/item/public_token/exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: effectiveClientId,
+        secret: effectiveSecret,
+        public_token: publicToken,
+      }),
+    });
+    const exchangeData = await exchangeRes.json();
+    if (exchangeData.error_code) {
+      return res.status(400).json({ error: exchangeData.error_message });
+    }
+
+    const accessToken = exchangeData.access_token;
+    const itemId = exchangeData.item_id;
+
+    // 2. Fetch Accounts
+    const accRes = await fetch(`${baseUrl}/accounts/get`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: effectiveClientId,
+        secret: effectiveSecret,
+        access_token: accessToken,
+      }),
+    });
+    const accData = await accRes.json();
+    const accounts = accData.accounts || [];
+    const institution = accData.item?.institution_id || 'Canadian Bank';
+
+    // 3. Save to Supabase bank_accounts if credentials available
+    if (supabaseUrl && supabaseAnonKey && userId && accounts.length > 0) {
+      const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+      for (const a of accounts) {
+        const accType = a.type === 'credit' ? 'Credit Card' : a.subtype === 'savings' ? 'Savings Account' : 'Checking Account';
+        await supabaseServer.from('bank_accounts').upsert({
+          id: 'acc_plaid_' + a.account_id,
+          user_id: userId,
+          bank_id: institution.toLowerCase().includes('scotia') ? 'scotiabank' : institution.toLowerCase().includes('rbc') ? 'rbc' : institution.toLowerCase().includes('td') ? 'td' : 'other',
+          account_name: a.name || 'Plaid Bank Account',
+          account_type: accType,
+          balance: a.balances?.current || a.balances?.available || 0,
+          currency: a.balances?.iso_currency_code || 'CAD',
+          last_4_digits: a.mask || '0000',
+          credit_limit: a.balances?.limit || null,
+          notes: `Connected via Plaid Open Banking (Item ${itemId})`,
+        }, { onConflict: 'id' });
+      }
+    }
+
+    res.status(200).json({ status: 'connected', accounts, itemId, accessToken });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/webhook/transaction', async (req, res) => {
   try {
     let { 
