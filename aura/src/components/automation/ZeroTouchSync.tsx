@@ -4,19 +4,31 @@ import {
   CheckCircle, 
   Copy, 
   Radio, 
-  Smartphone,
-  Zap
+  Smartphone, 
+  Zap,
+  Globe,
+  Laptop
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 export function ZeroTouchSync() {
   const { getAuraColor } = useTheme();
   const auraColor = getAuraColor();
+  const { user } = useAuth();
 
   const [activeChannel, setActiveChannel] = useState<'android' | 'ios' | 'email'>('android');
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [customHost, setCustomHost] = useState('');
 
-  const webhookUrl = window.location.origin + '/api/webhook/transaction';
+  // Intelligent URL resolution:
+  // If running locally, provides option for live cloud endpoint so phone automations work outside the PC
+  const currentOrigin = window.location.origin;
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  const userParam = user?.id ? `?user_id=${user.id}` : '';
+  const effectiveOrigin = customHost.trim() ? (customHost.startsWith('http') ? customHost.trim() : `https://${customHost.trim()}`) : currentOrigin;
+  const webhookUrl = `${effectiveOrigin}/api/webhook/transaction${userParam}`;
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -43,7 +55,7 @@ export function ZeroTouchSync() {
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Automatically capture Canadian spending from your Samsung S26 Ultra, Google Wallet, Apple Pay, and Interac
+              Automatically capture Canadian spending from Android, Google Wallet, Apple Pay, and Interac
             </p>
           </div>
         </div>
@@ -70,10 +82,10 @@ export function ZeroTouchSync() {
           <div className="flex items-center justify-between mb-2">
             <Smartphone size={18} className="text-cyan-400" />
             <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300">
-              Recommended (Samsung / Android)
+              Android (Google Wallet & Samsung Pay)
             </span>
           </div>
-          <div className="font-bold text-sm text-white">Google / Samsung Wallet Tap</div>
+          <div className="font-bold text-sm text-white">Android Tap Automation</div>
           <div className="text-[11px] text-zinc-400 mt-0.5">Instant MacroDroid notification bridge (0 seconds)</div>
         </button>
 
@@ -116,19 +128,19 @@ export function ZeroTouchSync() {
         </button>
       </div>
 
-      {/* CHANNEL 1: ANDROID / SAMSUNG S26 GOOGLE WALLET */}
+      {/* CHANNEL 1: ANDROID (GOOGLE WALLET & SAMSUNG PAY) */}
       {activeChannel === 'android' && (
         <div className="p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-2xl space-y-5">
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Smartphone className="text-cyan-400" size={20} />
-              <span>Samsung Galaxy S26 Ultra / Google Wallet Real-Time Bridge</span>
+              <span>Android (Google Wallet & Samsung Pay) Real-Time Bridge</span>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                 0-Second Instant Tap
               </span>
             </h3>
             <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
-              Whenever you pay at any store with Google Wallet on your Samsung S26 Ultra, MacroDroid instantly captures the payment notification and forwards it to Aura in under 1 second.
+              Whenever you pay at any store with Google Wallet or Samsung Pay on your Android phone, MacroDroid instantly captures the payment notification and forwards it to Aura in under 1 second.
             </p>
           </div>
 
@@ -144,25 +156,60 @@ export function ZeroTouchSync() {
             <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
               <div>
-                <b className="text-white">Trigger: Notification Received $\rightarrow$ Select (Google Wallet / Bank App)</b>
+                <b className="text-white">Trigger: Notification Received → Select (Google Wallet / Bank App)</b>
                 <p className="text-zinc-400 mt-0.5">Choose Google Wallet, TD, RBC, or Scotiabank as the monitored notification source.</p>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">3</span>
-              <div className="w-full">
-                <b className="text-white">Action: HTTP Request $\rightarrow$ POST to Aura Endpoint</b>
-                <p className="text-zinc-400 mt-0.5 mb-2">Send notification title and body directly to your endpoint:</p>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#0a0a0a] border border-zinc-700 font-mono text-[11px] text-cyan-300">
-                  <span className="truncate">{webhookUrl}</span>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(webhookUrl, 'webhook-url-android')}
-                    className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-white ml-2 flex-shrink-0 cursor-pointer"
-                  >
-                    {copiedText === 'webhook-url-android' ? <CheckCircle size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                  </button>
+              <div className="w-full space-y-2">
+                <div>
+                  <b className="text-white">Action: HTTP Request → POST to Aura Endpoint</b>
+                  <p className="text-zinc-400 mt-0.5">Send notification title and body directly to your endpoint:</p>
+                </div>
+
+                {/* Intelligent URL Display */}
+                <div className="p-3 rounded-xl bg-[#000000] border border-zinc-700/80 space-y-2">
+                  <div className="flex items-center justify-between font-mono text-[11px] text-cyan-300">
+                    <span className="truncate">{webhookUrl}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(webhookUrl, 'webhook-url-android')}
+                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white ml-2 flex-shrink-0 cursor-pointer flex items-center gap-1 text-xs"
+                    >
+                      {copiedText === 'webhook-url-android' ? (
+                        <>
+                          <CheckCircle size={14} className="text-emerald-400" />
+                          <span className="text-emerald-400 font-sans text-[11px]">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          <span className="font-sans text-[11px]">Copy URL</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {isLocalhost && (
+                    <div className="pt-2 border-t border-zinc-800/80 text-[11px] text-zinc-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="flex items-center gap-1 text-amber-400/90">
+                        <Laptop size={12} />
+                        Viewing on Localhost. On your phone, open your deployed Render URL to copy the cloud link.
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Globe size={12} className="text-zinc-500" />
+                        <input
+                          type="text"
+                          placeholder="or paste Render domain (e.g. aura.onrender.com)"
+                          value={customHost}
+                          onChange={(e) => setCustomHost(e.target.value)}
+                          className="bg-[#080808] border border-zinc-700 rounded px-2 py-0.5 text-[10px] text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -191,7 +238,7 @@ export function ZeroTouchSync() {
               <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0">1</span>
               <div>
                 <b className="text-white">Open the &quot;Shortcuts&quot; App on your iPhone</b>
-                <p className="text-zinc-400 mt-0.5">Tap the <b>Automation</b> tab at the bottom $\rightarrow$ Tap <b>+ (New Automation)</b>.</p>
+                <p className="text-zinc-400 mt-0.5">Tap the <b>Automation</b> tab at the bottom → Tap <b>+ (New Automation)</b>.</p>
               </div>
             </div>
 
@@ -199,23 +246,26 @@ export function ZeroTouchSync() {
               <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
               <div>
                 <b className="text-white">Select &quot;Transaction&quot; (When I use Apple Pay)</b>
-                <p className="text-zinc-400 mt-0.5">Choose <b>Any Card</b> $\rightarrow$ Select <b>Run Immediately (No confirmation)</b>.</p>
+                <p className="text-zinc-400 mt-0.5">Choose <b>Any Card</b> → Select <b>Run Immediately (No confirmation)</b>.</p>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0">3</span>
-              <div className="w-full">
-                <b className="text-white">Add Action: &quot;Get Contents of URL&quot; (HTTP POST)</b>
-                <p className="text-zinc-400 mt-0.5 mb-2">Set Method to <b>POST</b> and paste your webhook endpoint URL:</p>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#0a0a0a] border border-zinc-700 font-mono text-[11px] text-rose-300">
+              <div className="w-full space-y-2">
+                <div>
+                  <b className="text-white">Add Action: &quot;Get Contents of URL&quot; (HTTP POST)</b>
+                  <p className="text-zinc-400 mt-0.5">Set Method to <b>POST</b> and paste your webhook endpoint URL:</p>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#000000] border border-zinc-700 font-mono text-[11px] text-rose-300">
                   <span className="truncate">{webhookUrl}</span>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(webhookUrl, 'webhook-url-ios')}
-                    className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-white ml-2 flex-shrink-0 cursor-pointer"
+                    className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white ml-2 flex-shrink-0 cursor-pointer flex items-center gap-1 text-xs"
                   >
                     {copiedText === 'webhook-url-ios' ? <CheckCircle size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    <span className="font-sans text-[11px]">Copy URL</span>
                   </button>
                 </div>
               </div>
@@ -239,9 +289,9 @@ export function ZeroTouchSync() {
 
           <div className="p-4 rounded-xl bg-[#000000] border border-zinc-800 text-xs space-y-3">
             <div className="font-bold text-amber-400">Automated Forwarding Rule:</div>
-            <div className="p-2.5 rounded-lg bg-[#0a0a0a] border border-zinc-700 font-mono text-[11px] text-zinc-300">
+            <div className="p-2.5 rounded-lg bg-[#000000] border border-zinc-700 font-mono text-[11px] text-zinc-300">
               <b>Filter Condition:</b> From: (notify@payments.interac.ca OR alerts@rbc.com OR @td.com OR @scotiabank.com)<br />
-              <b>Action:</b> Automatically Forward $\rightarrow$ <i>your-aura-inbox-webhook</i>
+              <b>Action:</b> Automatically Forward → <i>{webhookUrl}</i>
             </div>
           </div>
         </div>
