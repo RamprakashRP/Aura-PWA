@@ -4,14 +4,15 @@ import {
   CreditCard, 
   Landmark, 
   GraduationCap, 
-  Tv, 
-  Package,
-  CheckCircle2, 
+  Package, 
+  Calendar, 
+  Check, 
   Plus, 
-  Trash2,
-  Clock,
-  Sparkles
+  Trash2, 
+  Clock, 
+  Sparkles 
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface ReminderFormProps {
   initialData?: Partial<CreateReminderInput>;
@@ -20,7 +21,10 @@ interface ReminderFormProps {
   submitLabel?: string;
 }
 
-export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'Save Item' }: ReminderFormProps) {
+export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'Save & Protect' }: ReminderFormProps) {
+  const { getAuraColor } = useTheme();
+  const auraColor = getAuraColor();
+
   const [reminderType, setReminderType] = useState<ReminderType>(
     initialData?.reminderType || 'subscription'
   );
@@ -56,7 +60,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
       ? initialData.remindDaysBefore
       : [14, 7, 2, 1],
     amount: initialData?.amount ? Number(initialData.amount) : undefined,
-    currency: initialData?.currency || 'USD',
+    currency: initialData?.currency || 'CAD',
     billingCycle: initialData?.billingCycle || 'monthly',
     autoRenew: initialData?.autoRenew !== undefined ? initialData.autoRenew : true,
     url: initialData?.url || '',
@@ -77,7 +81,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
     }));
   };
 
-  const applyFeePreset = (presetType: 'student_switch' | 'card_retention' | 'promo_close') => {
+  const applyFeePreset = (presetType: 'student_switch' | 'card_retention') => {
     const today = new Date();
     if (presetType === 'student_switch') {
       const oneYear = new Date(today);
@@ -85,10 +89,10 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
       setFormData((prev) => ({
         ...prev,
         title: 'Checking Account (Switch to Student Tier)',
-        issuerBank: 'Bank of America / Chase',
+        issuerBank: 'TD / Scotiabank / RBC',
         renewalDate: oneYear.toISOString().split('T')[0],
         estimatedSavings: 144,
-        notes: 'Free 1-year period ends! Bring student ID or proof of enrollment to branch to convert to student checking to avoid $12/month fee.',
+        notes: 'Free 1-year trial ends! Bring student transcript or ID to local branch to convert to student checking to avoid monthly fees.',
         milestones: [
           { id: '1', title: 'Download student enrollment verification PDF', completed: false },
           { id: '2', title: 'Visit bank branch or submit student verification online', completed: false },
@@ -101,66 +105,23 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
       elevenMonths.setMonth(elevenMonths.getMonth() + 11);
       setFormData((prev) => ({
         ...prev,
-        title: 'Credit Card Annual Fee Waiver / Downgrade',
-        issuerBank: 'Chase / Amex / Capital One',
+        title: 'Annual Fee Card (Call for Retention Offer)',
+        issuerBank: 'Amex / Scotia / RBC',
         renewalDate: elevenMonths.toISOString().split('T')[0],
-        estimatedSavings: 95,
-        notes: 'Call retention department before $95 annual fee posts. Ask: "Are there any retention offers or fee waivers on my account? Otherwise I would like to downgrade to a no-fee card."',
+        estimatedSavings: 150,
+        notes: 'Call customer service before annual fee posts. Ask for retention points bonus or fee waiver.',
         milestones: [
-          { id: '1', title: 'Call number on back of card (ask for Retention Dept)', completed: false },
-          { id: '2', title: 'Request annual fee waiver or downgrade to no-annual-fee tier', completed: false },
+          { id: '1', title: 'Check account points balance and statement close date', completed: false },
+          { id: '2', title: 'Call number on back of card & ask for retention offers', completed: false },
+          { id: '3', title: 'Accept points bonus or downgrade to no-fee card', completed: false },
         ],
-        remindDaysBefore: [30, 14, 3],
-      }));
-    } else if (presetType === 'promo_close') {
-      const sixMonths = new Date(today);
-      sixMonths.setMonth(sixMonths.getMonth() + 6);
-      setFormData((prev) => ({
-        ...prev,
-        title: 'Close Promo Account Before Inactivity/Fee',
-        issuerBank: 'Promotional Bank',
-        renewalDate: sixMonths.toISOString().split('T')[0],
-        estimatedSavings: 60,
-        notes: 'Bonus received! Transfer out remaining funds and close account before monthly fees start.',
-        milestones: [
-          { id: '1', title: 'Confirm promotional bonus has been deposited', completed: false },
-          { id: '2', title: 'Transfer remaining balance back to primary account', completed: false },
-          { id: '3', title: 'Call or message bank to close account cleanly', completed: false },
-        ],
-        remindDaysBefore: [14, 7, 2],
+        remindDaysBefore: [30, 14, 7],
       }));
     }
   };
 
-  const applyReturnPreset = (days: number, name: string) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    setFormData((prev) => ({
-      ...prev,
-      title: name,
-      renewalDate: d.toISOString().split('T')[0],
-      remindDaysBefore: [5, 2, 1],
-    }));
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'number' ? (value === '' ? undefined : parseFloat(value)) : value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
-  };
-
-  const handleRemindDaysToggle = (day: number) => {
-    const current = formData.remindDaysBefore || [2, 1];
+  const toggleRemindDay = (day: number) => {
+    const current = formData.remindDaysBefore || [];
     let updated: number[];
     if (current.includes(day)) {
       updated = current.filter((d) => d !== day);
@@ -226,722 +187,369 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
     }
   };
 
-  const remindDays = formData.remindDaysBefore || [2, 1];
+  const remindDays = formData.remindDaysBefore || [14, 7, 2, 1];
+
+  const TYPE_OPTIONS = [
+    { id: 'credit_card', label: 'Credit Card', icon: CreditCard, color: 'text-cyan-400' },
+    { id: 'bank_offer', label: 'Bank Bonus', icon: Landmark, color: 'text-emerald-400' },
+    { id: 'fee_transition', label: 'Student / Fee Expiry', icon: GraduationCap, color: 'text-amber-400' },
+    { id: 'return_warranty', label: 'Return / Warranty', icon: Package, color: 'text-pink-400' },
+    { id: 'subscription', label: 'Subscription', icon: Calendar, color: 'text-rose-400' },
+  ];
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Type Selector Tabs */}
+    <form onSubmit={handleSubmit} className="space-y-5 text-slate-100">
+      {/* 1. Type Selector Tabs */}
       <div>
-        <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
           Choose What You Want to Track & Save On:
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
-          <button
-            type="button"
-            className={`btn btn-sm ${reminderType === 'credit_card' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => handleTypeChange('credit_card')}
-            style={{ fontSize: '0.75rem', padding: '0.5rem 0.25rem' }}
-          >
-            <CreditCard size={14} /> Credit Card
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${reminderType === 'bank_offer' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => handleTypeChange('bank_offer')}
-            style={{ fontSize: '0.75rem', padding: '0.5rem 0.25rem' }}
-          >
-            <Landmark size={14} /> Bank Bonus
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${reminderType === 'fee_transition' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => handleTypeChange('fee_transition')}
-            style={{ fontSize: '0.75rem', padding: '0.5rem 0.25rem' }}
-          >
-            <GraduationCap size={14} /> Student / Fee Expiry
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${reminderType === 'return_warranty' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => handleTypeChange('return_warranty')}
-            style={{ fontSize: '0.75rem', padding: '0.5rem 0.25rem' }}
-          >
-            <Package size={14} /> Return / Warranty
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${reminderType === 'subscription' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => handleTypeChange('subscription')}
-            style={{ fontSize: '0.75rem', padding: '0.5rem 0.25rem' }}
-          >
-            <Tv size={14} /> Subscription
-          </button>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          {TYPE_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isSelected = reminderType === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleTypeChange(opt.id as ReminderType)}
+                className={`p-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center ${
+                  isSelected
+                    ? 'bg-slate-800/90 border-slate-500 text-white shadow-lg scale-102'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+                style={{
+                  borderColor: isSelected ? auraColor : undefined,
+                  boxShadow: isSelected ? `0 0 15px ${auraColor}30` : 'none',
+                }}
+              >
+                <Icon size={18} className={opt.color} />
+                <span className="leading-tight">{opt.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* QUICK PRESETS FOR FEE TRANSITIONS */}
+      {/* Fee Transition Preset Helper */}
       {reminderType === 'fee_transition' && (
-        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 'var(--radius-sm)', padding: '0.75rem' }}>
-          <span style={{ fontSize: '0.75rem', color: '#fde047', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.375rem' }}>
-            <Sparkles size={13} /> Quick Transition Presets:
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+        <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-amber-300">
+            <Sparkles size={16} className="text-amber-400 flex-shrink-0" />
+            <span>Quick 1-Click Template:</span>
+          </div>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => applyFeePreset('student_switch')}
-              className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+              className="px-2.5 py-1 rounded-lg bg-amber-900/60 hover:bg-amber-800 text-[11px] font-bold text-amber-200 border border-amber-500/40 cursor-pointer"
             >
-              🎓 1-Yr Free Checking $\rightarrow$ Switch to Student
+              🎓 1-Yr Student Switch
             </button>
             <button
               type="button"
               onClick={() => applyFeePreset('card_retention')}
-              className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+              className="px-2.5 py-1 rounded-lg bg-amber-900/60 hover:bg-amber-800 text-[11px] font-bold text-amber-200 border border-amber-500/40 cursor-pointer"
             >
-              💳 Annual Fee Waiver / Retention Call
-            </button>
-            <button
-              type="button"
-              onClick={() => applyFeePreset('promo_close')}
-              className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
-            >
-              ⚠️ Close Promo Account Before Inactivity Fee
+              💳 Card Retention
             </button>
           </div>
         </div>
       )}
 
-      {/* QUICK PRESETS FOR RETURN WINDOWS */}
-      {reminderType === 'return_warranty' && (
-        <div style={{ background: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.25)', borderRadius: 'var(--radius-sm)', padding: '0.75rem' }}>
-          <span style={{ fontSize: '0.75rem', color: '#f472b6', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.375rem' }}>
-            <Sparkles size={13} /> Return Policy Shortcuts:
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-            <button
-              type="button"
-              onClick={() => applyReturnPreset(14, '14-Day Electronics Return Window')}
-              className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
-            >
-              🍎 14-Day Apple / Electronics
-            </button>
-            <button
-              type="button"
-              onClick={() => applyReturnPreset(30, '30-Day Amazon / Retail Return Window')}
-              className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
-            >
-              📦 30-Day Amazon / Online Return
-            </button>
-            <button
-              type="button"
-              onClick={() => applyReturnPreset(90, '90-Day Costco / Store Guarantee')}
-              className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
-            >
-              🏪 90-Day Extended Return
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="form-grid">
+      {/* 2. Main Form Fields */}
+      <div className="space-y-4">
         {/* Title */}
-        <div className="form-group full-width">
-          <label className="form-label" htmlFor="title">
-            {reminderType === 'credit_card'
-              ? 'Credit Card Name *'
-              : reminderType === 'bank_offer'
-              ? 'Bank Account & Bonus Name *'
-              : reminderType === 'fee_transition'
-              ? 'Account Name / Fee Transition Goal *'
-              : reminderType === 'return_warranty'
-              ? 'Item / Store Name *'
-              : 'Title *'}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            {reminderType === 'credit_card' ? 'Card Name / Product *' :
+             reminderType === 'bank_offer' ? 'Bank Account / Bonus Offer Name *' :
+             reminderType === 'fee_transition' ? 'Account or Service Being Converted *' :
+             reminderType === 'return_warranty' ? 'Item Name / Purchase *' : 'Subscription Name *'}
           </label>
           <input
             type="text"
-            id="title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            className={`form-control ${errors.title ? 'error' : ''}`}
             placeholder={
-              reminderType === 'credit_card'
-                ? 'e.g. Chase Sapphire Preferred, Amex Gold'
-                : reminderType === 'bank_offer'
-                ? 'e.g. Wells Fargo $300 Checking Bonus'
-                : reminderType === 'fee_transition'
-                ? 'e.g. Bank of America Checking (Switch to Student Tier)'
-                : reminderType === 'return_warranty'
-                ? 'e.g. Sony WH-1000XM5 Headphones (Amazon)'
-                : 'e.g. Spotify Premium, ChatGPT Plus'
+              reminderType === 'credit_card' ? 'e.g. Scotia Momentum Visa Infinite, TD Aeroplan' :
+              reminderType === 'bank_offer' ? 'e.g. Scotiabank $350 Checking Bonus' :
+              reminderType === 'fee_transition' ? 'e.g. TD Unlimited Checking (Free 1-Yr Student Trial)' :
+              reminderType === 'return_warranty' ? 'e.g. Sony WH-1000XM5 Headphones (Amazon)' : 'e.g. Netflix 4K, Spotify Premium, iCloud'
             }
+            value={formData.title || ''}
+            onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
             required
           />
-          {errors.title && <span className="error-text">{errors.title}</span>}
+          {errors.title && <p className="text-[11px] text-rose-400 mt-1">{errors.title}</p>}
         </div>
 
-        {/* CREDIT CARD SPECIFIC FIELDS */}
-        {reminderType === 'credit_card' && (
-          <>
-            <div className="form-group">
-              <label className="form-label" htmlFor="issuerBank">
-                Issuing Bank
-              </label>
-              <input
-                type="text"
-                id="issuerBank"
-                name="issuerBank"
-                value={formData.issuerBank || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="e.g. Chase, Amex, Citi, Discover"
-              />
-            </div>
+        {/* 2-Column Grid for Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Issuer Bank / Store */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              {reminderType === 'return_warranty' ? 'Retailer / Store' : 'Issuer Bank / Provider'}
+            </label>
+            <input
+              type="text"
+              placeholder={reminderType === 'return_warranty' ? 'e.g. Amazon, Best Buy, Apple' : 'e.g. TD, RBC, Scotia, BMO, CIBC, Tangerine'}
+              value={formData.issuerBank || ''}
+              onChange={(e) => setFormData((prev) => ({ ...prev, issuerBank: e.target.value }))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+            />
+          </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="last4Digits">
-                Last 4 Digits
+          {/* Last 4 Digits (if card) or Category */}
+          {reminderType === 'credit_card' ? (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Last 4 Digits (Optional)
               </label>
               <input
                 type="text"
-                id="last4Digits"
-                name="last4Digits"
                 maxLength={4}
-                value={formData.last4Digits || ''}
-                onChange={handleChange}
-                className="form-control"
                 placeholder="e.g. 4821"
+                value={formData.last4Digits || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, last4Digits: e.target.value.replace(/\D/g, '') }))}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
               />
             </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Category
+              </label>
+              <select
+                value={formData.category || 'subscription'}
+                onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+              >
+                <option value="subscription">Subscription / Streaming</option>
+                <option value="bank">Banking / Finance</option>
+                <option value="student_fee">Student / Fee Expiry</option>
+                <option value="return">Shopping / Warranty</option>
+                <option value="software">Software / SaaS</option>
+                <option value="utility">Utilities / Internet</option>
+              </select>
+            </div>
+          )}
+        </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="statementDate">
-                Bill Generation Date (Cycle Close)
+        {/* Financial Details (Amount or Estimated Savings) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              {reminderType === 'bank_offer' ? 'Promotional Bonus ($)' :
+               reminderType === 'fee_transition' ? 'Yearly Fees Avoided ($)' :
+               reminderType === 'return_warranty' ? 'Refundable Value ($)' : 'Cost / Balance ($)'}
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">$</span>
+              <input
+                type="number"
+                step="0.01"
+                placeholder={reminderType === 'bank_offer' ? '300.00' : reminderType === 'fee_transition' ? '144.00' : '14.99'}
+                value={
+                  reminderType === 'bank_offer' || reminderType === 'fee_transition'
+                    ? (formData.estimatedSavings !== undefined && formData.estimatedSavings !== null ? formData.estimatedSavings : '')
+                    : (formData.amount !== undefined && formData.amount !== null ? formData.amount : '')
+                }
+                onChange={(e) => {
+                  const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                  if (reminderType === 'bank_offer' || reminderType === 'fee_transition') {
+                    setFormData((prev) => ({ ...prev, estimatedSavings: val }));
+                  } else {
+                    setFormData((prev) => ({ ...prev, amount: val }));
+                  }
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Currency
+            </label>
+            <select
+              value={formData.currency || 'CAD'}
+              onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer font-bold"
+            >
+              <option value="CAD">🇨🇦 CAD ($)</option>
+              <option value="USD">🇺🇸 USD ($)</option>
+              <option value="INR">🇮🇳 INR (₹)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Deadlines & Dates */}
+        {reminderType === 'credit_card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Statement Closing Date
               </label>
               <input
                 type="date"
-                id="statementDate"
-                name="statementDate"
                 value={formData.statementDate || ''}
-                onChange={handleChange}
-                className="form-control"
+                onChange={(e) => setFormData((prev) => ({ ...prev, statementDate: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
               />
             </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="paymentDueDate">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                 Payment Due Date *
               </label>
               <input
                 type="date"
-                id="paymentDueDate"
-                name="paymentDueDate"
                 value={formData.paymentDueDate || ''}
-                onChange={handleChange}
-                className={`form-control ${errors.paymentDueDate ? 'error' : ''}`}
+                onChange={(e) => setFormData((prev) => ({ ...prev, paymentDueDate: e.target.value, renewalDate: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
                 required
               />
+              {errors.paymentDueDate && <p className="text-[11px] text-rose-400 mt-1">{errors.paymentDueDate}</p>}
             </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="amount">
-                Statement Balance / Due Amount
-              </label>
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                step="0.01"
-                min="0"
-                value={formData.amount !== undefined && formData.amount !== null ? formData.amount : ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="e.g. 150.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="actionUrl">
-                Bank Login / Payment URL
-              </label>
-              <input
-                type="url"
-                id="actionUrl"
-                name="actionUrl"
-                value={formData.actionUrl || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="https://www.chase.com"
-              />
-            </div>
-          </>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              {reminderType === 'bank_offer' ? 'Bonus Requirement Deadline *' :
+               reminderType === 'fee_transition' ? '1-Year Free Promo End Date *' :
+               reminderType === 'return_warranty' ? 'Return Window Deadline *' : 'Renewal / Bill Date *'}
+            </label>
+            <input
+              type="date"
+              value={formData.renewalDate || ''}
+              onChange={(e) => setFormData((prev) => ({ ...prev, renewalDate: e.target.value }))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+              required
+            />
+            {errors.renewalDate && <p className="text-[11px] text-rose-400 mt-1">{errors.renewalDate}</p>}
+          </div>
         )}
 
-        {/* BANK OFFER & MILESTONE SPECIFIC FIELDS */}
-        {reminderType === 'bank_offer' && (
-          <>
-            <div className="form-group">
-              <label className="form-label" htmlFor="issuerBank">
-                Bank Name
+        {/* Direct Link URL */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Direct Management / Cancellation Link (Optional)
+          </label>
+          <input
+            type="url"
+            placeholder="https://..."
+            value={formData.actionUrl || formData.url || ''}
+            onChange={(e) => setFormData((prev) => ({ ...prev, actionUrl: e.target.value, url: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+          />
+        </div>
+
+        {/* Milestone Checklist (for Bank Offer & Fee Transition) */}
+        {(reminderType === 'bank_offer' || reminderType === 'fee_transition') && (
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                Action Checklist / Criteria
               </label>
-              <input
-                type="text"
-                id="issuerBank"
-                name="issuerBank"
-                value={formData.issuerBank || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="e.g. Chase, Capital One, SoFi"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="estimatedSavings">
-                Promotional Bonus Reward ($)
-              </label>
-              <input
-                type="number"
-                id="estimatedSavings"
-                name="estimatedSavings"
-                value={formData.estimatedSavings !== undefined && formData.estimatedSavings !== null ? formData.estimatedSavings : ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="300"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label" htmlFor="renewalDate">
-                Bonus Criteria Deadline (Must Complete By) *
-              </label>
-              <input
-                type="date"
-                id="renewalDate"
-                name="renewalDate"
-                value={formData.renewalDate}
-                onChange={handleChange}
-                className="form-control"
-                required
-              />
-            </div>
-
-            {/* Milestones Builder */}
-            <div className="form-group full-width">
-              <label className="form-label">Bonus Requirement Milestones:</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '0.5rem' }}>
-                {(formData.milestones || []).map((m) => (
-                  <div
-                    key={m.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.4rem 0.75rem',
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.8125rem',
-                    }}
-                  >
-                    <span>• {m.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeMilestone(m.id)}
-                      style={{ background: 'none', border: 'none', color: '#fb7185', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  type="text"
-                  value={newMilestoneTitle}
-                  onChange={(e) => setNewMilestoneTitle(e.target.value)}
-                  placeholder="e.g. Deposit $1,000 within 60 days"
-                  className="form-control"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addMilestone();
-                    }
-                  }}
-                />
-                <button type="button" onClick={addMilestone} className="btn btn-secondary btn-sm">
-                  <Plus size={14} /> Add
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* FEE TRANSITION & STUDENT ACCOUNT FIELDS */}
-        {reminderType === 'fee_transition' && (
-          <>
-            <div className="form-group">
-              <label className="form-label" htmlFor="issuerBank">
-                Bank / Financial Institution
-              </label>
-              <input
-                type="text"
-                id="issuerBank"
-                name="issuerBank"
-                value={formData.issuerBank || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="e.g. Bank of America, Chase, Wells Fargo"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="estimatedSavings">
-                Annual Maintenance Fee Avoided ($/yr)
-              </label>
-              <input
-                type="number"
-                id="estimatedSavings"
-                name="estimatedSavings"
-                value={formData.estimatedSavings !== undefined && formData.estimatedSavings !== null ? formData.estimatedSavings : ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="144 ($12/mo)"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label" htmlFor="renewalDate">
-                Free-Period Expiration / Fee Waiver Cutoff Date *
-              </label>
-              <input
-                type="date"
-                id="renewalDate"
-                name="renewalDate"
-                value={formData.renewalDate}
-                onChange={handleChange}
-                className="form-control"
-                required
-              />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-                Set to 1-2 weeks before your 1-year free trial or promo period expires.
+              <span className="text-[10px] text-slate-500 font-mono">
+                {(formData.milestones || []).length} steps
               </span>
             </div>
 
-            {/* Step-by-Step Transition Action Builder */}
-            <div className="form-group full-width">
-              <label className="form-label">Step-by-Step Action & Document Checklist:</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '0.5rem' }}>
-                {(formData.milestones || []).map((m) => (
-                  <div
-                    key={m.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.4rem 0.75rem',
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.8125rem',
-                    }}
+            <div className="space-y-2">
+              {(formData.milestones || []).map((m) => (
+                <div key={m.id} className="flex items-center justify-between gap-2 p-2 bg-slate-900 rounded-lg border border-slate-800 text-xs">
+                  <span className="text-slate-300">{m.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeMilestone(m.id)}
+                    className="text-slate-500 hover:text-rose-400 p-1"
                   >
-                    <span>• {m.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeMilestone(m.id)}
-                      style={{ background: 'none', border: 'none', color: '#fb7185', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  type="text"
-                  value={newMilestoneTitle}
-                  onChange={(e) => setNewMilestoneTitle(e.target.value)}
-                  placeholder="e.g. Show student ID at branch to change tier"
-                  className="form-control"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addMilestone();
-                    }
-                  }}
-                />
-                <button type="button" onClick={addMilestone} className="btn btn-secondary btn-sm">
-                  <Plus size={14} /> Add Step
-                </button>
-              </div>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
             </div>
 
-            <div className="form-group full-width">
-              <label className="form-label" htmlFor="actionUrl">
-                Bank Portal / Appointment Booking Link
-              </label>
-              <input
-                type="url"
-                id="actionUrl"
-                name="actionUrl"
-                value={formData.actionUrl || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="https://bank.com/student-account"
-              />
-            </div>
-          </>
-        )}
-
-        {/* RETURN WINDOW & WARRANTY SPECIFIC FIELDS */}
-        {reminderType === 'return_warranty' && (
-          <>
-            <div className="form-group">
-              <label className="form-label" htmlFor="issuerBank">
-                Store / Merchant
-              </label>
+            <div className="flex gap-2 pt-1">
               <input
                 type="text"
-                id="issuerBank"
-                name="issuerBank"
-                value={formData.issuerBank || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="e.g. Amazon, Apple, Best Buy, Target"
+                placeholder="Add requirement (e.g. Deposit $1,000 via payroll)..."
+                value={newMilestoneTitle}
+                onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMilestone(); } }}
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none"
               />
+              <button
+                type="button"
+                onClick={addMilestone}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={13} /> Add
+              </button>
             </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="amount">
-                Refundable Amount ($)
-              </label>
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                step="0.01"
-                min="0"
-                value={formData.amount !== undefined && formData.amount !== null ? formData.amount : ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="199.99"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="startDate">
-                Purchase / Delivery Date
-              </label>
-              <input
-                type="date"
-                id="startDate"
-                name="startDate"
-                value={formData.startDate || ''}
-                onChange={handleChange}
-                className="form-control"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="renewalDate">
-                Return Deadline Date *
-              </label>
-              <input
-                type="date"
-                id="renewalDate"
-                name="renewalDate"
-                value={formData.renewalDate}
-                onChange={handleChange}
-                className="form-control"
-                required
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label" htmlFor="actionUrl">
-                Return Portal / Order Status Link
-              </label>
-              <input
-                type="url"
-                id="actionUrl"
-                name="actionUrl"
-                value={formData.actionUrl || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="https://amazon.com/orders"
-              />
-            </div>
-          </>
+          </div>
         )}
 
-        {/* STANDARD SUBSCRIPTION FIELDS */}
-        {reminderType === 'subscription' && (
-          <>
-            <div className="form-group">
-              <label className="form-label" htmlFor="category">
-                Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category || 'subscription'}
-                onChange={handleChange}
-                className="form-control"
-              >
-                <option value="subscription">Subscription</option>
-                <option value="trial">Free Trial</option>
-                <option value="domain">Domain Name</option>
-                <option value="license">Software License</option>
-                <option value="cloud">Cloud / Server</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="billingCycle">
-                Billing Cycle
-              </label>
-              <select
-                id="billingCycle"
-                name="billingCycle"
-                value={formData.billingCycle || 'monthly'}
-                onChange={handleChange}
-                className="form-control"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="one-time">One-time Expiration</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="renewalDate">
-                Renewal Date *
-              </label>
-              <input
-                type="date"
-                id="renewalDate"
-                name="renewalDate"
-                value={formData.renewalDate}
-                onChange={handleChange}
-                className="form-control"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="amount">
-                Cost ($)
-              </label>
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                step="0.01"
-                min="0"
-                value={formData.amount !== undefined && formData.amount !== null ? formData.amount : ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="14.99"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label" htmlFor="url">
-                Cancellation / Management URL
-              </label>
-              <input
-                type="url"
-                id="url"
-                name="url"
-                value={formData.url || ''}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="https://netflix.com/youraccount"
-              />
-            </div>
-          </>
-        )}
-
-        {/* Remind Days Before Selection */}
-        <div className="form-group full-width">
-          <label className="form-label">
-            <Clock size={13} style={{ display: 'inline', marginRight: '4px' }} />
-            Notify Me:
+        {/* Notification Schedule Chips */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <Clock size={13} />
+            <span>Notify & Remind Me:</span>
           </label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+          <div className="flex flex-wrap gap-2">
             {[1, 2, 3, 5, 7, 14, 30].map((day) => {
-              const selected = remindDays.includes(day);
+              const active = remindDays.includes(day);
               return (
                 <button
                   key={day}
                   type="button"
-                  onClick={() => handleRemindDaysToggle(day)}
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.8125rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'var(--transition)',
-                    border: selected ? '1px solid var(--primary)' : '1px solid var(--border)',
-                    background: selected ? 'var(--primary-glow)' : 'var(--bg-primary)',
-                    color: selected ? '#c084fc' : 'var(--text-muted)',
-                  }}
+                  onClick={() => toggleRemindDay(day)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    active
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-sm'
+                      : 'bg-slate-950 text-slate-500 border border-slate-800 hover:text-slate-300'
+                  }`}
                 >
-                  {day === 1 ? '1 day before' : `${day} days before`}
+                  {day} {day === 1 ? 'day' : 'days'} before
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Notes */}
-        <div className="form-group full-width">
-          <label className="form-label" htmlFor="notes">
-            {reminderType === 'fee_transition'
-              ? 'Customer Service Script & Requirements Notes'
-              : reminderType === 'return_warranty'
-              ? 'Order Number, Receipt & Return Instructions'
-              : 'Action Notes & Instructions'}
+        {/* Notes & Instructions */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Action Notes & Retention Strategy
           </label>
           <textarea
-            id="notes"
-            name="notes"
-            rows={2}
+            placeholder="Private reminder notes, promo codes, student verification steps, customer service numbers..."
             value={formData.notes || ''}
-            onChange={handleChange}
-            className="form-control"
-            placeholder={
-              reminderType === 'fee_transition'
-                ? 'Bring student ID and transcript to local branch to switch tier before fee starts.'
-                : reminderType === 'return_warranty'
-                ? 'Order #112-9876543-21. Drop off at nearest UPS store with QR code.'
-                : 'Private reminder notes, promo codes, steps to complete...'
-            }
+            onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 min-h-[70px] resize-none"
           />
         </div>
       </div>
 
-      {/* Buttons */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+      {/* 3. Footer Action Buttons */}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn btn-outline" disabled={isSubmitting}>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
             Cancel
           </button>
         )}
-        <button type="submit" disabled={isSubmitting} className="btn btn-primary">
-          <CheckCircle2 size={16} />
-          {isSubmitting ? 'Saving...' : submitLabel}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 flex items-center gap-2"
+          style={{ background: `linear-gradient(135deg, ${auraColor}, #b91c1c)` }}
+        >
+          <Check size={14} />
+          <span>{isSubmitting ? 'Saving...' : submitLabel}</span>
         </button>
       </div>
     </form>
