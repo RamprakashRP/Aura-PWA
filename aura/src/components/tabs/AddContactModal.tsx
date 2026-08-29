@@ -8,7 +8,8 @@ import {
   Mail, 
   Phone, 
   User,
-  ShieldCheck
+  ShieldCheck,
+  Check,
 } from 'lucide-react';
 
 interface AddContactModalProps {
@@ -25,24 +26,35 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
   const [phone, setPhone] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [foundUser, setFoundUser] = useState<{ id: string; name: string; email: string; avatarUrl?: string } | null>(null);
+  const [isSelectedAuraUser, setIsSelectedAuraUser] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Live lookup for Aura registered users when email or name is typed
   useEffect(() => {
+    if (isSelectedAuraUser) return;
+
     const timer = setTimeout(async () => {
-      if (email.trim().length > 3 || (name.trim().length > 2 && !foundUser)) {
+      const query = email.trim() || name.trim();
+      if (query.length >= 2) {
         setIsSearching(true);
-        const user = await tabsApi.searchAuraUser(email.trim() || name.trim());
+        const user = await tabsApi.searchAuraUser(query);
         setFoundUser(user);
         setIsSearching(false);
       } else {
         setFoundUser(null);
       }
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [email, name]);
+  }, [email, name, isSelectedAuraUser]);
+
+  const handleSelectAuraUser = (user: { id: string; name: string; email: string; avatarUrl?: string }) => {
+    setName(user.name);
+    setEmail(user.email);
+    setFoundUser(user);
+    setIsSelectedAuraUser(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,13 +67,18 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
     setError(null);
 
     try {
+      const targetUserId = (isSelectedAuraUser || foundUser) ? (foundUser?.id || undefined) : undefined;
+      const targetEmail = (isSelectedAuraUser && foundUser) ? foundUser.email : (email.trim() || undefined);
+      const targetName = (isSelectedAuraUser && foundUser) ? foundUser.name : name.trim();
+
       const newContact = await tabsApi.createContact({
-        name: name.trim(),
-        email: email.trim() || undefined,
+        name: targetName,
+        email: targetEmail,
         phone: phone.trim() || undefined,
-        contactUserId: foundUser?.id,
-        status: foundUser ? 'connected' : 'unregistered',
+        contactUserId: targetUserId,
+        status: targetUserId ? 'pending' : 'unregistered',
       });
+
       onContactAdded(newContact);
       onClose();
     } catch (err: any) {
@@ -90,7 +107,7 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Add Friend or Roommate</h2>
-              <p className="text-[11px] text-zinc-400">Keep tabs on shared expenses, splits & IOUs</p>
+              <p className="text-[11px] text-zinc-400">Connect accounts for live 2-way expense sync</p>
             </div>
           </div>
           <button
@@ -109,35 +126,41 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Contact Name (Mandatory) */}
+          {/* Email Address (Primary Search Key) */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center gap-1.5">
-              <User size={13} />
-              <span>Name * (Mandatory)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Alex Henderson, Priya Sharma"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-all"
-              autoFocus
-              required
-            />
-          </div>
-
-          {/* Email (Optional) */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center gap-1.5">
-              <Mail size={13} />
-              <span>Email Address (Optional)</span>
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><Mail size={13} /> Friend&apos;s Google Email</span>
+              {isSearching && <span className="text-[10px] text-cyan-400 animate-pulse font-mono">Searching Aura...</span>}
             </label>
             <input
               type="email"
-              placeholder="e.g. alex@gmail.com"
+              placeholder="e.g. friend@gmail.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (isSelectedAuraUser) setIsSelectedAuraUser(false);
+              }}
               className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-all"
+              autoFocus
+            />
+          </div>
+
+          {/* Contact Name */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center gap-1.5">
+              <User size={13} />
+              <span>Contact Name *</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Alex Henderson"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (isSelectedAuraUser) setIsSelectedAuraUser(false);
+              }}
+              className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-all"
+              required
             />
           </div>
 
@@ -145,7 +168,7 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center gap-1.5">
               <Phone size={13} />
-              <span>Mobile Number (Optional)</span>
+              <span>Mobile Phone (Optional)</span>
             </label>
             <input
               type="tel"
@@ -156,35 +179,45 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
             />
           </div>
 
-          {/* Live Aura Registered User Match Indicator */}
-          {isSearching ? (
-            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 text-[11px] text-zinc-400 flex items-center gap-2">
-              <div className="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-              <span>Checking Aura network for matching profiles...</span>
-            </div>
-          ) : foundUser ? (
-            <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
+          {/* Live Found Aura Profile Card with 1-Click Select */}
+          {foundUser && (
+            <div 
+              onClick={() => handleSelectAuraUser(foundUser)}
+              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                isSelectedAuraUser
+                  ? 'bg-cyan-950/60 border-cyan-400 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400'
+                  : 'bg-zinc-950 border-cyan-500/40 hover:border-cyan-400 hover:bg-cyan-950/30'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
                 <img
                   src={foundUser.avatarUrl}
                   alt={foundUser.name}
-                  className="w-8 h-8 rounded-full border border-cyan-400/50 bg-[#000000]"
+                  className="w-10 h-10 rounded-xl border border-cyan-400 bg-[#000000] flex-shrink-0"
                 />
-                <div>
-                  <div className="flex items-center gap-1 text-xs font-bold text-white">
-                    <span>{foundUser.name}</span>
-                    <ShieldCheck size={13} className="text-cyan-400" />
+                <div className="min-w-0 truncate">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white text-xs truncate">{foundUser.name}</span>
+                    <ShieldCheck size={13} className="text-cyan-400 flex-shrink-0" />
                   </div>
-                  <span className="text-[10px] text-cyan-300 font-mono">{foundUser.email}</span>
+                  <span className="text-[11px] text-cyan-300 font-mono block truncate">{foundUser.email}</span>
+                  <span className="text-[10px] text-zinc-400 font-semibold block mt-0.5">
+                    {isSelectedAuraUser ? '✅ Profile Linked (Will Send Friend Request)' : '👉 Click to link this Aura account'}
+                  </span>
                 </div>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                Aura Member
-              </span>
+
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                isSelectedAuraUser ? 'bg-cyan-500 text-black' : 'border border-zinc-600 text-transparent'
+              }`}>
+                <Check size={14} />
+              </div>
             </div>
-          ) : (
-            <div className="p-2.5 rounded-xl bg-[#050505] border border-zinc-800 text-[11px] text-zinc-500">
-              💡 Contact will be tracked as a personal ledger contact unless they join Aura.
+          )}
+
+          {!foundUser && !isSearching && email.trim().length > 3 && (
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 text-[11px] text-zinc-400">
+              💡 No Aura member found with this email. Contact will be saved to your personal IOU tab.
             </div>
           )}
 
@@ -200,11 +233,11 @@ export function AddContactModal({ onClose, onContactAdded }: AddContactModalProp
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-lg cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-1.5"
               style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
             >
               <CheckCircle2 size={14} />
-              <span>{isSubmitting ? 'Saving...' : 'Save Contact'}</span>
+              <span>{isSubmitting ? 'Saving...' : (isSelectedAuraUser || foundUser) ? 'Send Friend Request' : 'Save Contact'}</span>
             </button>
           </div>
         </form>

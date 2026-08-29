@@ -421,8 +421,8 @@ export default function Tabs() {
                               </span>
                             ) : null}
                           </div>
-                          <span className="text-[11px] text-zinc-500 truncate block max-w-[160px]">
-                            {contact.email || contact.phone || 'Personal Contact'}
+                          <span className="text-[11px] text-zinc-400 truncate block max-w-[180px]">
+                            {contact.email || contact.phone || (contact.status === 'connected' ? 'Aura Connected Friend' : contact.status === 'pending' ? 'Aura Request Pending' : 'Personal Contact')}
                           </span>
                         </div>
                       </div>
