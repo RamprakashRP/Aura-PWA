@@ -21,18 +21,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const syncProfile = async (u: User | null) => {
+    if (!u || !u.id) return;
+    try {
+      const fullName = u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || 'Aura Member';
+      await supabase.from('profiles').upsert({
+        id: u.id,
+        name: fullName,
+        email: u.email || '',
+        home_currency: 'CAD',
+      }, { onConflict: 'id' });
+    } catch (e) {
+      console.warn('Profile sync notice:', e);
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        syncProfile(currentUser);
+      }
       setLoading(false);
     });
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        syncProfile(currentUser);
+      }
       setLoading(false);
     });
 

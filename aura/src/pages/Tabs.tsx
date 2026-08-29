@@ -20,7 +20,11 @@ import {
   Search, 
   ShieldCheck, 
   Sparkles, 
-  ChevronRight 
+  ChevronRight,
+  Trash2,
+  Clock,
+  UserCheck,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function Tabs() {
@@ -33,11 +37,14 @@ export default function Tabs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'owes_you' | 'you_owe' | 'settled'>('all');
 
+  // Modals state
   const [showAddContact, setShowAddContact] = useState(false);
   const [showSplitBill, setShowSplitBill] = useState(false);
   const [showDirectIou, setShowDirectIou] = useState(false);
   const [selectedFriendLedger, setSelectedFriendLedger] = useState<Contact | null>(null);
   const [iouInitialContactId, setIouInitialContactId] = useState<string | undefined>(undefined);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadAllData();
@@ -86,16 +93,33 @@ export default function Tabs() {
     })
     .sort((a: Contact, b: Contact) => Math.abs(b.netBalance || 0) - Math.abs(a.netBalance || 0));
 
-  const handleAcceptNotification = async (notifId: string) => {
-    await tabsApi.respondToSplitNotification(notifId, 'accept');
-    setNotifications((prev: SplitNotification[]) => prev.filter((n: SplitNotification) => n.id !== notifId));
+  const handleRespondFriendRequest = async (notif: SplitNotification, action: 'accept' | 'decline') => {
+    await tabsApi.respondToFriendRequest(notif, action);
+    setNotifications((prev: SplitNotification[]) => prev.filter((n: SplitNotification) => n.id !== notif.id));
     await loadAllData();
   };
 
-  const handleDisputeNotification = async (notifId: string) => {
-    await tabsApi.respondToSplitNotification(notifId, 'dispute');
-    setNotifications((prev: SplitNotification[]) => prev.filter((n: SplitNotification) => n.id !== notifId));
+  const handleRespondSplit = async (notif: SplitNotification, action: 'accept' | 'dispute') => {
+    await tabsApi.respondToSplitNotification(notif, action);
+    setNotifications((prev: SplitNotification[]) => prev.filter((n: SplitNotification) => n.id !== notif.id));
     await loadAllData();
+  };
+
+  const confirmDeleteContact = async () => {
+    if (!contactToDelete) return;
+    setIsDeleting(true);
+    try {
+      await tabsApi.deleteContact(contactToDelete.id);
+      setContacts((prev) => prev.filter((c) => c.id !== contactToDelete.id));
+      if (selectedFriendLedger?.id === contactToDelete.id) {
+        setSelectedFriendLedger(null);
+      }
+      setContactToDelete(null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -157,44 +181,74 @@ export default function Tabs() {
       {/* Cross-User Incoming Notifications Prompt */}
       {notifications.length > 0 && (
         <div className="space-y-2">
-          {notifications.map((notif: SplitNotification) => (
-            <div
-              key={notif.id}
-              className="p-4 rounded-2xl bg-cyan-950/40 border border-cyan-500/50 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-2"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0">
-                  <Sparkles size={16} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">
-                    {notif.senderName} split &quot;{notif.title}&quot; with you
-                  </h4>
-                  <p className="text-[11px] text-cyan-300">
-                    Your assigned share is <strong className="font-mono text-white">${notif.amount.toFixed(2)} {notif.currency}</strong>
-                  </p>
-                </div>
-              </div>
+          {notifications.map((notif: SplitNotification) => {
+            const isFriendReq = notif.type === 'friend_request' || notif.amount === 0;
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => handleDisputeNotification(notif.id)}
-                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white bg-black/40 border border-zinc-700"
-                >
-                  Dispute
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAcceptNotification(notif.id)}
-                  className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-black shadow-md flex items-center justify-center gap-1"
-                >
-                  <CheckCircle2 size={13} />
-                  <span>Accept to My Tab</span>
-                </button>
+            return (
+              <div
+                key={notif.id}
+                className="p-4 rounded-2xl bg-cyan-950/40 border border-cyan-500/50 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-2"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                    {isFriendReq ? <UserCheck size={18} /> : <Sparkles size={18} />}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">
+                      {isFriendReq
+                        ? `${notif.senderName} sent you a Friend Connection Request!`
+                        : `${notif.senderName} split "${notif.title}" with you`}
+                    </h4>
+                    <p className="text-[11px] text-cyan-300">
+                      {isFriendReq
+                        ? 'Connect to share expense tabs, roommate splits & personal IOUs automatically.'
+                        : `Your assigned share is $${notif.amount.toFixed(2)} ${notif.currency}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {isFriendReq ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondFriendRequest(notif, 'decline')}
+                        className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white bg-black/40 border border-zinc-700 cursor-pointer"
+                      >
+                        Decline
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondFriendRequest(notif, 'accept')}
+                        className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-black shadow-md flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Accept Request</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondSplit(notif, 'dispute')}
+                        className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white bg-black/40 border border-zinc-700 cursor-pointer"
+                      >
+                        Dispute
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondSplit(notif, 'accept')}
+                        className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-black shadow-md flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Accept to My Tab</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -342,12 +396,20 @@ export default function Tabs() {
                           className="w-10 h-10 rounded-xl bg-[#000000] border border-zinc-800"
                         />
                         <div>
-                          <h4 className="font-bold text-white text-base group-hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-                            <span>{contact.name}</span>
-                            {contact.status === 'connected' && (
-                              <span title="Connected Aura User"><ShieldCheck size={14} className="text-cyan-400" /></span>
-                            )}
-                          </h4>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-bold text-white text-base group-hover:text-cyan-400 transition-colors">
+                              {contact.name}
+                            </h4>
+                            {contact.status === 'connected' ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-0.5" title="Connected Aura Member">
+                                <ShieldCheck size={10} /> Connected
+                              </span>
+                            ) : contact.status === 'pending' ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5" title="Friend Request Sent">
+                                <Clock size={10} /> Req Sent
+                              </span>
+                            ) : null}
+                          </div>
                           <span className="text-[11px] text-zinc-500 truncate block max-w-[160px]">
                             {contact.email || contact.phone || 'Personal Contact'}
                           </span>
@@ -375,29 +437,43 @@ export default function Tabs() {
                   </div>
 
                   {/* Card Bottom Actions */}
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-zinc-800/80">
+                  <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-zinc-800/80">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setIouInitialContactId(contact.id);
-                        setShowDirectIou(true);
+                        setContactToDelete(contact);
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-[#000000] hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 transition-colors"
+                      className="p-1.5 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
+                      title="Delete friend & remove tabs"
                     >
-                      + IOU
+                      <Trash2 size={14} />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedFriendLedger(contact);
-                      }}
-                      className="px-3 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] font-bold text-white transition-colors"
-                    >
-                      View Ledger
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIouInitialContactId(contact.id);
+                          setShowDirectIou(true);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-[#000000] hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 transition-colors cursor-pointer"
+                      >
+                        + IOU
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFriendLedger(contact);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] font-bold text-white transition-colors cursor-pointer"
+                      >
+                        View Ledger
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -405,6 +481,45 @@ export default function Tabs() {
           </div>
         )}
       </div>
+
+      {/* CONFIRM DELETE MODAL */}
+      {contactToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm p-6 rounded-2xl bg-[#080808] border border-rose-900/50 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Delete Friend & Tabs?</h3>
+                <p className="text-xs text-zinc-400">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-300">
+              Are you sure you want to remove <strong className="text-white">{contactToDelete.name}</strong>? All associated split bills, IOUs, and tab records with them will also be deleted.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setContactToDelete(null)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteContact}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-lg cursor-pointer"
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL 1: ADD CONTACT */}
       {showAddContact && (
@@ -458,6 +573,10 @@ export default function Tabs() {
           onOpenIou={() => {
             setIouInitialContactId(selectedFriendLedger.id);
             setShowDirectIou(true);
+          }}
+          onDeleteFriend={() => {
+            setContactToDelete(selectedFriendLedger);
+            setSelectedFriendLedger(null);
           }}
           onDataUpdated={() => {
             loadAllData();

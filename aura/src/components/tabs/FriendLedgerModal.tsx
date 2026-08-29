@@ -9,7 +9,8 @@ import {
   Mail, 
   Phone, 
   ShieldCheck, 
-  Divide 
+  Divide,
+  Trash2
 } from 'lucide-react';
 
 interface FriendLedgerModalProps {
@@ -17,6 +18,7 @@ interface FriendLedgerModalProps {
   onClose: () => void;
   onOpenSplit: () => void;
   onOpenIou: () => void;
+  onDeleteFriend?: () => void;
   onDataUpdated: () => void;
 }
 
@@ -25,6 +27,7 @@ export function FriendLedgerModal({
   onClose,
   onOpenSplit,
   onOpenIou,
+  onDeleteFriend,
   onDataUpdated,
 }: FriendLedgerModalProps) {
   const [debts, setDebts] = useState<DebtEntry[]>([]);
@@ -219,6 +222,21 @@ export function FriendLedgerModal({
               </button>
             </div>
           </form>
+        )}
+
+        {/* Bottom Delete Option */}
+        {onDeleteFriend && (
+          <div className="flex justify-between items-center p-2 mb-2 rounded-xl bg-rose-950/20 border border-rose-900/30 text-xs">
+            <span className="text-[11px] text-zinc-400">Want to remove this friend?</span>
+            <button
+              type="button"
+              onClick={onDeleteFriend}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold text-rose-400 hover:text-white hover:bg-rose-600 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <Trash2 size={13} />
+              <span>Delete Friend & Tab</span>
+            </button>
+          </div>
         )}
 
         {/* Chronological Audit Ledger */}

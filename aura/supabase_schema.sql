@@ -1,5 +1,6 @@
 -- Aura PWA Database Schema and RLS Policies
 
+
 -- 1. Profiles Table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -9,7 +10,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view and update their own profile"
+DROP POLICY IF EXISTS "Users can view and update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can search profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+
+-- Allow authenticated users to search and discover registered friends
+CREATE POLICY "Users can search profiles"
+ON public.profiles FOR SELECT
+TO authenticated
+USING (true);
+
+-- Allow users to insert and update their own profile
+CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR ALL
 TO authenticated
 USING (auth.uid() = id)
@@ -321,6 +333,7 @@ TO authenticated
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
 
+
 -- 13. Split Notifications (Cross-User Sync for Registered Aura Friends)
 CREATE TABLE IF NOT EXISTS public.split_notifications (
   id text PRIMARY KEY,
@@ -331,12 +344,16 @@ CREATE TABLE IF NOT EXISTS public.split_notifications (
   title text NOT NULL,
   amount numeric NOT NULL,
   currency text NOT NULL DEFAULT 'CAD',
-  status text NOT NULL DEFAULT 'unread' CHECK (status IN ('unread', 'accepted', 'disputed')),
+  type text NOT NULL DEFAULT 'split_bill',
+  status text NOT NULL DEFAULT 'unread',
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 ALTER TABLE public.split_notifications ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view and respond to their incoming split notifications"
+DROP POLICY IF EXISTS "Users can view and respond to their incoming split notifications" ON public.split_notifications;
+DROP POLICY IF EXISTS "Users manage notifications" ON public.split_notifications;
+
+CREATE POLICY "Users manage notifications"
 ON public.split_notifications FOR ALL
 TO authenticated
 USING (recipient_user_id = auth.uid() OR sender_user_id = auth.uid())
