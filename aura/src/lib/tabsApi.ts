@@ -12,13 +12,13 @@ export interface Contact {
   contactUserId?: string | null;
   status: ContactStatus;
   avatarUrl?: string | null;
-  netBalance?: number; // Computed running net balance: positive = they owe you, negative = you owe them
+  netBalance?: number;
   currency?: string;
   createdAt: string;
 }
 
 export interface SplitParticipant {
-  contactId: string; // 'you' or contact.id
+  contactId: string;
   name: string;
   shareAmount: number;
 }
@@ -31,7 +31,7 @@ export interface SplitBill {
   currency: string;
   category: string;
   date: string;
-  payerType: string; // 'you' or contactId
+  payerType: string;
   splitType: 'equal' | 'exact' | 'percentage';
   participants?: SplitParticipant[];
   createdAt: string;
@@ -42,7 +42,7 @@ export interface DebtEntry {
   contactId: string;
   splitBillId?: string | null;
   description: string;
-  amount: number; // Positive = they owe you (+); Negative = you owe them (-)
+  amount: number;
   currency: string;
   date: string;
   type: DebtType;
@@ -74,9 +74,9 @@ function getStorageKey(baseKey: string, userId?: string): string {
 }
 
 export const tabsApi = {
-  // 1. Search for registered Aura users by email or phone
+  // 1. Search for registered Aura users by email or name
   async searchAuraUser(query: string): Promise<{ id: string; name: string; email: string; avatarUrl?: string } | null> {
-    if (!query || query.trim().length < 3) return null;
+    if (!query || query.trim().length < 2) return null;
     const cleanQuery = query.trim().toLowerCase();
 
     const { data: sessionData } = await supabase.auth.getSession();
@@ -116,7 +116,6 @@ export const tabsApi = {
 
     let contacts: Contact[] = [];
 
-    // Try Supabase first
     if (user?.id && !localStorage.getItem('aura_sandbox_mode')) {
       try {
         const { data, error } = await supabase
@@ -163,7 +162,7 @@ export const tabsApi = {
     return contactsWithBalances;
   },
 
-  // 3. Create or Add Contact & Dispatch Friend Request if Aura User
+  // 3. Create or Add Contact & Dispatch Friend Request
   async createContact(input: { name: string; email?: string; phone?: string; contactUserId?: string; status?: ContactStatus }): Promise<Contact> {
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
@@ -187,7 +186,7 @@ export const tabsApi = {
     // Save to Supabase
     if (user?.id && !localStorage.getItem('aura_sandbox_mode')) {
       try {
-        await supabase.from('contacts').insert({
+        const { error: insertContactErr } = await supabase.from('contacts').insert({
           id: newContact.id,
           user_id: user.id,
           contact_user_id: newContact.contactUserId,
@@ -199,10 +198,14 @@ export const tabsApi = {
           created_at: newContact.createdAt,
         });
 
-        // If this contact is a registered Aura user, send a friend request notification!
+        if (insertContactErr) {
+          console.error('Insert contact error:', insertContactErr);
+        }
+
+        // If this contact is an Aura user, dispatch friend request notification!
         if (newContact.contactUserId) {
           const senderName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Aura Member';
-          await supabase.from('split_notifications').insert({
+          const { error: notifErr } = await supabase.from('split_notifications').insert({
             id: 'notif_fr_' + Date.now(),
             recipient_user_id: newContact.contactUserId,
             sender_user_id: user.id,
@@ -214,6 +217,10 @@ export const tabsApi = {
             status: 'unread',
             created_at: new Date().toISOString(),
           });
+
+          if (notifErr) {
+            console.error('Insert notification error:', notifErr);
+          }
         }
       } catch (e) {
         console.warn('Supabase createContact fallback:', e);
@@ -245,7 +252,6 @@ export const tabsApi = {
       }
     }
 
-    // Clean LocalStorage
     const localContacts = localStorage.getItem(contactsKey);
     if (localContacts) {
       const filtered = JSON.parse(localContacts).filter((c: Contact) => c.id !== id);
@@ -259,7 +265,7 @@ export const tabsApi = {
     }
   },
 
-  // 5. Fetch Debt Entries (IOUs, Split Shares & Settlements)
+  // 5. Fetch Debt Entries
   async getDebtEntries(contactId?: string): Promise<DebtEntry[]> {
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
@@ -304,7 +310,7 @@ export const tabsApi = {
     return debts;
   },
 
-  // 6. Create N-Way Bill Split and Send Notifications to Connected Friends
+  // 6. Create N-Way Bill Split
   async createSplitBill(input: {
     title: string;
     totalAmount: number;
@@ -338,8 +344,6 @@ export const tabsApi = {
 
     const debtEntries: DebtEntry[] = [];
     const friendParticipants = input.participants.filter((p) => p.contactId !== 'you');
-
-    // Fetch contacts to get contactUserId for notifications
     const allContacts = await this.getContacts();
 
     for (const p of friendParticipants) {
@@ -348,7 +352,7 @@ export const tabsApi = {
         contactId: p.contactId,
         splitBillId: splitId,
         description: `${input.title} (Split Share)`,
-        amount: Math.abs(p.shareAmount), // Positive = they owe you
+        amount: Math.abs(p.shareAmount),
         currency: cur,
         date: splitDate,
         type: 'split_share',
@@ -357,7 +361,6 @@ export const tabsApi = {
       };
       debtEntries.push(entry);
 
-      // If this contact is connected to an Aura account, notify them!
       const matchedContact = allContacts.find((c) => c.id === p.contactId);
       if (matchedContact?.contactUserId && userKey) {
         try {
@@ -381,7 +384,6 @@ export const tabsApi = {
       }
     }
 
-    // Save to Supabase
     if (userKey && !localStorage.getItem('aura_sandbox_mode')) {
       try {
         await supabase.from('split_bills').insert({
@@ -419,7 +421,6 @@ export const tabsApi = {
       }
     }
 
-    // Save local fallback
     const debtsKey = getStorageKey(LOCAL_STORAGE_DEBTS_KEY, userKey);
     const currentDebts: DebtEntry[] = JSON.parse(localStorage.getItem(debtsKey) || '[]');
     localStorage.setItem(debtsKey, JSON.stringify([...debtEntries, ...currentDebts]));
@@ -431,7 +432,7 @@ export const tabsApi = {
     return splitBill;
   },
 
-  // 7. Direct IOU (Lent or Borrowed Money)
+  // 7. Direct IOU
   async createDirectIou(input: {
     contactId: string;
     description: string;
@@ -485,7 +486,7 @@ export const tabsApi = {
     return entry;
   },
 
-  // 8. Settle Up (Record repayment)
+  // 8. Settle Up
   async settleUpDebt(input: {
     contactId: string;
     amount: number;
@@ -534,12 +535,15 @@ export const tabsApi = {
     return entry;
   },
 
-  // 9. Split & Friend Request Notifications
+  // 9. Fetch Notifications with Dual-Source Discovery (split_notifications table + pending contacts)
   async getSplitNotifications(): Promise<SplitNotification[]> {
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
     if (!user?.id) return [];
 
+    const results: SplitNotification[] = [];
+
+    // Source 1: split_notifications table
     try {
       const { data, error } = await supabase
         .from('split_notifications')
@@ -549,22 +553,63 @@ export const tabsApi = {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        return data.map((n: any) => ({
-          id: n.id,
-          recipientUserId: n.recipient_user_id,
-          senderUserId: n.sender_user_id,
-          senderName: n.sender_name,
-          debtEntryId: n.debt_entry_id,
-          title: n.title,
-          amount: Number(n.amount),
-          currency: n.currency || 'CAD',
-          type: n.type || 'split_bill',
-          status: n.status,
-          createdAt: n.created_at,
-        }));
+        for (const n of data) {
+          results.push({
+            id: n.id,
+            recipientUserId: n.recipient_user_id,
+            senderUserId: n.sender_user_id,
+            senderName: n.sender_name,
+            debtEntryId: n.debt_entry_id,
+            title: n.title,
+            amount: Number(n.amount || 0),
+            currency: n.currency || 'CAD',
+            type: n.type || (Number(n.amount) === 0 ? 'friend_request' : 'split_bill'),
+            status: n.status,
+            createdAt: n.created_at,
+          });
+        }
       }
-    } catch {}
-    return [];
+    } catch (e) {
+      console.warn('Notifications table query notice:', e);
+    }
+
+    // Source 2: Inverted Contact Lookup (find people who added current user with pending status)
+    try {
+      const { data: pendingContacts, error } = await supabase
+        .from('contacts')
+        .select('*, profiles:user_id(id, name, email)')
+        .eq('contact_user_id', user.id)
+        .eq('status', 'pending');
+
+      if (!error && pendingContacts) {
+        for (const pc of pendingContacts) {
+          const senderProfile = pc.profiles;
+          const senderName = senderProfile?.name || 'Aura Member';
+          const senderId = pc.user_id;
+
+          // Check if already in results
+          const exists = results.some((r) => r.senderUserId === senderId && r.type === 'friend_request');
+          if (!exists) {
+            results.push({
+              id: 'inv_fr_' + pc.id,
+              recipientUserId: user.id,
+              senderUserId: senderId,
+              senderName: senderName,
+              title: 'Friend Connection Request',
+              amount: 0,
+              currency: 'CAD',
+              type: 'friend_request',
+              status: 'unread',
+              createdAt: pc.created_at,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Inverted contacts check notice:', e);
+    }
+
+    return results;
   },
 
   // 10. Respond to Friend Request (Accept -> Mutual Connection)
@@ -574,11 +619,13 @@ export const tabsApi = {
     if (!currentUser?.id) return;
 
     try {
-      // 1. Update notification status
-      await supabase
-        .from('split_notifications')
-        .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
-        .eq('id', notification.id);
+      // 1. Update split_notifications if row exists
+      if (!notification.id.startsWith('inv_fr_')) {
+        await supabase
+          .from('split_notifications')
+          .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
+          .eq('id', notification.id);
+      }
 
       if (action === 'accept') {
         // 2. Add sender to current user's contacts as 'connected'
@@ -586,7 +633,7 @@ export const tabsApi = {
         let existingContact = existingContacts.find((c) => c.contactUserId === notification.senderUserId);
 
         if (!existingContact) {
-          existingContact = await this.createContact({
+          await this.createContact({
             name: notification.senderName,
             contactUserId: notification.senderUserId,
             status: 'connected',
@@ -604,13 +651,20 @@ export const tabsApi = {
           .update({ status: 'connected' })
           .eq('user_id', notification.senderUserId)
           .eq('contact_user_id', currentUser.id);
+      } else {
+        // If rejected, update sender's contact to 'rejected'
+        await supabase
+          .from('contacts')
+          .update({ status: 'rejected' })
+          .eq('user_id', notification.senderUserId)
+          .eq('contact_user_id', currentUser.id);
       }
     } catch (e) {
       console.warn('respondToFriendRequest error:', e);
     }
   },
 
-  // 11. Respond to Split Bill Notification (Accept -> Adds debt to recipient's ledger)
+  // 11. Respond to Split Bill Notification
   async respondToSplitNotification(notification: SplitNotification, action: 'accept' | 'dispute'): Promise<void> {
     const { data: sessionData } = await supabase.auth.getSession();
     const currentUser = sessionData?.session?.user;
@@ -623,7 +677,6 @@ export const tabsApi = {
         .eq('id', notification.id);
 
       if (action === 'accept' && notification.amount > 0) {
-        // Find or create sender contact
         const contacts = await this.getContacts();
         let senderContact = contacts.find((c) => c.contactUserId === notification.senderUserId);
 
@@ -635,13 +688,12 @@ export const tabsApi = {
           });
         }
 
-        // Create debt entry where recipient owes the sender (-amount)
         await this.createDirectIou({
           contactId: senderContact.id,
           description: `${notification.title} (Split Share)`,
           amount: notification.amount,
           currency: notification.currency,
-          type: 'borrowed', // Current user owes the sender
+          type: 'borrowed',
         });
       }
     } catch (e) {

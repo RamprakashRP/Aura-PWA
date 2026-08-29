@@ -48,6 +48,17 @@ export default function Tabs() {
 
   useEffect(() => {
     loadAllData();
+    const interval = setInterval(() => {
+      // Background silent poll for real-time updates
+      tabsApi.getSplitNotifications().then((notifs) => {
+        setNotifications(notifs);
+      });
+      tabsApi.getContacts().then((cnts) => {
+        setContacts(cnts);
+      });
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadAllData = async () => {
