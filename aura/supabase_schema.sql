@@ -256,3 +256,88 @@ ON public.user_notifications FOR ALL
 TO authenticated
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
+
+-- 10. Contacts & Networking Directory
+CREATE TABLE IF NOT EXISTS public.contacts (
+  id text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  contact_user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  name text NOT NULL,
+  email text,
+  phone text,
+  status text NOT NULL DEFAULT 'unregistered' CHECK (status IN ('unregistered', 'pending', 'connected', 'rejected')),
+  avatar_url text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own contacts"
+ON public.contacts FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- 11. Split Bills (Multi-Person or Roommate Expense Splits)
+CREATE TABLE IF NOT EXISTS public.split_bills (
+  id text PRIMARY KEY,
+  creator_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  total_amount numeric NOT NULL,
+  currency text NOT NULL DEFAULT 'CAD',
+  category text NOT NULL DEFAULT 'Groceries',
+  date date NOT NULL DEFAULT CURRENT_DATE,
+  payer_type text NOT NULL DEFAULT 'you',
+  split_type text NOT NULL DEFAULT 'equal' CHECK (split_type IN ('equal', 'exact', 'percentage')),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.split_bills ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own split bills"
+ON public.split_bills FOR ALL
+TO authenticated
+USING (creator_user_id = auth.uid())
+WITH CHECK (creator_user_id = auth.uid());
+
+-- 12. Debt Entries (IOUs, Shares & Settlements Ledger)
+CREATE TABLE IF NOT EXISTS public.debt_entries (
+  id text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  contact_id text NOT NULL,
+  split_bill_id text,
+  description text NOT NULL,
+  amount numeric NOT NULL, -- Positive: they owe you; Negative: you owe them
+  currency text NOT NULL DEFAULT 'CAD',
+  date date NOT NULL DEFAULT CURRENT_DATE,
+  type text NOT NULL DEFAULT 'split_share' CHECK (type IN ('split_share', 'lent', 'borrowed', 'settlement')),
+  status text NOT NULL DEFAULT 'accepted' CHECK (status IN ('pending', 'accepted', 'disputed', 'settled')),
+  dispute_reason text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.debt_entries ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their debt entries"
+ON public.debt_entries FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- 13. Split Notifications (Cross-User Sync for Registered Aura Friends)
+CREATE TABLE IF NOT EXISTS public.split_notifications (
+  id text PRIMARY KEY,
+  recipient_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  sender_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  sender_name text NOT NULL,
+  debt_entry_id text,
+  title text NOT NULL,
+  amount numeric NOT NULL,
+  currency text NOT NULL DEFAULT 'CAD',
+  status text NOT NULL DEFAULT 'unread' CHECK (status IN ('unread', 'accepted', 'disputed')),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.split_notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view and respond to their incoming split notifications"
+ON public.split_notifications FOR ALL
+TO authenticated
+USING (recipient_user_id = auth.uid() OR sender_user_id = auth.uid())
+WITH CHECK (recipient_user_id = auth.uid() OR sender_user_id = auth.uid());

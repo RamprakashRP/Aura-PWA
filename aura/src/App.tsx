@@ -1,3 +1,4 @@
+import Tabs from './pages/Tabs';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -20,6 +21,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/vault" element={<Vault />} />
+              <Route path="/tabs" element={<Tabs />} />
               <Route path="/upload" element={<Upload />} />
               <Route path="/settings" element={<Settings />} />
             </Route>

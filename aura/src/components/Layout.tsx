@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, Receipt, Upload, Settings, LogOut, Activity, Flame } from 'lucide-react';
+import { LayoutDashboard, Receipt, Upload, Settings, LogOut, Activity, Flame, Users } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 const navItems = [
   { p: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { p: '/transactions', icon: Receipt, label: 'Ledger' },
+  { p: '/tabs', icon: Users, label: 'Tabs' },
   { p: '/vault', icon: Flame, label: 'Vault' },
   { p: '/upload', icon: Upload, label: 'Awaken' },
   { p: '/settings', icon: Settings, label: 'System' },

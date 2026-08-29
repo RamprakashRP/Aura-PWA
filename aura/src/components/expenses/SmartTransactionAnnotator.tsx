@@ -17,7 +17,7 @@ export interface UnannotatedTx {
 }
 
 export function SmartTransactionAnnotator() {
-  const { getAuraColor } = useTheme();
+    const { getAuraColor } = useTheme();
   const auraColor = getAuraColor();
 
   const [recentTx, setRecentTx] = useState<UnannotatedTx | null>(null);
