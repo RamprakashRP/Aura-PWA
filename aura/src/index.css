@@ -5,7 +5,7 @@
   --color-brand-red: #EA4335;
   --color-brand-yellow: #FBBC05;
   --color-brand-green: #34A853;
-  --color-brand-dark: #0f172a;
+  --color-brand-dark: #000000;
   --color-brand-gray: #64748b;
   --color-brand-neon: #38bdf8;
   
@@ -30,10 +30,10 @@
 
 @layer utilities {
   .glass {
-    background: rgba(15, 23, 42, 0.4);
+    background: rgba(8, 8, 8, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .neon-border {
     box-shadow: 0 0 10px rgba(56, 189, 248, 0.5), inset 0 0 5px rgba(56, 189, 248, 0.3);

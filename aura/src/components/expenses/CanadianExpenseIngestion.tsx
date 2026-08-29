@@ -176,7 +176,7 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
   };
 
   return (
-    <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-2xl space-y-5">
+    <div className="p-5 rounded-2xl bg-[#0a0a0a]/95 border border-zinc-800 backdrop-blur-xl shadow-2xl space-y-5">
       {/* Top Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div className="flex items-center gap-2.5">
@@ -190,19 +190,19 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               Instant Canadian Expense Ingestion
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               Zero SMS required. Tap-to-Log, Apple Pay, Google Wallet & Email Scanner
             </p>
           </div>
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 w-full md:w-auto">
+        <div className="flex bg-[#000000] p-1 rounded-xl border border-zinc-800 w-full md:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab('tap')}
             className={`flex-1 md:flex-none px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'tap' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              activeTab === 'tap' ? 'bg-rose-500 text-white shadow-md' : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Smartphone size={13} />
@@ -213,7 +213,7 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
             type="button"
             onClick={() => setActiveTab('email')}
             className={`flex-1 md:flex-none px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'email' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              activeTab === 'email' ? 'bg-rose-500 text-white shadow-md' : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Mail size={13} />
@@ -233,7 +233,7 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
       {activeTab === 'tap' && (
         <div className="space-y-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2 block">
               1-Tap Canadian Quick Presets
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -242,58 +242,58 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
                   key={p.name}
                   type="button"
                   onClick={() => handleQuickTapSubmit(p)}
-                  className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-600 transition-all text-left group flex items-center justify-between cursor-pointer"
+                  className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 hover:border-slate-600 transition-all text-left group flex items-center justify-between cursor-pointer"
                 >
                   <div className="truncate">
                     <div className="text-xs font-bold text-white group-hover:text-rose-400 flex items-center gap-1">
                       <span>{p.icon}</span>
                       <span className="truncate">{p.name}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono">${p.amount.toFixed(2)} CAD</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">${p.amount.toFixed(2)} CAD</span>
                   </div>
-                  <Plus size={14} className="text-slate-500 group-hover:text-white" />
+                  <Plus size={14} className="text-zinc-500 group-hover:text-white" />
                 </button>
               ))}
             </div>
           </div>
 
           {/* Custom Fast Logger */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+          <div className="p-4 rounded-xl bg-[#000000]/90 border border-zinc-800 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
               <Sparkles size={14} className="text-amber-400" />
               <span>Custom Tap-to-Log</span>
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Amount ($ CAD)</label>
+                <label className="block text-[11px] text-zinc-400 mb-1">Amount ($ CAD)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={quickAmount}
                   onChange={(e) => setQuickAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono text-sm"
+                  className="w-full bg-[#0a0a0a] border border-zinc-700 rounded-lg p-2 text-white font-mono text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Merchant / Store</label>
+                <label className="block text-[11px] text-zinc-400 mb-1">Merchant / Store</label>
                 <input
                   type="text"
                   value={quickMerchant}
                   onChange={(e) => setQuickMerchant(e.target.value)}
                   placeholder="e.g. Dollarama, Petro-Canada"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm"
+                  className="w-full bg-[#0a0a0a] border border-zinc-700 rounded-lg p-2 text-white text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Wallet / Card</label>
+                <label className="block text-[11px] text-zinc-400 mb-1">Wallet / Card</label>
                 <select
                   value={quickWallet}
                   onChange={(e) => setQuickWallet(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs"
+                  className="w-full bg-[#0a0a0a] border border-zinc-700 rounded-lg p-2 text-white text-xs"
                 >
                   <option>Apple Pay (RBC Visa)</option>
                   <option>Apple Pay (TD Chequing)</option>
@@ -322,7 +322,7 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
       {activeTab === 'email' && (
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300 mb-1.5">
               Paste Interac e-Transfer, Card Alert, or Bank Notification Email
             </label>
             <textarea
@@ -330,12 +330,12 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
               value={emailText}
               onChange={handleEmailInputChange}
               placeholder="e.g. 'You sent an INTERAC e-Transfer of $45.00 to landlord@domain.com...' or 'RBC Alert: $32.40 spent at Tim Hortons with Apple Pay on Nov 12...'"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 font-mono"
+              className="w-full bg-[#000000] border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 font-mono"
             />
           </div>
 
           {parsedPayment && parsedPayment.amount > 0 && (
-            <div className="p-4 rounded-xl bg-slate-950 border border-cyan-500/40 space-y-3">
+            <div className="p-4 rounded-xl bg-[#000000] border border-cyan-500/40 space-y-3">
               <div className="flex justify-between items-center text-xs font-bold text-cyan-400">
                 <span className="flex items-center gap-1.5">
                   <Sparkles size={14} />
@@ -347,21 +347,21 @@ export function CanadianExpenseIngestion({ onAddTransaction }: CanadianExpenseIn
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Amount</span>
+                <div className="p-2 rounded-lg bg-[#0a0a0a] border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 uppercase font-bold block">Amount</span>
                   <span className="text-base font-black text-white font-mono">${parsedPayment.amount.toFixed(2)} CAD</span>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Merchant / Target</span>
+                <div className="p-2 rounded-lg bg-[#0a0a0a] border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 uppercase font-bold block">Merchant / Target</span>
                   <span className="font-bold text-white truncate block">{parsedPayment.merchant}</span>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Category</span>
+                <div className="p-2 rounded-lg bg-[#0a0a0a] border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 uppercase font-bold block">Category</span>
                   <span className="font-bold text-rose-400 block">{parsedPayment.category}</span>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Method</span>
-                  <span className="font-bold text-slate-300 truncate block">{parsedPayment.paymentMethod}</span>
+                <div className="p-2 rounded-lg bg-[#0a0a0a] border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 uppercase font-bold block">Method</span>
+                  <span className="font-bold text-zinc-300 truncate block">{parsedPayment.paymentMethod}</span>
                 </div>
               </div>
 

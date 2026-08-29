@@ -490,9 +490,9 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-white uppercase flex items-center gap-2 md:gap-3">
              Aura <span style={{ color: getAuraColor() }}>Engine</span>
-             {ratesLoading && <RefreshCw size={14} className="animate-spin text-slate-500" />}
+             {ratesLoading && <RefreshCw size={14} className="animate-spin text-zinc-500" />}
           </h1>
-          <p className="text-slate-400 mt-1 md:mt-2 font-mono text-[8px] md:text-[10px] uppercase tracking-widest truncate max-w-[150px] md:max-w-none"><Sparkles size={10} className="inline mr-1" style={{ color: getAuraColor() }}/> {user?.email}</p>
+          <p className="text-zinc-400 mt-1 md:mt-2 font-mono text-[8px] md:text-[10px] uppercase tracking-widest truncate max-w-[150px] md:max-w-none"><Sparkles size={10} className="inline mr-1" style={{ color: getAuraColor() }}/> {user?.email}</p>
           
           {/* Cloud Engine Status Indicator */}
           <div className="mt-2 flex items-center gap-1.5 font-mono text-[8px] md:text-[9px] uppercase tracking-wider font-bold">
@@ -522,14 +522,14 @@ const Dashboard = () => {
         </div>
         
         <div className="text-right">
-          <p className="text-[8px] md:text-[10px] text-slate-500 tracking-widest uppercase mb-1 font-bold">Base Node</p>
+          <p className="text-[8px] md:text-[10px] text-zinc-500 tracking-widest uppercase mb-1 font-bold">Base Node</p>
           <select 
              value={activeCurrency}
              onChange={(e) => setActiveCurrency(e.target.value)}
-             className="glass px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs md:text-base font-black tracking-widest bg-[#020617] focus:outline-none appearance-none cursor-pointer text-center border shadow-xl transition-all" 
+             className="glass px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs md:text-base font-black tracking-widest bg-[#000000] focus:outline-none appearance-none cursor-pointer text-center border shadow-xl transition-all" 
              style={{ color: getAuraColor(), borderColor: `${getAuraColor()}40` }}
           >
-             {['CAD', 'INR', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c} className="bg-[#020617] text-white font-bold">{c}</option>)}
+             {['CAD', 'INR', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c} className="bg-[#000000] text-white font-bold">{c}</option>)}
           </select>
         </div>
       </header>
@@ -547,7 +547,7 @@ const Dashboard = () => {
           style={{ borderLeftColor: activeColor }}
         >
           <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${activeColor}20` }}></div>
-          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Total Balance</p>
+          <p className="text-zinc-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Total Balance</p>
           <div className="text-lg md:text-4xl font-black text-white flex items-baseline gap-1 md:gap-2">
             {symbol}{totalBalance.toFixed(0)}
             <span className="text-[10px] md:text-sm font-medium flex items-center opacity-60 ml-1" style={{ color: activeColor }}><TrendingUp size={12}/></span>
@@ -561,7 +561,7 @@ const Dashboard = () => {
           style={{ borderLeftColor: getAuraColor() }}
         >
           <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${getAuraColor()}10` }}></div>
-          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Range Spend</p>
+          <p className="text-zinc-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 truncate">Range Spend</p>
           <div className="text-lg md:text-4xl font-black text-white flex items-baseline gap-1 md:gap-2">
             {symbol}{totalSpend.toFixed(0)}
             <span className="text-[10px] md:text-sm font-medium flex items-center opacity-60 ml-1" style={{ color: getAuraColor() }}><TrendingUp size={12}/></span>
@@ -574,18 +574,18 @@ const Dashboard = () => {
           style={{ borderLeftColor: healthColor }}
         >
           <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${healthColor}20` }}></div>
-          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 flex justify-between items-center">
+          <p className="text-zinc-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 flex justify-between items-center">
             Budget Core
             {healthPercent > 80 && <AlertCircle size={10} className="text-[#FF0000] hidden md:block" />}
           </p>
           <div className="mt-1 md:mt-2">
             <div className="flex justify-between text-[9px] md:text-sm mb-1 font-mono">
               <span style={{ color: healthColor }} className="truncate font-bold">{healthPercent.toFixed(0)}%</span>
-              <span className="text-slate-500 truncate pl-1" title={`Adjust ${homeCurrency} Budget in System Settings`}>
+              <span className="text-zinc-500 truncate pl-1" title={`Adjust ${homeCurrency} Budget in System Settings`}>
                  {symbol}{dynamicBudgetLimit} Max
               </span>
             </div>
-            <div className="w-full h-1.5 md:h-3 bg-[#0a0f1a] rounded-full overflow-hidden border border-slate-800">
+            <div className="w-full h-1.5 md:h-3 bg-[#080808] rounded-full overflow-hidden border border-zinc-800">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${healthPercent}%` }}
@@ -603,13 +603,13 @@ const Dashboard = () => {
           style={{ borderLeftColor: getAuraColor() }}
         >
           <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 rounded-full blur-2xl transition-all" style={{ backgroundColor: `${getAuraColor()}15` }}></div>
-          <p className="text-slate-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-2 md:mb-3">Temporal Matrix</p>
-          <div className="flex bg-[#0a0f1a] rounded-lg p-1 border border-slate-800/80 w-full md:w-fit z-10 shadow-inner overflow-x-auto overflow-y-hidden hide-scrollbar">
+          <p className="text-zinc-400 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-2 md:mb-3">Temporal Matrix</p>
+          <div className="flex bg-[#080808] rounded-lg p-1 border border-zinc-800/80 w-full md:w-fit z-10 shadow-inner overflow-x-auto overflow-y-hidden hide-scrollbar">
              {['1M', '3M', '6M', '1Y', 'ALL', 'CUSTOM'].map(opt => (
                 <button 
                   key={opt}
                   onClick={() => setTimeRange(opt as TimeRange)}
-                  className={`flex-1 md:flex-none px-2 py-1 md:px-3 md:py-1.5 rounded-md text-[9px] md:text-[10px] font-black tracking-widest uppercase transition-all ${timeRange === opt ? 'text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                  className={`flex-1 md:flex-none px-2 py-1 md:px-3 md:py-1.5 rounded-md text-[9px] md:text-[10px] font-black tracking-widest uppercase transition-all ${timeRange === opt ? 'text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}
                   style={timeRange === opt ? { backgroundColor: `${getAuraColor()}30`, boxShadow: `0 0 10px ${getAuraColor()}40` } : {}}
                 >
                    {opt}
@@ -621,13 +621,13 @@ const Dashboard = () => {
              <motion.div 
                initial={{ opacity: 0, x: -10 }}
                animate={{ opacity: 1, x: 0 }}
-               className="flex items-center gap-1 md:gap-2 bg-[#0a0f1a] rounded-lg p-1 border border-slate-800 shadow-xl mt-2 md:mt-3 w-fit z-20"
+               className="flex items-center gap-1 md:gap-2 bg-[#080808] rounded-lg p-1 border border-zinc-800 shadow-xl mt-2 md:mt-3 w-fit z-20"
              >
                 <input 
                    type="date" 
                    value={customDateFrom} 
                    onChange={e => setCustomDateFrom(e.target.value)} 
-                   className="bg-transparent text-[9px] md:text-[10px] font-mono text-slate-300 px-1 md:px-2 py-1 outline-none" 
+                   className="bg-transparent text-[9px] md:text-[10px] font-mono text-zinc-300 px-1 md:px-2 py-1 outline-none" 
                    style={{ colorScheme: 'dark' }} 
                 />
                 <span className="text-slate-600">-</span>
@@ -635,7 +635,7 @@ const Dashboard = () => {
                    type="date" 
                    value={customDateTo} 
                    onChange={e => setCustomDateTo(e.target.value)} 
-                   className="bg-transparent text-[9px] md:text-[10px] font-mono text-slate-300 px-1 md:px-2 py-1 outline-none" 
+                   className="bg-transparent text-[9px] md:text-[10px] font-mono text-zinc-300 px-1 md:px-2 py-1 outline-none" 
                    style={{ colorScheme: 'dark' }} 
                 />
              </motion.div>
@@ -645,26 +645,26 @@ const Dashboard = () => {
 
       {/* Mobile Quick Actions Dock */}
       <div className="grid grid-cols-4 gap-2 md:hidden">
-         <button onClick={() => navigate('/upload')} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-slate-900/50 hover:bg-slate-800 transition-colors border border-slate-800 active:scale-95">
+         <button onClick={() => navigate('/upload')} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-[#0a0a0a]/50 hover:bg-slate-800 transition-colors border border-zinc-800 active:scale-95">
             <UploadCloud size={16} style={{ color: getAuraColor() }} />
-            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-slate-400">Upload</span>
+            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-zinc-400">Upload</span>
          </button>
-         <button onClick={() => navigate('/transactions')} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-slate-900/50 hover:bg-slate-800 transition-colors border border-slate-800 active:scale-95">
+         <button onClick={() => navigate('/transactions')} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-[#0a0a0a]/50 hover:bg-slate-800 transition-colors border border-zinc-800 active:scale-95">
             <Terminal size={16} style={{ color: getAuraColor() }} />
-            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-slate-400">Manual</span>
+            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-zinc-400">Manual</span>
          </button>
-         <button onClick={() => navigate('/settings')} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-slate-900/50 hover:bg-slate-800 transition-colors border border-slate-800 active:scale-95">
+         <button onClick={() => navigate('/settings')} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-[#0a0a0a]/50 hover:bg-slate-800 transition-colors border border-zinc-800 active:scale-95">
             <Settings size={16} style={{ color: getAuraColor() }} />
-            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-slate-400">System</span>
+            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-zinc-400">System</span>
          </button>
-         <button onClick={() => { setLoading(true); fetchDashboardData(); }} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-slate-900/50 hover:bg-slate-800 transition-colors border border-slate-800 active:scale-95">
+         <button onClick={() => { setLoading(true); fetchDashboardData(); }} className="glass p-2 flex flex-col items-center justify-center rounded-xl bg-[#0a0a0a]/50 hover:bg-slate-800 transition-colors border border-zinc-800 active:scale-95">
             <RefreshCw size={16} style={{ color: getAuraColor() }} className={ratesLoading ? "animate-spin" : ""} />
-            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-slate-400">Sync</span>
+            <span className="text-[8px] uppercase tracking-widest mt-1.5 font-bold text-zinc-400">Sync</span>
          </button>
       </div>
 
       {transactions.length === 0 ? (
-         <div className="flex flex-col items-center justify-center min-h-[35vh] text-center max-w-lg mx-auto py-8 animate-in fade-in duration-700 bg-[#0a0f1a]/30 rounded-xl p-6 border border-slate-800/40 mt-4 relative">
+         <div className="flex flex-col items-center justify-center min-h-[35vh] text-center max-w-lg mx-auto py-8 animate-in fade-in duration-700 bg-[#080808]/30 rounded-xl p-6 border border-zinc-800/40 mt-4 relative">
            <div className="absolute inset-0 rounded-full animate-pulse opacity-5 blur-2xl" style={{ backgroundColor: getAuraColor() }}></div>
            <div className="w-12 h-12 mb-3 relative flex items-center justify-center mx-auto">
              <div className="w-full h-full border border-dashed rounded-full flex items-center justify-center" style={{ borderColor: `${getAuraColor()}40` }}>
@@ -672,7 +672,7 @@ const Dashboard = () => {
              </div>
            </div>
            <h2 className="text-xs font-black text-white mb-1 uppercase tracking-widest">[AURA ENGINE: COLD CORE]</h2>
-           <p className="text-[10px] text-slate-400 font-mono max-w-[280px] mx-auto leading-relaxed">
+           <p className="text-[10px] text-zinc-400 font-mono max-w-[280px] mx-auto leading-relaxed">
               Your financial aura is quiet. Forward an SMS webhook or upload a statement to awaken the ledger.
            </p>
          </div>
@@ -685,9 +685,9 @@ const Dashboard = () => {
          style={{ borderTopColor: activeColor }}
       >
         <div className="flex justify-between items-center mb-2 md:mb-6 px-1 md:px-0 mt-1 md:mt-0">
-           <h3 className="text-[10px] md:text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5 md:gap-2">
+           <h3 className="text-[10px] md:text-sm font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5 md:gap-2">
               Consumption 
-              <span className="text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 opacity-60 flex-shrink-0" style={{ color: getAuraColor() }}>
+              <span className="text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 rounded-full bg-slate-800 border border-zinc-700 opacity-60 flex-shrink-0" style={{ color: getAuraColor() }}>
                  {timeRange}
               </span>
            </h3>
@@ -706,7 +706,7 @@ const Dashboard = () => {
               <XAxis dataKey="name" stroke="#64748b" tick={{fill: '#64748b', fontSize: 9}} axisLine={false} tickLine={false} minTickGap={40} />
               <YAxis stroke="#64748b" tick={{fill: '#64748b', fontSize: 9}} axisLine={false} tickLine={false} tickFormatter={(value) => `${symbol}${value}`} width={45} />
               <Tooltip 
-                contentStyle={{ backgroundColor: '#0f172a', border: `1px solid ${activeColor}40`, borderRadius: '8px', fontSize: '10px' }}
+                contentStyle={{ backgroundColor: '#050505', border: `1px solid ${activeColor}40`, borderRadius: '8px', fontSize: '10px' }}
                 itemStyle={{ color: activeColor, fontWeight: 'bold' }}
                 formatter={(value: any) => [`${symbol}${Number(value).toFixed(2)}`, 'Normalized Output']}
               />
@@ -722,7 +722,7 @@ const Dashboard = () => {
          className="glass p-4 md:p-6 mb-4 md:mb-8 rounded-xl md:rounded-2xl border-t-2 shadow-xl md:shadow-2xl flex flex-col w-full overflow-hidden"
          style={{ borderTopColor: activeColor }}
       >
-        <h3 className="text-[10px] md:text-sm font-bold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+        <h3 className="text-[10px] md:text-sm font-bold uppercase tracking-widest text-zinc-400 mb-6 flex items-center gap-2">
           <Sparkles size={14} style={{ color: activeColor }} />
           Sector Budgets (Aura Resonance)
         </h3>
@@ -740,7 +740,7 @@ const Dashboard = () => {
              const glowShadow = isOverThreshold ? "0 0 15px #FF0000" : `0 0 10px ${activeColor}`;
              
              return (
-                <div key={cat} className="p-3 bg-[#0a0f1a] border border-slate-800 rounded-xl flex flex-col justify-center">
+                <div key={cat} className="p-3 bg-[#080808] border border-zinc-800 rounded-xl flex flex-col justify-center">
                    <div className="flex justify-between items-center text-[10px] md:text-xs mb-2 uppercase font-black tracking-widest">
                       <span className="text-white">{cat}</span>
                       <span style={{ color: trackColor }} className="font-mono">
@@ -748,7 +748,7 @@ const Dashboard = () => {
                       </span>
                    </div>
                    
-                   <div className="w-full h-2 bg-[#020617] rounded-full overflow-hidden border border-slate-800">
+                   <div className="w-full h-2 bg-[#000000] rounded-full overflow-hidden border border-zinc-800">
                       <motion.div 
                          initial={{ width: 0 }}
                          animate={{ width: `${percent}%` }}
@@ -758,7 +758,7 @@ const Dashboard = () => {
                       />
                    </div>
                    
-                   <div className="flex justify-between items-center text-[8px] text-slate-500 font-mono mt-1 font-bold">
+                   <div className="flex justify-between items-center text-[8px] text-zinc-500 font-mono mt-1 font-bold">
                       <span>{rawPercent.toFixed(0)}% Utilised</span>
                       {isOverThreshold && (
                          <span className="text-[#FF0000] font-black uppercase tracking-widest animate-pulse">
@@ -771,7 +771,7 @@ const Dashboard = () => {
           })}
           
           {Object.values(budgets).every(limit => limit <= 0) && (
-             <p className="text-xs text-slate-500 font-mono py-4 col-span-2 text-center">
+             <p className="text-xs text-zinc-500 font-mono py-4 col-span-2 text-center">
                 No active category thresholds loaded. Commission allocations in System Parameters.
              </p>
           )}
@@ -779,14 +779,14 @@ const Dashboard = () => {
       </motion.div>
 
       {/* Recent Hunter Activity (Mobile Only Glance) */}
-      <div className="glass p-4 rounded-xl md:hidden mb-20 bg-[#0a0f1a]/50">
+      <div className="glass p-4 rounded-xl md:hidden mb-20 bg-[#080808]/50">
          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><ArrowRight size={10}/> Activity Array</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5"><ArrowRight size={10}/> Activity Array</h3>
             <Link to="/transactions" className="text-[9px] uppercase font-bold px-2 py-1 rounded bg-slate-800" style={{ color: getAuraColor() }}>Archive</Link>
          </div>
          <div className="space-y-2.5">
             {transactions.slice(-4).reverse().map((tx, idx) => (
-               <div key={tx.transaction_id || idx} className="flex justify-between items-center p-2 rounded-lg border border-slate-800/80 bg-[#020617]/50 active:scale-95 transition-transform" onClick={() => navigate('/transactions')}>
+               <div key={tx.transaction_id || idx} className="flex justify-between items-center p-2 rounded-lg border border-zinc-800/80 bg-[#000000]/50 active:scale-95 transition-transform" onClick={() => navigate('/transactions')}>
                   <div className="flex items-center gap-2 overflow-hidden flex-1">
                      <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${getAuraColor()}15`, border: `1px solid ${getAuraColor()}40` }}>
                         <Receipt size={10} style={{ color: getAuraColor() }} />
@@ -825,7 +825,7 @@ const Dashboard = () => {
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
-              className="glass p-6 md:p-8 rounded-2xl border-2 border-emerald-500/50 bg-[#0a0f1a] shadow-[0_0_50px_rgba(16,185,129,0.25)] max-w-lg w-full text-center relative overflow-hidden"
+              className="glass p-6 md:p-8 rounded-2xl border-2 border-emerald-500/50 bg-[#080808] shadow-[0_0_50px_rgba(16,185,129,0.25)] max-w-lg w-full text-center relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
               
@@ -835,17 +835,17 @@ const Dashboard = () => {
                  <Sparkles className="text-emerald-400" />
               </h2>
               
-              <p className="text-xs md:text-sm text-slate-300 font-mono mb-6 leading-relaxed">
+              <p className="text-xs md:text-sm text-zinc-300 font-mono mb-6 leading-relaxed">
                  Aura has intercepted <span className="text-emerald-400 font-bold font-mono">{pendingSmsTxs.length}</span> new bank transactions forwarded securely from your mobile device!
               </p>
               
               {/* List pending messages */}
-              <div className="max-h-48 overflow-y-auto mb-6 space-y-2 text-left hide-scrollbar border-y border-slate-800 py-3">
+              <div className="max-h-48 overflow-y-auto mb-6 space-y-2 text-left hide-scrollbar border-y border-zinc-800 py-3">
                  {pendingSmsTxs.map((tx, idx) => (
-                    <div key={idx} className="p-2.5 bg-[#020617] rounded-xl border border-slate-800 text-[10px] font-mono flex justify-between items-center gap-3">
+                    <div key={idx} className="p-2.5 bg-[#000000] rounded-xl border border-zinc-800 text-[10px] font-mono flex justify-between items-center gap-3">
                        <div className="truncate flex-1">
                           <p className="text-white font-bold truncate">{tx.description.replace(/SMS\s+from\s+[A-Z0-9-]+\s*:\s*/i, '')}</p>
-                          <span className="text-[8px] text-slate-500">{tx.date} • {tx.category}</span>
+                          <span className="text-[8px] text-zinc-500">{tx.date} • {tx.category}</span>
                        </div>
                        <span className="text-[#FF4D4D] font-bold whitespace-nowrap">
                           {tx.currency} {Math.abs(tx.amount).toFixed(2)}
@@ -864,7 +864,7 @@ const Dashboard = () => {
                           console.error("Failed to clear local fallback queue via API on dismissal:", err);
                        });
                     }}
-                    className="flex-1 py-3 border border-slate-700 bg-transparent text-slate-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors min-h-[44px]"
+                    className="flex-1 py-3 border border-zinc-700 bg-transparent text-zinc-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors min-h-[44px]"
                  >
                     Dismiss Grid
                  </button>

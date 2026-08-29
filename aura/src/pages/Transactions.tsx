@@ -259,11 +259,11 @@ const Transactions = () => {
             exit={{ opacity: 0, scale: 0.95 }}
             ref={menuRef}
             style={{ top: activeFilterMenu.y + 15, left: activeFilterMenu.x }}
-            className="fixed z-50 w-64 glass bg-[#020617] border border-slate-700 rounded-xl shadow-2xl overflow-hidden backdrop-blur-3xl"
+            className="fixed z-50 w-64 glass bg-[#000000] border border-zinc-700 rounded-xl shadow-2xl overflow-hidden backdrop-blur-3xl"
             onContextMenu={(e) => e.preventDefault()}
           >
-             <div className="bg-slate-900/80 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filter: {activeFilterMenu.column}</span>
+             <div className="bg-[#080808]/90 px-4 py-3 border-b border-zinc-700 flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Filter: {activeFilterMenu.column}</span>
                 <button onClick={() => clearFilters(activeFilterMenu.column)} className="text-[10px] text-blue-400 font-bold hover:text-white transition-colors uppercase">Clear</button>
              </div>
              <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
@@ -276,7 +276,7 @@ const Transactions = () => {
                          className="rounded border-slate-600 bg-transparent text-blue-500 focus:ring-blue-500/20"
                          style={{ accentColor: getAuraColor() }}
                       />
-                      <span className="text-xs text-slate-300 font-medium group-hover:text-white truncate" title={val}>{val}</span>
+                      <span className="text-xs text-zinc-300 font-medium group-hover:text-white truncate" title={val}>{val}</span>
                    </label>
                 ))}
              </div>
@@ -289,7 +289,7 @@ const Transactions = () => {
           <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white uppercase flex items-center gap-2 md:gap-3">
              Ledger <span style={{ color: getAuraColor() }}>Archive</span>
           </h1>
-          <p className="text-[8px] md:text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">
+          <p className="text-[8px] md:text-[10px] text-zinc-500 uppercase tracking-widest mt-1 font-bold">
             Viewing {processedData.length} records • Context-click headers to filter
           </p>
         </div>
@@ -300,7 +300,7 @@ const Transactions = () => {
           <div className="relative flex-1 md:flex-none" ref={timeDropdownRef}>
              <button 
                 onClick={() => setShowTimeDropdown(!showTimeDropdown)}
-                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#0a0f1a] border border-slate-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
+                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#080808] border border-zinc-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
              >
                 <div className="flex items-center gap-2">
                    <Calendar size={12} style={{ color: getAuraColor() }} /> 
@@ -315,13 +315,13 @@ const Transactions = () => {
                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                   className="absolute top-full left-0 md:auto md:right-0 mt-2 w-full md:w-40 glass bg-[#020617] border border-slate-700 rounded-lg shadow-2xl z-40 overflow-hidden"
+                   className="absolute top-full left-0 md:auto md:right-0 mt-2 w-full md:w-40 glass bg-[#000000] border border-zinc-700 rounded-lg shadow-2xl z-40 overflow-hidden"
                  >
                     {['1M', '3M', '6M', '1Y', 'ALL', 'CUSTOM'].map(opt => (
                        <button
                           key={opt}
                           onClick={() => { setTimeRange(opt as TimeRange); setShowTimeDropdown(false); }}
-                          className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest uppercase hover:bg-slate-800 transition-colors ${timeRange === opt ? 'bg-slate-800/80 text-white' : 'text-slate-400'}`}
+                          className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest uppercase hover:bg-slate-800 transition-colors ${timeRange === opt ? 'bg-slate-800/80 text-white' : 'text-zinc-400'}`}
                           style={timeRange === opt ? { color: getAuraColor() } : {}}
                        >
                           {opt === 'CUSTOM' ? 'Custom Range' : opt === 'ALL' ? 'All Time' : opt}
@@ -337,13 +337,13 @@ const Transactions = () => {
              <motion.div 
                initial={{ opacity: 0, x: -10 }}
                animate={{ opacity: 1, x: 0 }}
-               className="flex-1 md:flex-none flex items-center justify-between md:justify-start gap-1 md:gap-2 bg-[#0a0f1a] rounded-lg p-1 border border-slate-800 shadow-lg"
+               className="flex-1 md:flex-none flex items-center justify-between md:justify-start gap-1 md:gap-2 bg-[#080808] rounded-lg p-1 border border-zinc-800 shadow-lg"
              >
                 <input 
                    type="date" 
                    value={customDateFrom} 
                    onChange={e => setCustomDateFrom(e.target.value)} 
-                   className="w-full bg-transparent text-[9px] md:text-[10px] font-mono text-slate-300 px-1 md:px-2 py-1 outline-none" 
+                   className="w-full bg-transparent text-[9px] md:text-[10px] font-mono text-zinc-300 px-1 md:px-2 py-1 outline-none" 
                    style={{ colorScheme: 'dark' }} 
                 />
                 <span className="text-slate-600">-</span>
@@ -351,20 +351,20 @@ const Transactions = () => {
                    type="date" 
                    value={customDateTo} 
                    onChange={e => setCustomDateTo(e.target.value)} 
-                   className="w-full bg-transparent text-[9px] md:text-[10px] font-mono text-slate-300 px-1 md:px-2 py-1 outline-none" 
+                   className="w-full bg-transparent text-[9px] md:text-[10px] font-mono text-zinc-300 px-1 md:px-2 py-1 outline-none" 
                    style={{ colorScheme: 'dark' }} 
                 />
              </motion.div>
           )}
 
           <div className="relative w-full md:w-auto mt-2 md:mt-0">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input 
               type="text" 
               placeholder="Search records..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-[#0a0f1a] border border-slate-800 rounded-lg text-xs text-white focus:outline-none transition-all md:w-48 hover:border-slate-600"
+              className="w-full pl-9 pr-4 py-2 bg-[#080808] border border-zinc-800 rounded-lg text-xs text-white focus:outline-none transition-all md:w-48 hover:border-slate-600"
               style={{ '--tw-ring-color': getAuraColor() } as any}
             />
           </div>
@@ -373,7 +373,7 @@ const Transactions = () => {
           <div className="relative flex-1 md:flex-none" ref={bankDropdownRef}>
              <button 
                 onClick={() => setShowBankDropdown(!showBankDropdown)}
-                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#0a0f1a] border border-slate-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
+                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#080808] border border-zinc-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
              >
                 <div className="flex items-center gap-2">
                    <Filter size={12} style={{ color: getAuraColor() }} /> 
@@ -388,7 +388,7 @@ const Transactions = () => {
                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                   className="absolute top-full right-0 mt-2 w-48 glass bg-[#020617] border border-slate-700 rounded-lg shadow-2xl z-40 overflow-hidden p-2"
+                   className="absolute top-full right-0 mt-2 w-48 glass bg-[#000000] border border-zinc-700 rounded-lg shadow-2xl z-40 overflow-hidden p-2"
                  >
                     {['kotak', 'hdfc', 'jio', 'union'].map(bank => (
                        <label key={bank} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800/80 rounded cursor-pointer transition-colors group">
@@ -409,7 +409,7 @@ const Transactions = () => {
                     {selectedBanks.length > 0 && (
                        <button 
                           onClick={() => setSelectedBanks([])}
-                          className="w-full mt-2 pt-2 border-t border-slate-800 text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-white py-1"
+                          className="w-full mt-2 pt-2 border-t border-zinc-800 text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-white py-1"
                        >
                           Reset Filters
                        </button>
@@ -425,11 +425,11 @@ const Transactions = () => {
       {/* MOBILE TRASACTION CARDS (Visible only < 768px) */}
       <div className="md:hidden space-y-4 pb-20">
          {processedData.length === 0 ? (
-            <div className="text-center py-10 text-slate-500 font-mono text-xs">No records match the current filter matrix.</div>
+            <div className="text-center py-10 text-zinc-500 font-mono text-xs">No records match the current filter matrix.</div>
          ) : (
             groupedData.map(group => (
                <div key={group.month} className="space-y-3">
-                  <div className="sticky top-0 z-10 bg-[#020617]/90 backdrop-blur-md py-2 border-b border-slate-800">
+                  <div className="sticky top-0 z-10 bg-[#000000]/90 backdrop-blur-md py-2 border-b border-zinc-800">
                      <h3 className="text-[10px] font-black uppercase tracking-widest px-2" style={{ color: getAuraColor() }}>{group.month}</h3>
                   </div>
                   <div className="space-y-3 px-1">
@@ -445,7 +445,7 @@ const Transactions = () => {
                            <div 
                               key={tx.transaction_id}
                               onClick={() => { if (!isEditing) handleEditClick(tx); }}
-                              className={`p-4 rounded-xl transition-all ${isEditing ? 'bg-slate-900 border border-slate-600 shadow-2xl scale-[1.02]' : 'bg-[#0a0f1a] border border-slate-800/80 active:scale-[0.98]'}`}
+                              className={`p-4 rounded-xl transition-all ${isEditing ? 'bg-[#0a0a0a] border border-slate-600 shadow-2xl scale-[1.02]' : 'bg-[#080808] border border-zinc-800/80 active:scale-[0.98]'}`}
                            >
                               {/* Top Row: Reason and Amount */}
                               <div className="flex justify-between items-start mb-3 gap-4">
@@ -457,7 +457,7 @@ const Transactions = () => {
                                          const newDesc = e.target.value;
                                          setEditForm({...editForm, description: newDesc, category: categorize(newDesc)});
                                       }}
-                                      className="flex-1 w-full min-w-0 bg-[#020617] border border-slate-700 text-white font-bold py-1.5 px-2 rounded focus:outline-none text-sm"
+                                      className="flex-1 w-full min-w-0 bg-[#000000] border border-zinc-700 text-white font-bold py-1.5 px-2 rounded focus:outline-none text-sm"
                                       style={{ borderColor: getAuraColor() }}
                                       onClick={e => e.stopPropagation()}
                                       placeholder="Entity Description"
@@ -476,7 +476,7 @@ const Transactions = () => {
                                     <select 
                                        value={editForm.category}
                                        onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                                       className="text-[10px] font-bold uppercase tracking-widest py-1.5 px-2 rounded appearance-none bg-[#020617] focus:outline-none border border-slate-700"
+                                       className="text-[10px] font-bold uppercase tracking-widest py-1.5 px-2 rounded appearance-none bg-[#000000] focus:outline-none border border-zinc-700"
                                        style={{ color: CATEGORY_COLORS[editForm.category] || CATEGORY_COLORS["Miscellaneous"] }}
                                        onClick={e => e.stopPropagation()}
                                     >
@@ -494,20 +494,20 @@ const Transactions = () => {
                                        {tx.category || 'Miscellaneous'}
                                     </div>
                                  )}
-                                 <span className="text-[9px] text-slate-500 font-mono truncate max-w-[120px]">{tx.transaction_id.split('-')[0]}•••</span>
+                                 <span className="text-[9px] text-zinc-500 font-mono truncate max-w-[120px]">{tx.transaction_id.split('-')[0]}•••</span>
                               </div>
                               
                               {/* Bottom Row / Floating Action Deck */}
                               <div className="flex justify-between items-end mt-1">
-                                 <span className="text-[10px] text-slate-400 font-mono">{tx.date}</span>
+                                 <span className="text-[10px] text-zinc-400 font-mono">{tx.date}</span>
                                  
                                  {isEditing && (
                                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                        <button onClick={(e) => handleDeleteTx(e, tx.transaction_id)} className="p-2 rounded-lg bg-[#FF0000] text-black font-black active:scale-95 transition-transform"><Trash2 size={14}/></button>
-                                       <button onClick={(e) => { e.stopPropagation(); toggleVisibility(tx.transaction_id, tx.visibility); }} className="p-2 rounded-lg border border-slate-700 active:scale-95 transition-transform bg-[#020617]" style={{ color: tx.visibility === 'Shared' ? getAuraColor() : '#4A4A4A' }}>
+                                       <button onClick={(e) => { e.stopPropagation(); toggleVisibility(tx.transaction_id, tx.visibility); }} className="p-2 rounded-lg border border-zinc-700 active:scale-95 transition-transform bg-[#000000]" style={{ color: tx.visibility === 'Shared' ? getAuraColor() : '#4A4A4A' }}>
                                           {tx.visibility === 'Private' ? <EyeOff size={14}/> : <Eye size={14}/>}
                                        </button>
-                                       <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-2 rounded-lg border border-slate-700 text-slate-400 active:scale-95 transition-transform bg-[#020617]"><X size={14}/></button>
+                                       <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-2 rounded-lg border border-zinc-700 text-zinc-400 active:scale-95 transition-transform bg-[#000000]"><X size={14}/></button>
                                        <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(tx); }} className="px-4 py-2 rounded-lg bg-[#00FF41] text-black font-black uppercase text-[10px] active:scale-95 transition-transform flex items-center gap-1"><Check size={14}/> Save</button>
                                     </div>
                                  )}
@@ -522,11 +522,11 @@ const Transactions = () => {
       </div>
 
       {/* DESKTOP SPREADSHEET (Visible only >= 768px) */}
-      <div className="hidden md:block glass rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
+      <div className="hidden md:block glass rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto min-h-[60vh]">
           <table className="w-full text-left whitespace-nowrap table-auto border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-[#020617] bg-opacity-80 select-none">
+              <tr className="border-b border-zinc-800 bg-[#000000] bg-opacity-80 select-none">
                 
                 {[
                   { key: 'date', label: 'Date / Ref', align: 'left', width: 'w-48' },
@@ -539,7 +539,7 @@ const Transactions = () => {
                     key={col.key}
                     onClick={() => handleSort(col.key)}
                     onContextMenu={(e) => handleContextMenu(e, col.key)}
-                    className={`px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:bg-slate-800/50 transition-colors text-${col.align} ${col.width} group`}
+                    className={`px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest cursor-pointer hover:bg-slate-800/50 transition-colors text-${col.align} ${col.width} group`}
                   >
                     <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : 'justify-start'}`}>
                       {filters[col.key] && filters[col.key].length > 0 && <Filter size={10} className="text-blue-400 mr-1" />}
@@ -553,14 +553,14 @@ const Transactions = () => {
                   </th>
                 ))}
                 
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-24">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-center w-24">Actions</th>
               </tr>
             </thead>
             
             <tbody className="divide-y divide-slate-800/50">
               {processedData.length === 0 ? (
                  <tr>
-                    <td colSpan={6} className="text-center py-24 text-slate-500 font-mono text-sm">
+                    <td colSpan={6} className="text-center py-24 text-zinc-500 font-mono text-sm">
                        No records match the current filter matrix.
                     </td>
                  </tr>
@@ -568,7 +568,7 @@ const Transactions = () => {
                 processedData.map((tx) => {
                   const isVoid = tx.visibility === 'Private';
                   const isEditing = editingId === tx.transaction_id;
-                  const rowStyles = isVoid ? { backgroundColor: '#0a0f1a' } : {};
+                  const rowStyles = isVoid ? { backgroundColor: '#080808' } : {};
                   
                   const isDeposit = tx.amount > 0;
                   const amountColor = isDeposit ? "#00FF41" : "#FF4D4D";
@@ -580,7 +580,7 @@ const Transactions = () => {
                     <tr key={tx.transaction_id} className="hover:bg-slate-800/30 transition-colors group" style={rowStyles}>
                       <td className="px-6 py-4 w-48 align-top">
                          <div className="text-sm tracking-wide font-mono text-slate-200">{tx.date}</div>
-                         <div className="text-[10px] text-slate-500 font-mono mt-1 opacity-60 uppercase">{tx.transaction_id}</div>
+                         <div className="text-[10px] text-zinc-500 font-mono mt-1 opacity-60 uppercase">{tx.transaction_id}</div>
                       </td>
                       
                       <td className="px-6 py-4 align-top w-1/3 min-w-[250px]">
@@ -592,7 +592,7 @@ const Transactions = () => {
                                const newDesc = e.target.value;
                                setEditForm({...editForm, description: newDesc, category: categorize(newDesc)});
                             }}
-                            className="w-full bg-[#020617] border border-slate-700 text-white font-bold py-1.5 px-3 rounded focus:outline-none transition-all"
+                            className="w-full bg-[#000000] border border-zinc-700 text-white font-bold py-1.5 px-3 rounded focus:outline-none transition-all"
                             style={{ borderColor: getAuraColor() }}
                             autoFocus
                           />
@@ -608,11 +608,11 @@ const Transactions = () => {
                             <select 
                                value={editForm.category}
                                onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                               className="w-full text-xs font-bold uppercase tracking-widest py-1.5 px-2 rounded cursor-pointer appearance-none text-center bg-[#020617] focus:outline-none transition-all border border-slate-700 hover:border-current inline-block"
+                               className="w-full text-xs font-bold uppercase tracking-widest py-1.5 px-2 rounded cursor-pointer appearance-none text-center bg-[#000000] focus:outline-none transition-all border border-zinc-700 hover:border-current inline-block"
                                style={{ borderColor: getAuraColor(), color: CATEGORY_COLORS[editForm.category] || CATEGORY_COLORS["Miscellaneous"] }}
                             >
                                {CATEGORY_OPTIONS.map(cat => (
-                                  <option key={cat} value={cat} className="bg-[#020617] font-bold text-white text-left tracking-widest uppercase text-[10px]">
+                                  <option key={cat} value={cat} className="bg-[#000000] font-bold text-white text-left tracking-widest uppercase text-[10px]">
                                       {cat}
                                   </option>
                                ))}
@@ -661,11 +661,11 @@ const Transactions = () => {
                             <div className="flex items-center justify-center gap-2">
                                <button onClick={(e) => handleDeleteTx(e, tx.transaction_id)} className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors" title="Delete"><Trash2 size={16} /></button>
                                <button onClick={() => handleSaveEdit(tx)} className="p-1.5 rounded bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors" title="Save Changes"><Check size={16} /></button>
-                               <button onClick={() => setEditingId(null)} className="p-1.5 rounded bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 transition-colors" title="Cancel"><X size={16} /></button>
+                               <button onClick={() => setEditingId(null)} className="p-1.5 rounded bg-slate-500/10 hover:bg-slate-500/20 text-zinc-500 transition-colors" title="Cancel"><X size={16} /></button>
                             </div>
                          ) : (
                             <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditClick(tx)} className="p-1.5 rounded text-slate-500 hover:text-white transition-colors" title="Edit Record"><Edit2 size={16} /></button>
+                                <button onClick={() => handleEditClick(tx)} className="p-1.5 rounded text-zinc-500 hover:text-white transition-colors" title="Edit Record"><Edit2 size={16} /></button>
                                 <button onClick={() => alert(`Share settings (View/Edit) for ${tx.description} will be integrated soon!`)} className="p-1.5 rounded text-blue-500 hover:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors" title="Share Record"><Share2 size={16} /></button>
                             </div>
                          )}

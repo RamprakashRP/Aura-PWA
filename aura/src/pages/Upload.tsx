@@ -243,7 +243,7 @@ const Upload = () => {
       <header className="mb-6 md:mb-10 text-center md:text-left flex flex-col md:flex-row justify-between items-center md:items-start gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white uppercase mt-4 md:mt-0">Awaken <span style={{ color: getAuraColor() }}>Aura</span></h1>
-          <p className="text-slate-400 mt-1 md:mt-2 font-mono text-[10px] md:text-sm uppercase hidden md:block">Smart ML-Lite Categorization Engine</p>
+          <p className="text-zinc-400 mt-1 md:mt-2 font-mono text-[10px] md:text-sm uppercase hidden md:block">Smart ML-Lite Categorization Engine</p>
         </div>
         <button 
            onClick={wipeDatabase}
@@ -258,33 +258,33 @@ const Upload = () => {
           {/* 100% Zero-Touch Real-Time Sync (Apple Pay / Google Wallet) */}
           <ZeroTouchSync />
 
-          <div className="pt-6 border-t border-slate-800">
-            <h3 className="text-xs uppercase font-bold tracking-widest text-slate-400 mb-3">
+          <div className="pt-6 border-t border-zinc-800">
+            <h3 className="text-xs uppercase font-bold tracking-widest text-zinc-400 mb-3">
               Batch Statement Parsing Dropzone
             </h3>
           </div>
           <motion.div 
             animate={dragActive ? { boxShadow: getAuraGlow(), borderColor: getAuraColor() } : { borderColor: '#334155' }}
-            className="glass p-6 md:p-12 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all bg-[#0a0f1a] relative md:h-auto h-[25vh] min-h-[160px]"
+            className="glass p-6 md:p-12 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all bg-[#080808] relative md:h-auto h-[25vh] min-h-[160px]"
             style={{ backgroundColor: dragActive ? `${getAuraColor()}05` : undefined }}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <div className="w-12 h-12 md:w-20 md:h-20 rounded-full bg-slate-900 flex items-center justify-center mb-3 md:mb-6 shadow-xl border border-slate-800">
+            <div className="w-12 h-12 md:w-20 md:h-20 rounded-full bg-[#0a0a0a] flex items-center justify-center mb-3 md:mb-6 shadow-xl border border-zinc-800">
               <UploadIcon size={24} style={{ color: getAuraColor() }} className={dragActive ? 'animate-bounce' : 'opacity-80 md:w-8 md:h-8'} />
             </div>
             
             <h3 className="hidden md:block text-xl font-bold text-white mb-2 tracking-wide uppercase">
               Inject Statement Data
             </h3>
-            <p className="hidden md:block text-slate-500 text-sm mb-6 text-center max-w-sm">
+            <p className="hidden md:block text-zinc-500 text-sm mb-6 text-center max-w-sm">
               Upload PDF exports (Kotak format supported). Neural engine maps UPI/Merchant/Note directly.
             </p>
 
             <label 
-               className="cursor-pointer bg-[#0a0f1a] border hover:bg-slate-900 border-slate-700 text-white font-black py-3 px-6 rounded-xl tracking-widest uppercase transition-colors flex items-center justify-center gap-3 w-full md:w-auto shadow-2xl min-h-[44px]"
+               className="cursor-pointer bg-[#080808] border hover:bg-[#0a0a0a] border-zinc-700 text-white font-black py-3 px-6 rounded-xl tracking-widest uppercase transition-colors flex items-center justify-center gap-3 w-full md:w-auto shadow-2xl min-h-[44px]"
                style={dragActive ? { borderColor: getAuraColor() } : {}}
             >
               <FileJson size={18} style={{ color: getAuraColor() }} />
@@ -303,8 +303,8 @@ const Upload = () => {
           </motion.div>
 
           {/* Quick History Status Bar (Mocked last 3 for UX immersion) */}
-          <div className="md:hidden glass p-4 rounded-xl space-y-3 bg-[#020617]/50">
-             <h4 className="text-[10px] uppercase font-bold text-slate-500 tracking-widest border-b border-slate-800 pb-2">Recent Synchronizations</h4>
+          <div className="md:hidden glass p-4 rounded-xl space-y-3 bg-[#000000]/50">
+             <h4 className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest border-b border-zinc-800 pb-2">Recent Synchronizations</h4>
              <div className="flex justify-between items-center text-[10px] font-mono p-2 rounded bg-green-500/10 border border-green-500/20 text-green-500">
                 <span className="truncate max-w-[150px]">Kotak_Dec.pdf</span>
                 <span>Success</span>
@@ -313,7 +313,7 @@ const Upload = () => {
                 <span className="truncate max-w-[150px]">Kotak_Nov.pdf</span>
                 <span>Success</span>
              </div>
-             <div className="flex justify-between items-center text-[10px] font-mono p-2 rounded bg-slate-800 border border-slate-700 text-slate-400">
+             <div className="flex justify-between items-center text-[10px] font-mono p-2 rounded bg-slate-800 border border-zinc-700 text-zinc-400">
                 <span className="truncate max-w-[150px]">Kotak_Oct.pdf</span>
                 <span>Void</span>
              </div>
@@ -327,14 +327,14 @@ const Upload = () => {
               style={{ borderLeftColor: getAuraColor() }}
             >
               <div className="w-full md:w-auto text-center md:text-left">
-                <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Target Payload</p>
-                <p className="text-white font-mono text-xs truncate max-w-[200px] md:max-w-none">{file.name} <span className="text-slate-500 text-[10px] ml-1">({(file.size / 1024).toFixed(1)} KB)</span></p>
+                <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Target Payload</p>
+                <p className="text-white font-mono text-xs truncate max-w-[200px] md:max-w-none">{file.name} <span className="text-zinc-500 text-[10px] ml-1">({(file.size / 1024).toFixed(1)} KB)</span></p>
               </div>
               
               <button 
                 onClick={handleProcess}
                 disabled={status !== 'idle'}
-                className="w-full md:w-auto rounded-xl px-6 py-3 font-black text-[10px] md:text-xs uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 border relative min-h-[44px] mt-4 md:mt-0 bg-[#0a0f1a]/40 hover:bg-slate-900 border-slate-700 hover:border-slate-500 shadow-xl"
+                className="w-full md:w-auto rounded-xl px-6 py-3 font-black text-[10px] md:text-xs uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 border relative min-h-[44px] mt-4 md:mt-0 bg-[#080808]/40 hover:bg-[#0a0a0a] border-zinc-700 hover:border-slate-500 shadow-xl"
                 style={{ 
                   color: getAuraColor(),
                   borderColor: `${getAuraColor()}40`,
@@ -356,13 +356,13 @@ const Upload = () => {
            style={{ borderColor: `${getAuraColor()}20` }}
         >
            {/* High-Contrast Control Header */}
-           <div className="p-5 md:p-8 border-b border-slate-800/50 flex flex-col xl:flex-row justify-between items-center bg-[#0a0f1a]/80 backdrop-blur-xl gap-6">
+           <div className="p-5 md:p-8 border-b border-zinc-800/50 flex flex-col xl:flex-row justify-between items-center bg-[#080808]/80 backdrop-blur-xl gap-6">
              <div className="text-center md:text-left">
                <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
                  <div className="w-2 h-8 rounded-full" style={{ backgroundColor: getAuraColor(), boxShadow: `0 0 15px ${getAuraColor()}` }}></div>
                  <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">Review Imports</h3>
                </div>
-               <p className="text-[10px] md:text-xs text-slate-500 font-mono tracking-widest uppercase">
+               <p className="text-[10px] md:text-xs text-zinc-500 font-mono tracking-widest uppercase">
                  <span style={{ color: getAuraColor() }}>{parsedData.length}</span> Records Synchronized • Verify Neural Mapping
                </p>
              </div>
@@ -371,7 +371,7 @@ const Upload = () => {
                {/* Modular Selectors */}
                <div className="flex gap-4">
                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em] text-center md:text-left">Bank Engine</span>
+                    <span className="text-[9px] uppercase font-black text-zinc-500 tracking-[0.2em] text-center md:text-left">Bank Engine</span>
                     <select 
                        value={detectedBank || bankType}
                        onChange={(e) => {
@@ -380,7 +380,7 @@ const Upload = () => {
                           setDetectedBank(newBank);
                           handleProcess();
                        }}
-                       className="bg-[#020617] text-white text-[11px] font-bold uppercase tracking-widest border border-slate-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[140px] appearance-none text-center shadow-lg"
+                       className="bg-[#000000] text-white text-[11px] font-bold uppercase tracking-widest border border-zinc-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[140px] appearance-none text-center shadow-lg"
                        style={{ 
                           boxShadow: `inset 0 0 10px ${getAuraColor()}05`,
                           borderLeft: `3px solid ${getAuraColor()}50`
@@ -394,11 +394,11 @@ const Upload = () => {
                  </div>
 
                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em] text-center md:text-left">Currency</span>
+                    <span className="text-[9px] uppercase font-black text-zinc-500 tracking-[0.2em] text-center md:text-left">Currency</span>
                     <select 
                        value={statementCurrency}
                        onChange={(e) => setStatementCurrency(e.target.value)}
-                       className="bg-[#020617] text-white text-[11px] font-bold uppercase tracking-widest border border-slate-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[100px] appearance-none text-center shadow-lg"
+                       className="bg-[#000000] text-white text-[11px] font-bold uppercase tracking-widest border border-zinc-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[100px] appearance-none text-center shadow-lg"
                        style={{ 
                           boxShadow: `inset 0 0 10px ${getAuraColor()}05`,
                           borderLeft: `3px solid ${getAuraColor()}50`
@@ -436,24 +436,24 @@ const Upload = () => {
            
            <div className="overflow-x-auto w-full">
               <table className="w-full text-left whitespace-nowrap table-auto block">
-                <thead className="bg-[#020617] sticky top-0 z-10 hidden md:table-header-group">
+                <thead className="bg-[#000000] sticky top-0 z-10 hidden md:table-header-group">
                   <tr className="flex flex-col md:table-row">
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800">Date</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800">Description</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800">Chq/Ref. No.</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-[#FF4D4D] uppercase tracking-widest border-b border-slate-800">Withdrawal (Dr.)</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-[#00FF41] uppercase tracking-widest border-b border-slate-800">Deposit (Cr.)</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800">Balance</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-blue-400 uppercase tracking-widest border-b border-slate-800 bg-blue-900/10">Reason</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-purple-400 uppercase tracking-widest border-b border-slate-800 bg-purple-900/10">AI Category</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Date</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Description</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Chq/Ref. No.</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-[#FF4D4D] uppercase tracking-widest border-b border-zinc-800">Withdrawal (Dr.)</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-[#00FF41] uppercase tracking-widest border-b border-zinc-800">Deposit (Cr.)</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Balance</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 bg-blue-900/10">Reason</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-purple-400 uppercase tracking-widest border-b border-zinc-800 bg-purple-900/10">AI Category</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 block md:table-row-group w-full">
                   {parsedData.map((tx, idx) => (
-                    <tr key={tx.transaction_id || idx} className="hover:bg-slate-800/30 transition-colors flex flex-col md:table-row p-4 md:p-0 border-b border-slate-800">
-                      <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-slate-300 font-mono align-top order-5 md:order-1">{tx.date}</td>
-                      <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-slate-400 font-mono w-full md:w-64 whitespace-normal break-words max-w-none md:max-w-[250px] align-top order-1 md:order-2">{tx.raw_description}</td>
-                      <td className="hidden md:table-cell px-4 py-3 text-xs text-slate-500 font-mono align-top md:order-3">{tx.transaction_id}</td>
+                    <tr key={tx.transaction_id || idx} className="hover:bg-slate-800/30 transition-colors flex flex-col md:table-row p-4 md:p-0 border-b border-zinc-800">
+                      <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-zinc-300 font-mono align-top order-5 md:order-1">{tx.date}</td>
+                      <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-zinc-400 font-mono w-full md:w-64 whitespace-normal break-words max-w-none md:max-w-[250px] align-top order-1 md:order-2">{tx.raw_description}</td>
+                      <td className="hidden md:table-cell px-4 py-3 text-xs text-zinc-500 font-mono align-top md:order-3">{tx.transaction_id}</td>
                       
                       <td className="px-4 py-3 font-mono font-black align-top order-2 md:order-4">
                         <span className="text-[#FF4D4D]">
@@ -465,7 +465,7 @@ const Upload = () => {
                           {Number(tx.deposit) !== 0 ? `+${tx.deposit}` : <span className="opacity-30">-</span>}
                         </span>
                       </td>
-                      <td className="hidden md:table-cell px-4 py-3 font-mono text-slate-500 text-xs align-top">{tx.balance}</td>
+                      <td className="hidden md:table-cell px-4 py-3 font-mono text-zinc-500 text-xs align-top">{tx.balance}</td>
                       
                       <td className="px-0 md:px-4 py-2 md:py-3 bg-transparent md:bg-blue-900/5 align-top order-3 md:order-7">
                         <div className="flex items-center gap-2 group w-full">
@@ -474,7 +474,7 @@ const Upload = () => {
                             type="text"
                             value={tx.reason}
                             onChange={(e) => handleReasonChange(idx, e.target.value)}
-                            className="bg-[#020617] md:bg-transparent border border-slate-700 md:border-b md:border-transparent md:hover:border-slate-600 focus:border-blue-500 focus:outline-none text-white font-bold py-2 md:py-1 px-3 md:px-1 w-full transition-colors rounded-lg md:rounded-none text-[10px] md:text-xs min-h-[44px] md:min-h-0"
+                            className="bg-[#000000] md:bg-transparent border border-zinc-700 md:border-b md:border-transparent md:hover:border-slate-600 focus:border-blue-500 focus:outline-none text-white font-bold py-2 md:py-1 px-3 md:px-1 w-full transition-colors rounded-lg md:rounded-none text-[10px] md:text-xs min-h-[44px] md:min-h-0"
                             placeholder="Reason"
                           />
                         </div>
@@ -484,14 +484,14 @@ const Upload = () => {
                          <select 
                             value={tx.category || "Miscellaneous"}
                             onChange={(e) => handleCategoryChange(idx, e.target.value)}
-                            className="w-full text-[10px] md:text-xs font-bold uppercase tracking-widest py-2 md:py-1 px-3 md:px-2 rounded-lg cursor-pointer appearance-none text-center bg-[#020617] bg-opacity-80 focus:outline-none transition-all shadow-lg border border-slate-700 hover:border-current inline-block min-h-[44px] md:min-h-0"
+                            className="w-full text-[10px] md:text-xs font-bold uppercase tracking-widest py-2 md:py-1 px-3 md:px-2 rounded-lg cursor-pointer appearance-none text-center bg-[#000000] bg-opacity-80 focus:outline-none transition-all shadow-lg border border-zinc-700 hover:border-current inline-block min-h-[44px] md:min-h-0"
                             style={{ 
                                color: CATEGORY_COLORS[tx.category] || "#ff69b4",
                                borderColor: `${CATEGORY_COLORS[tx.category] || "#ff69b4"}50`
                             }}
                          >
                             {dynamicCategoryOptions.map(cat => (
-                               <option key={cat} value={cat} className="bg-[#020617] font-bold text-white text-left tracking-widest uppercase text-[10px]" style={{ color: CATEGORY_COLORS[cat] || "#ff69b4" }}>
+                               <option key={cat} value={cat} className="bg-[#000000] font-bold text-white text-left tracking-widest uppercase text-[10px]" style={{ color: CATEGORY_COLORS[cat] || "#ff69b4" }}>
                                    {cat}
                                </option>
                             ))}
@@ -501,7 +501,7 @@ const Upload = () => {
                   ))}
                   {parsedData.length === 0 && (
                      <tr>
-                        <td colSpan={8} className="text-center p-8 text-slate-500 font-mono">
+                        <td colSpan={8} className="text-center p-8 text-zinc-500 font-mono">
                            {hasDuplicatesOnly 
                              ? "All transactions from this statement have already been imported (duplicates filtered)." 
                              : "No valid transactions extracted. Verify PDF format."}
@@ -523,7 +523,7 @@ const Upload = () => {
              <CheckCircle size={32} style={{ color: getAuraColor() }} />
           </div>
           <h4 className="text-xl md:text-2xl font-black tracking-wide text-white uppercase mb-2">Resonance Achieved</h4>
-          <p className="text-[10px] md:text-sm text-slate-400 max-w-sm mb-6">
+          <p className="text-[10px] md:text-sm text-zinc-400 max-w-sm mb-6">
             Supabase synchronization complete. Your Universal Ledger has been updated with {parsedData.length} records.
           </p>
           <button 

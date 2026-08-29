@@ -201,7 +201,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
     <form onSubmit={handleSubmit} className="space-y-5 text-slate-100">
       {/* 1. Type Selector Tabs */}
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
           Choose What You Want to Track & Save On:
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -216,7 +216,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
                 className={`p-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center ${
                   isSelected
                     ? 'bg-slate-800/90 border-slate-500 text-white shadow-lg scale-102'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    : 'bg-[#050505]/80 border-zinc-800 text-zinc-400 hover:text-slate-200 hover:border-zinc-700'
                 }`}
                 style={{
                   borderColor: isSelected ? auraColor : undefined,
@@ -261,7 +261,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
       <div className="space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
             {reminderType === 'credit_card' ? 'Card Name / Product *' :
              reminderType === 'bank_offer' ? 'Bank Account / Bonus Offer Name *' :
              reminderType === 'fee_transition' ? 'Account or Service Being Converted *' :
@@ -277,7 +277,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
             }
             value={formData.title || ''}
             onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+            className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
             required
           />
           {errors.title && <p className="text-[11px] text-rose-400 mt-1">{errors.title}</p>}
@@ -287,7 +287,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Issuer Bank / Store */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
               {reminderType === 'return_warranty' ? 'Retailer / Store' : 'Issuer Bank / Provider'}
             </label>
             <input
@@ -295,14 +295,14 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
               placeholder={reminderType === 'return_warranty' ? 'e.g. Amazon, Best Buy, Apple' : 'e.g. TD, RBC, Scotia, BMO, CIBC, Tangerine'}
               value={formData.issuerBank || ''}
               onChange={(e) => setFormData((prev) => ({ ...prev, issuerBank: e.target.value }))}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+              className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
             />
           </div>
 
           {/* Last 4 Digits (if card) or Category */}
           {reminderType === 'credit_card' ? (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 Last 4 Digits (Optional)
               </label>
               <input
@@ -311,18 +311,18 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
                 placeholder="e.g. 4821"
                 value={formData.last4Digits || ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, last4Digits: e.target.value.replace(/\D/g, '') }))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
               />
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 Category
               </label>
               <select
                 value={formData.category || 'subscription'}
                 onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
               >
                 <option value="subscription">Subscription / Streaming</option>
                 <option value="bank">Banking / Finance</option>
@@ -338,13 +338,13 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
         {/* Financial Details (Amount or Estimated Savings) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
               {reminderType === 'bank_offer' ? 'Promotional Bonus ($)' :
                reminderType === 'fee_transition' ? 'Yearly Fees Avoided ($)' :
                reminderType === 'return_warranty' ? 'Refundable Value ($)' : 'Cost / Balance ($)'}
             </label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">$</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-xs">$</span>
               <input
                 type="number"
                 step="0.01"
@@ -362,19 +362,19 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
                     setFormData((prev) => ({ ...prev, amount: val }));
                   }
                 }}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl pl-8 pr-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
               Currency
             </label>
             <select
               value={formData.currency || 'CAD'}
               onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer font-bold"
+              className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer font-bold"
             >
               <option value="CAD">🇨🇦 CAD ($)</option>
               <option value="USD">🇺🇸 USD ($)</option>
@@ -387,25 +387,25 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
         {reminderType === 'credit_card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 Statement Closing Date
               </label>
               <input
                 type="date"
                 value={formData.statementDate || ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, statementDate: e.target.value }))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 Payment Due Date *
               </label>
               <input
                 type="date"
                 value={formData.paymentDueDate || ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, paymentDueDate: e.target.value, renewalDate: e.target.value }))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
                 required
               />
               {errors.paymentDueDate && <p className="text-[11px] text-rose-400 mt-1">{errors.paymentDueDate}</p>}
@@ -413,7 +413,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
           </div>
         ) : (
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
               {reminderType === 'bank_offer' ? 'Bonus Requirement Deadline *' :
                reminderType === 'fee_transition' ? '1-Year Free Promo End Date *' :
                reminderType === 'return_warranty' ? 'Return Window Deadline *' : 'Renewal / Bill Date *'}
@@ -422,7 +422,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
               type="date"
               value={formData.renewalDate || ''}
               onChange={(e) => setFormData((prev) => ({ ...prev, renewalDate: e.target.value }))}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+              className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
               required
             />
             {errors.renewalDate && <p className="text-[11px] text-rose-400 mt-1">{errors.renewalDate}</p>}
@@ -431,7 +431,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
 
         {/* Direct Link URL */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
             Direct Management / Cancellation Link (Optional)
           </label>
           <input
@@ -439,30 +439,30 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
             placeholder="https://..."
             value={formData.actionUrl || formData.url || ''}
             onChange={(e) => setFormData((prev) => ({ ...prev, actionUrl: e.target.value, url: e.target.value }))}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+            className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
           />
         </div>
 
         {/* Milestone Checklist (for Bank Offer & Fee Transition) */}
         {(reminderType === 'bank_offer' || reminderType === 'fee_transition') && (
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+          <div className="p-4 rounded-xl bg-[#000000]/90 border border-zinc-800 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
                 Action Checklist / Criteria
               </label>
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[10px] text-zinc-500 font-mono">
                 {(formData.milestones || []).length} steps
               </span>
             </div>
 
             <div className="space-y-2">
               {(formData.milestones || []).map((m) => (
-                <div key={m.id} className="flex items-center justify-between gap-2 p-2 bg-slate-900 rounded-lg border border-slate-800 text-xs">
-                  <span className="text-slate-300">{m.title}</span>
+                <div key={m.id} className="flex items-center justify-between gap-2 p-2 bg-[#0a0a0a] rounded-lg border border-zinc-800 text-xs">
+                  <span className="text-zinc-300">{m.title}</span>
                   <button
                     type="button"
                     onClick={() => removeMilestone(m.id)}
-                    className="text-slate-500 hover:text-rose-400 p-1"
+                    className="text-zinc-500 hover:text-rose-400 p-1"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -477,7 +477,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
                 value={newMilestoneTitle}
                 onChange={(e) => setNewMilestoneTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMilestone(); } }}
-                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none"
+                className="flex-1 bg-[#0a0a0a] border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none"
               />
               <button
                 type="button"
@@ -492,7 +492,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
 
         {/* Notification Schedule Chips */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2 flex items-center gap-1.5">
             <Clock size={13} />
             <span>Notify & Remind Me:</span>
           </label>
@@ -507,7 +507,7 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     active
                       ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-sm'
-                      : 'bg-slate-950 text-slate-500 border border-slate-800 hover:text-slate-300'
+                      : 'bg-[#000000] text-zinc-500 border border-zinc-800 hover:text-zinc-300'
                   }`}
                 >
                   {day} {day === 1 ? 'day' : 'days'} before
@@ -519,25 +519,25 @@ export function ReminderForm({ initialData, onSubmit, onCancel, submitLabel = 'S
 
         {/* Notes & Instructions */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
             Action Notes & Retention Strategy
           </label>
           <textarea
             placeholder="Private reminder notes, promo codes, student verification steps, customer service numbers..."
             value={formData.notes || ''}
             onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 min-h-[70px] resize-none"
+            className="w-full bg-[#000000] border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 min-h-[70px] resize-none"
           />
         </div>
       </div>
 
       {/* 3. Footer Action Buttons */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer"
           >
             Cancel
           </button>

@@ -70,7 +70,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
   const getUrgencyBadge = (days: number, status: string) => {
     if (status === 'cancelled' || status === 'returned' || status === 'completed') {
       return { 
-        bg: 'bg-slate-800/80 text-slate-400 border-slate-700', 
+        bg: 'bg-slate-800/80 text-zinc-400 border-zinc-700', 
         text: status.toUpperCase(), 
         icon: <CheckCircle size={12} /> 
       };
@@ -111,7 +111,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
       };
     }
     return { 
-      bg: 'bg-slate-800/60 text-slate-300 border-slate-700', 
+      bg: 'bg-slate-800/60 text-zinc-300 border-zinc-700', 
       text: `In ${days} days`, 
       icon: <Calendar size={12} /> 
     };
@@ -135,16 +135,16 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
   return (
     <div className="space-y-4">
       {/* Search & Filter Toolbar */}
-      <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl flex flex-col md:flex-row items-center gap-3">
+      <div className="p-3.5 rounded-2xl bg-[#080808]/90 border border-zinc-800 backdrop-blur-xl flex flex-col md:flex-row items-center gap-3">
         {/* Search Input */}
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             placeholder="Search subscriptions, card due dates, bank bonuses, returns..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-700 transition-all"
+            className="w-full bg-[#000000] border border-zinc-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-zinc-700 transition-all"
           />
         </div>
 
@@ -154,7 +154,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
+            className="bg-[#000000] border border-zinc-800 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
           >
             <option value="all">All Types</option>
             <option value="credit_card">💳 Credit Cards</option>
@@ -168,7 +168,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
+            className="bg-[#000000] border border-zinc-800 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
@@ -179,7 +179,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'date' | 'amount' | 'name')}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
+            className="bg-[#000000] border border-zinc-800 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
           >
             <option value="date">Sort: Soonest Due</option>
             <option value="amount">Sort: Highest Cost/Reward</option>
@@ -190,13 +190,13 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
 
       {/* Empty State or Grid */}
       {filteredReminders.length === 0 ? (
-        <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto shadow-xl">
+        <div className="p-12 rounded-2xl bg-[#080808]/50 border border-zinc-800/80 text-center space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-zinc-400 flex items-center justify-center mx-auto shadow-xl">
             <Filter size={26} />
           </div>
           <div>
             <h3 className="text-base font-bold text-white">No Reminders Found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
               {search || filter !== 'all' || typeFilter !== 'all'
                 ? 'Try adjusting your search query or reset filter tags.'
                 : 'Protect your money: add your credit card billing dates, bank bonuses, 1-year free checking conversions, return windows, or subscriptions.'}
@@ -224,7 +224,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
             return (
               <div
                 key={reminder.id}
-                className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all group"
+                className="p-5 rounded-2xl bg-[#0a0a0a]/95 border border-zinc-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-zinc-700 transition-all group"
                 style={{ opacity: reminder.status === 'cancelled' || reminder.status === 'completed' ? 0.75 : 1 }}
               >
                 <div>
@@ -235,7 +235,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
                       <span>{urgency.text}</span>
                     </span>
 
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 capitalize bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 capitalize bg-[#000000] px-2 py-0.5 rounded-md border border-zinc-800">
                       {getTypeIcon(reminder.reminderType)}
                       <span>{reminder.reminderType.replace('_', ' ')}</span>
                     </span>
@@ -246,22 +246,22 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
                     {reminder.title}
                   </h4>
                   {reminder.issuerBank && (
-                    <span className="text-xs text-slate-400 mt-0.5 block">
+                    <span className="text-xs text-zinc-400 mt-0.5 block">
                       {reminder.issuerBank} {reminder.last4Digits ? `• (••• ${reminder.last4Digits})` : ''}
                     </span>
                   )}
 
                   {/* Description / Notes */}
                   {(reminder.description || reminder.notes) && (
-                    <p className="text-xs text-slate-400 mt-2 line-clamp-2 bg-slate-950/40 p-2 rounded-lg border border-slate-800/60">
+                    <p className="text-xs text-zinc-400 mt-2 line-clamp-2 bg-[#050505]/60 p-2 rounded-lg border border-zinc-800/60">
                       {reminder.description || reminder.notes}
                     </p>
                   )}
 
                   {/* Financial Value (Amount or Estimated Savings) */}
-                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs">
+                  <div className="mt-4 pt-3 border-t border-zinc-800/80 flex justify-between items-center text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">
                         {reminder.estimatedSavings ? 'Potential Savings' : 'Amount Due'}
                       </span>
                       <span className="font-mono font-black text-sm text-white">
@@ -274,8 +274,8 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Target Deadline</span>
-                      <span className="font-mono font-semibold text-xs text-slate-300">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Target Deadline</span>
+                      <span className="font-mono font-semibold text-xs text-zinc-300">
                         {format(new Date(targetDate), 'MMM d, yyyy')}
                       </span>
                     </div>
@@ -283,13 +283,13 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
                 </div>
 
                 {/* Card Actions */}
-                <div className="flex items-center justify-end gap-1.5 mt-4 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-1.5 mt-4 pt-3 border-t border-zinc-800">
                   {reminder.actionUrl && (
                     <a
                       href={reminder.actionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                      className="p-1.5 rounded-lg bg-slate-800 text-zinc-400 hover:text-white"
                       title="Open Direct Portal Link"
                     >
                       <ExternalLink size={14} />
@@ -299,7 +299,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
                   <button
                     type="button"
                     onClick={() => onStatusChange(reminder.id, reminder.status === 'active' ? 'completed' : 'active')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 hover:bg-slate-700 flex items-center gap-1"
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-zinc-300 hover:bg-slate-700 flex items-center gap-1"
                   >
                     {reminder.status === 'active' ? (
                       <>
@@ -315,7 +315,7 @@ export function ReminderList({ reminders, onEdit, onDelete, onStatusChange, onCr
                   <button
                     type="button"
                     onClick={() => onEdit(reminder)}
-                    className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                    className="p-1.5 rounded-lg bg-slate-800 text-zinc-400 hover:text-white"
                     title="Edit"
                   >
                     <Edit3 size={14} />

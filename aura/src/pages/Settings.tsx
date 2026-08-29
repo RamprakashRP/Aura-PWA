@@ -220,33 +220,33 @@ const Settings = () => {
       <div className="space-y-6">
          
         {/* Character Sheet / Identity Card */}
-        <div className="glass p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-800 relative overflow-hidden flex flex-row items-center gap-4 md:gap-6 shadow-2xl" style={{ borderTopColor: getAuraColor(), borderTopWidth: '4px' }}>
-           <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex-shrink-0 animate-pulse-slow shadow-xl overflow-hidden bg-slate-900" style={{ borderColor: getAuraColor(), boxShadow: `0 0 20px ${getAuraColor()}40` }}>
+        <div className="glass p-4 md:p-6 rounded-2xl md:rounded-3xl border border-zinc-800 relative overflow-hidden flex flex-row items-center gap-4 md:gap-6 shadow-2xl" style={{ borderTopColor: getAuraColor(), borderTopWidth: '4px' }}>
+           <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex-shrink-0 animate-pulse-slow shadow-xl overflow-hidden bg-[#0a0a0a]" style={{ borderColor: getAuraColor(), boxShadow: `0 0 20px ${getAuraColor()}40` }}>
               <img src={user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=AuraMonarch&backgroundColor=transparent"} alt="Avatar" className="w-full h-full object-cover" />
            </div>
            <div className="flex-1 min-w-0">
               <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tight truncate">{nameDisplay}</h2>
               <div className="flex items-center gap-2 mt-1 md:mt-2 w-full overflow-hidden">
-                 <span className="px-2 py-0.5 rounded text-[8px] md:text-[10px] uppercase tracking-widest font-black text-[#020617] whitespace-nowrap" style={{ backgroundColor: getAuraColor() }}>Hunter/Student</span>
-                 <span className="px-2 py-0.5 rounded bg-slate-800 text-[8px] md:text-[10px] text-slate-400 font-mono tracking-widest truncate">{user?.email}</span>
+                 <span className="px-2 py-0.5 rounded text-[8px] md:text-[10px] uppercase tracking-widest font-black text-[#000000] whitespace-nowrap" style={{ backgroundColor: getAuraColor() }}>Hunter/Student</span>
+                 <span className="px-2 py-0.5 rounded bg-slate-800 text-[8px] md:text-[10px] text-zinc-400 font-mono tracking-widest truncate">{user?.email}</span>
               </div>
            </div>
         </div>
 
         {/* Dynamic Anime Aura System (ORB SELECTOR) */}
-        <div className="glass p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group shadow-lg">
+        <div className="glass p-4 md:p-6 rounded-2xl border border-zinc-800 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-10 transition-colors" style={{ backgroundColor: getAuraColor() }}></div>
           
-          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-slate-800 pb-3 md:pb-4">
+          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-zinc-800 pb-3 md:pb-4">
             <Sparkles size={20} style={{ color: getAuraColor() }} className="flex-shrink-0" />
             <h2 className="text-lg md:text-xl font-bold text-white tracking-wide">Aura Engine</h2>
           </div>
           
           <div>
-            <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+            <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-400 mb-3">
               Resonance Frequency
             </label>
-            <div className="flex bg-[#0a0f1a] rounded-xl p-2 md:p-3 border border-slate-800 overflow-x-auto hide-scrollbar snap-x gap-3 md:gap-4 md:justify-between mask-edges">
+            <div className="flex bg-[#080808] rounded-xl p-2 md:p-3 border border-zinc-800 overflow-x-auto hide-scrollbar snap-x gap-3 md:gap-4 md:justify-between mask-edges">
                {(Object.keys(AURA_COLORS) as AuraType[]).map((theme) => {
                   const isActive = aura === theme;
                   const colorHex = AURA_COLORS[theme];
@@ -267,24 +267,24 @@ const Settings = () => {
                         >
                            {isActive && <div className="absolute inset-0 border-2 border-white rounded-full scale-110 opacity-50"></div>}
                         </motion.div>
-                        <span className={`text-[8px] font-bold uppercase tracking-widest max-w-[60px] text-center leading-tight transition-colors ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-slate-400'}`}>
+                        <span className={`text-[8px] font-bold uppercase tracking-widest max-w-[60px] text-center leading-tight transition-colors ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-zinc-400'}`}>
                            {theme.replace(' ', '\n')}
                         </span>
                      </button>
                   );
                })}
             </div>
-            <p className="text-[10px] md:text-sm text-slate-500 mt-4 leading-relaxed">
+            <p className="text-[10px] md:text-sm text-zinc-500 mt-4 leading-relaxed">
                Modifies UI chromatic baseline. Currently radiating <span className="font-bold inline-block" style={{ color: getAuraColor() }}>{aura}</span>.
             </p>
           </div>
         </div>
 
         {/* Localization */}
-        <div className="glass p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group shadow-lg">
+        <div className="glass p-4 md:p-6 rounded-2xl border border-zinc-800 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand-blue/5 rounded-full blur-3xl group-hover:bg-brand-blue/10 transition-colors"></div>
           
-          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-slate-800 pb-3 md:pb-4">
+          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-zinc-800 pb-3 md:pb-4">
             <Globe className="text-brand-blue flex-shrink-0" size={20} />
             <h2 className="text-lg md:text-xl font-bold text-white tracking-wide">Localization Core</h2>
           </div>
@@ -292,13 +292,13 @@ const Settings = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full items-end">
               <div className="flex-1 w-full relative">
-                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
+                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">
                   Base Config Node
                 </label>
                 <select 
                   value={currency}
                   onChange={(e) => handleCurrencyChange(e.target.value)}
-                  className="w-full bg-[#0a0f1a] border border-slate-700 rounded-xl px-4 py-0 text-white font-black text-sm md:text-base tracking-widest uppercase focus:outline-none transition-colors appearance-none cursor-pointer flex items-center min-h-[44px]"
+                  className="w-full bg-[#080808] border border-zinc-700 rounded-xl px-4 py-0 text-white font-black text-sm md:text-base tracking-widest uppercase focus:outline-none transition-colors appearance-none cursor-pointer flex items-center min-h-[44px]"
                   style={{ color: getAuraColor(), borderColor: `${getAuraColor()}40` }}
                 >
                   <option value="CAD" className="text-white">CAD - Canadian Dollar</option>
@@ -310,17 +310,17 @@ const Settings = () => {
               </div>
               
               <div className="flex-1 w-full relative">
-                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 flex justify-between">
+                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 flex justify-between">
                   Core Monthly Limit
                   <span className="text-[8px] text-slate-600">Auto-Scaling</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">$</span>
                   <input 
                     type="number"
                     value={budget}
                     onChange={(e) => setBudget(e.target.value)}
-                    className="w-full bg-[#0a0f1a] border border-slate-700 rounded-xl pl-8 pr-12 py-0 text-white font-mono font-bold text-sm md:text-base tracking-widest focus:outline-none transition-colors min-h-[44px]"
+                    className="w-full bg-[#080808] border border-zinc-700 rounded-xl pl-8 pr-12 py-0 text-white font-mono font-bold text-sm md:text-base tracking-widest focus:outline-none transition-colors min-h-[44px]"
                     style={{ borderColor: `${getAuraColor()}40` }}
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-[10px] tracking-widest" style={{ color: getAuraColor() }}>{currency}</span>
@@ -328,17 +328,17 @@ const Settings = () => {
               </div>
 
               <div className="flex-1 w-full relative">
-                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 flex justify-between">
+                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 flex justify-between">
                   Baseline Balance
                   <span className="text-[8px] text-slate-600">Auto-Scaling</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">$</span>
                   <input 
                     type="number"
                     value={baselineBalance}
                     onChange={(e) => setBaselineBalance(e.target.value)}
-                    className="w-full bg-[#0a0f1a] border border-slate-700 rounded-xl pl-8 pr-12 py-0 text-white font-mono font-bold text-sm md:text-base tracking-widest focus:outline-none transition-colors min-h-[44px]"
+                    className="w-full bg-[#080808] border border-zinc-700 rounded-xl pl-8 pr-12 py-0 text-white font-mono font-bold text-sm md:text-base tracking-widest focus:outline-none transition-colors min-h-[44px]"
                     style={{ borderColor: `${getAuraColor()}40` }}
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-[10px] tracking-widest" style={{ color: getAuraColor() }}>{currency}</span>
@@ -349,10 +349,10 @@ const Settings = () => {
         </div>
 
         {/* Dynamic Category Budget Allocation Core */}
-        <div className="glass p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group shadow-lg">
+        <div className="glass p-4 md:p-6 rounded-2xl border border-zinc-800 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl group-hover:bg-red-500/10 transition-colors"></div>
           
-          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-slate-800 pb-3 md:pb-4">
+          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-zinc-800 pb-3 md:pb-4">
             <Sparkles size={20} style={{ color: getAuraColor() }} className="flex-shrink-0" />
             <h2 className="text-lg md:text-xl font-bold text-white tracking-wide">Category Budget Allocation</h2>
           </div>
@@ -360,11 +360,11 @@ const Settings = () => {
           <div className="grid grid-cols-2 gap-4 mb-6">
             {categories.map((cat) => (
               <div key={cat} className="flex flex-col gap-1.5 relative">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                   {cat}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 font-bold text-xs">$</span>
                   <input 
                     type="number"
                     value={categoryBudgets[cat] || ''}
@@ -375,7 +375,7 @@ const Settings = () => {
                       });
                     }}
                     placeholder="Infinite"
-                    className="w-full bg-[#020617] border border-slate-800 rounded-xl pl-6 pr-10 py-2 text-xs text-white font-mono font-bold tracking-widest focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-[#000000] border border-zinc-800 rounded-xl pl-6 pr-10 py-2 text-xs text-white font-mono font-bold tracking-widest focus:outline-none focus:border-blue-500 transition-colors"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-[9px] tracking-widest opacity-60" style={{ color: getAuraColor() }}>{currency}</span>
                 </div>
@@ -384,9 +384,9 @@ const Settings = () => {
           </div>
 
           {/* Dynamic Custom Category Addition Form */}
-          <div className="flex gap-3 border-t border-slate-800/50 pt-4 items-end">
+          <div className="flex gap-3 border-t border-zinc-800/50 pt-4 items-end">
             <div className="flex-1">
-              <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-1.5">
+              <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5">
                 New Custom Category
               </label>
               <input 
@@ -394,12 +394,12 @@ const Settings = () => {
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="e.g. Subscriptions, Gifts"
-                className="w-full bg-[#020617] border border-slate-800 focus:border-slate-600 rounded-xl px-4 py-2 text-xs text-white tracking-wider focus:outline-none min-h-[44px]"
+                className="w-full bg-[#000000] border border-zinc-800 focus:border-slate-600 rounded-xl px-4 py-2 text-xs text-white tracking-wider focus:outline-none min-h-[44px]"
               />
             </div>
             <button
               onClick={handleAddCustomCategory}
-              className="px-4 py-2 border rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors min-h-[44px] bg-[#020617] hover:bg-slate-900"
+              className="px-4 py-2 border rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors min-h-[44px] bg-[#000000] hover:bg-[#0a0a0a]"
               style={{ borderColor: `${getAuraColor()}40`, color: getAuraColor() }}
             >
               + Add Custom Category
@@ -409,20 +409,20 @@ const Settings = () => {
 
 
         {/* Access Control (Compact Toggles) */}
-        <div className="glass p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group shadow-lg">
+        <div className="glass p-4 md:p-6 rounded-2xl border border-zinc-800 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand-red/5 rounded-full blur-3xl group-hover:bg-brand-red/10 transition-colors"></div>
           
-          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-slate-800 pb-3 md:pb-4">
-            <Shield className="text-slate-400 flex-shrink-0" size={20} />
+          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-zinc-800 pb-3 md:pb-4">
+            <Shield className="text-zinc-400 flex-shrink-0" size={20} />
             <h2 className="text-lg md:text-xl font-bold text-white tracking-wide">Access Protocol</h2>
           </div>
           
           <div className="space-y-3">
              {/* iOS Style Toggle Card */}
-            <div className="flex items-center justify-between p-3 md:p-4 bg-[#0a0f1a] rounded-xl border border-slate-800">
+            <div className="flex items-center justify-between p-3 md:p-4 bg-[#080808] rounded-xl border border-zinc-800">
               <div className="flex-1 min-w-0 pr-4">
                 <p className="font-bold text-white text-sm md:text-base">The Wall (Rows)</p>
-                <p className="text-[9px] md:text-[10px] text-slate-500 mt-0.5 uppercase tracking-widest w-full truncate">Zero-Knowledge Database Shield</p>
+                <p className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 uppercase tracking-widest w-full truncate">Zero-Knowledge Database Shield</p>
               </div>
               {/* Toggle Switch */}
               <div className="relative inline-flex items-center cursor-not-allowed">
@@ -431,15 +431,15 @@ const Settings = () => {
               </div>
             </div>
             
-            <div className="flex items-center justify-between p-3 md:p-4 bg-[#0a0f1a] rounded-xl border border-slate-800">
+            <div className="flex items-center justify-between p-3 md:p-4 bg-[#080808] rounded-xl border border-zinc-800">
               <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                <Users className="text-slate-400 flex-shrink-0" size={18} />
+                <Users className="text-zinc-400 flex-shrink-0" size={18} />
                 <div className="min-w-0">
                   <p className="font-bold text-white text-sm md:text-base truncate">Household Pairing</p>
-                  <p className="text-[9px] md:text-[10px] text-slate-500 mt-0.5 uppercase tracking-widest truncate">Aura Synchronization Offline</p>
+                  <p className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 uppercase tracking-widest truncate">Aura Synchronization Offline</p>
                 </div>
               </div>
-              <button disabled className="text-[10px] px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-500 transition-colors font-bold uppercase tracking-widest opacity-50 cursor-not-allowed">Locked</button>
+              <button disabled className="text-[10px] px-3 py-1.5 rounded-lg border border-zinc-700 bg-slate-800 text-zinc-500 transition-colors font-bold uppercase tracking-widest opacity-50 cursor-not-allowed">Locked</button>
             </div>
           </div>
         </div>
@@ -453,9 +453,9 @@ const Settings = () => {
                 disabled={saving || saved}
                 className="w-full md:w-auto px-6 py-0 rounded-xl font-bold uppercase tracking-widest transition-all shadow-2xl flex items-center justify-center gap-2 min-h-[44px] border-2"
                 style={{
-                   backgroundColor: saved ? '#00FF41' : '#0a0f1a',
+                   backgroundColor: saved ? '#00FF41' : '#080808',
                    borderColor: saved ? '#00FF41' : getAuraColor(),
-                   color: saved ? '#020617' : getAuraColor(),
+                   color: saved ? '#000000' : getAuraColor(),
                    transform: saved ? 'scale(1.02)' : 'none',
                    boxShadow: saved ? '0 10px 30px #00FF4140' : `0 10px 30px ${getAuraColor()}40`
                 }}

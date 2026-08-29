@@ -38,13 +38,13 @@ export function CreditCardWallet({ cards, onEdit, onCreateNew }: CreditCardWalle
 
   if (cards.length === 0) {
     return (
-      <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
+      <div className="p-12 rounded-2xl bg-[#080808]/50 border border-zinc-800/80 text-center space-y-3">
         <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-cyan-400 flex items-center justify-center mx-auto shadow-xl">
           <CreditCard size={26} />
         </div>
         <div>
           <h3 className="text-base font-bold text-white">No Credit Card Due Dates Tracked Yet</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+          <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
             Never miss a payment or credit card statement cycle date. Track dual deadlines: Statement Closing Date and Payment Due Date.
           </p>
         </div>

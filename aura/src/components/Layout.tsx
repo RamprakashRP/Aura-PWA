@@ -32,7 +32,7 @@ const Layout = () => {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#020617]">
+      <div className="h-screen w-screen flex items-center justify-center bg-[#000000]">
         <div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: getAuraColor(), borderTopColor: 'transparent' }}></div>
       </div>
     );
@@ -59,12 +59,12 @@ const Layout = () => {
       initial={{ opacity: 0, scale: 0.9, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 10 }}
-      className="absolute bottom-full mb-4 left-0 md:left-4 w-64 p-4 glass rounded-2xl border z-[60] shadow-2xl backdrop-blur-3xl bg-[#0a0f1a]/95 transform origin-bottom-left"
+      className="absolute bottom-full mb-4 left-0 md:left-4 w-64 p-4 glass rounded-2xl border z-[60] shadow-2xl backdrop-blur-3xl bg-[#080808]/95 transform origin-bottom-left"
       style={{ borderColor: getAuraColor(), boxShadow: `0 10px 40px ${getAuraColor()}40` }}
     >
-      <div className="pb-3 border-b border-slate-800 mb-3">
+      <div className="pb-3 border-b border-zinc-800 mb-3">
         <p className="text-sm font-bold text-white truncate">{user?.user_metadata?.full_name || 'Monarch'}</p>
-        <p className="text-xs text-slate-500 font-mono tracking-tighter truncate">{user?.email}</p>
+        <p className="text-xs text-zinc-500 font-mono tracking-tighter truncate">{user?.email}</p>
         <div className="mt-2 inline-block px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-bold" style={{ backgroundColor: `${getAuraColor()}20`, color: getAuraColor(), border: `1px solid ${getAuraColor()}40` }}>
           Financial Rank: S
         </div>
@@ -72,10 +72,10 @@ const Layout = () => {
 
 
 
-      <div className="space-y-1 mt-4 pt-4 border-t border-slate-800">
+      <div className="space-y-1 mt-4 pt-4 border-t border-zinc-800">
         <button 
           onClick={() => { setOrbOpen(false); navigate('/settings'); }}
-          className="w-full text-left px-2 py-1.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors flex items-center gap-2"
+          className="w-full text-left px-2 py-1.5 text-xs font-bold text-zinc-300 hover:text-white hover:bg-slate-800 rounded transition-colors flex items-center gap-2"
         >
            <Settings size={14} /> Account Settings
         </button>
@@ -94,7 +94,7 @@ const Layout = () => {
   );
 
   return (
-    <div className="flex h-screen bg-[#020617] overflow-hidden relative">
+    <div className="flex h-screen bg-[#000000] overflow-hidden relative">
       <div className="absolute inset-0 z-0 bg-grid-slate-900/[0.04] bg-[size:20px_20px]"></div>
 
       {/* Desktop Retractable Sidebar */}
@@ -107,10 +107,10 @@ const Layout = () => {
           setIsSidebarHovered(false);
           setOrbOpen(false); // Close orb if mouse leaves sidebar entirely
         }}
-        className="hidden md:flex flex-col h-full relative z-50 backdrop-blur-xl bg-[#0a0f1a]/80 shadow-[0_0_15px_rgba(0,0,0,0.5)] border-r whitespace-nowrap overflow-visible"
+        className="hidden md:flex flex-col h-full relative z-50 backdrop-blur-xl bg-[#080808]/80 shadow-[0_0_15px_rgba(0,0,0,0.5)] border-r whitespace-nowrap overflow-visible"
         style={{ boxShadow: `inset -2px 0 15px ${getAuraColor()}15` }}
       >
-        <div className="p-4 border-b border-slate-800 flex items-center justify-center h-20">
+        <div className="p-4 border-b border-zinc-800 flex items-center justify-center h-20">
           <motion.div animate={{ rotate: isSidebarHovered ? 0 : 360 }} transition={{ duration: 1 }}>
             <Activity size={24} style={{ color: getAuraColor() }} className="animate-pulse flex-shrink-0" />
           </motion.div>
@@ -136,7 +136,7 @@ const Layout = () => {
               to={item.p}
               className={({ isActive }) =>
                 `group relative flex items-center justify-center md:justify-start px-2 py-3 rounded-lg transition-all duration-300 ${
-                  isActive ? 'text-white' : 'text-slate-500 hover:text-white'
+                  isActive ? 'text-white' : 'text-zinc-500 hover:text-white'
                 }`
               }
               style={({ isActive }) => isActive ? { color: getAuraColor() } : {}}
@@ -180,7 +180,7 @@ const Layout = () => {
         </nav>
 
         {/* Profile Orb (Desktop Bottom) */}
-        <div className="p-3 border-t border-slate-800 relative flex items-center justify-center">
+        <div className="p-3 border-t border-zinc-800 relative flex items-center justify-center">
            <AnimatePresence>
               {orbOpen && <OrbContextMenu />}
            </AnimatePresence>
@@ -243,7 +243,7 @@ const Layout = () => {
 
          <motion.div 
            animate={{ borderColor: getAuraColor(), boxShadow: `0 10px 30px ${getAuraColor()}30` }}
-           className="glass backdrop-blur-2xl bg-[#0a0f1a]/80 border rounded-full flex justify-between items-center px-6 py-3"
+           className="glass backdrop-blur-2xl bg-[#080808]/80 border rounded-full flex justify-between items-center px-6 py-3"
          >
            {navItems.map((item) => (
               <NavLink
@@ -251,7 +251,7 @@ const Layout = () => {
                 to={item.p}
                 className={({ isActive }) =>
                   `relative p-2 rounded-full transition-all duration-300 ${
-                    isActive ? 'text-white' : 'text-slate-500'
+                    isActive ? 'text-white' : 'text-zinc-500'
                   }`
                 }
                 style={({ isActive }) => isActive ? { color: getAuraColor() } : {}}

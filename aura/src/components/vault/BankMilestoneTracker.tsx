@@ -25,13 +25,13 @@ export function BankMilestoneTracker({ offers, onToggleMilestone, onEdit, onDele
 
   if (offers.length === 0) {
     return (
-      <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
+      <div className="p-12 rounded-2xl bg-[#080808]/50 border border-zinc-800/80 text-center space-y-3">
         <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-emerald-400 flex items-center justify-center mx-auto shadow-xl">
           <Landmark size={26} />
         </div>
         <div>
           <h3 className="text-base font-bold text-white">No Bank Bonus Bounties Tracked</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+          <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
             Opening a new checking or savings account for a $300-$500 promotional bonus? Track direct deposit criteria and holding deadlines here.
           </p>
         </div>
@@ -60,7 +60,7 @@ export function BankMilestoneTracker({ offers, onToggleMilestone, onEdit, onDele
         return (
           <div
             key={offer.id}
-            className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all"
+            className="p-5 rounded-2xl bg-[#0a0a0a]/95 border border-zinc-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-zinc-700 transition-all"
           >
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -73,17 +73,17 @@ export function BankMilestoneTracker({ offers, onToggleMilestone, onEdit, onDele
               </div>
 
               <h4 className="font-bold text-white text-base">{offer.title}</h4>
-              <span className="text-xs text-slate-400 block mt-0.5">
+              <span className="text-xs text-zinc-400 block mt-0.5">
                 Bonus Deadline: {format(new Date(offer.renewalDate), 'MMM d, yyyy')} ({daysLeft >= 0 ? `${daysLeft} days left` : 'Ended'})
               </span>
 
               {/* Progress Bar */}
               <div className="my-3">
-                <div className="flex justify-between text-[11px] font-semibold text-slate-400 mb-1">
+                <div className="flex justify-between text-[11px] font-semibold text-zinc-400 mb-1">
                   <span>Requirements Progress</span>
                   <span className="text-emerald-400 font-bold">{completedCount} of {milestones.length} Completed ({progressPct}%)</span>
                 </div>
-                <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div className="w-full h-2 bg-[#000000] rounded-full overflow-hidden border border-zinc-800">
                   <div
                     className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
                     style={{ width: `${progressPct}%` }}
@@ -93,20 +93,20 @@ export function BankMilestoneTracker({ offers, onToggleMilestone, onEdit, onDele
 
               {/* Milestone Checklist */}
               {milestones.length > 0 && (
-                <div className="space-y-1.5 my-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                <div className="space-y-1.5 my-3 p-3 rounded-xl bg-[#050505]/80 border border-zinc-800/80">
                   {milestones.map((m) => (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() => onToggleMilestone(offer.id, m.id, !m.completed)}
-                      className="w-full text-left flex items-start gap-2 text-xs text-slate-300 hover:text-white cursor-pointer group"
+                      className="w-full text-left flex items-start gap-2 text-xs text-zinc-300 hover:text-white cursor-pointer group"
                     >
                       {m.completed ? (
                         <CheckSquare size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
                       ) : (
-                        <Square size={14} className="text-slate-500 flex-shrink-0 mt-0.5 group-hover:text-slate-300" />
+                        <Square size={14} className="text-zinc-500 flex-shrink-0 mt-0.5 group-hover:text-zinc-300" />
                       )}
-                      <span className={m.completed ? 'line-through text-slate-500' : ''}>{m.title}</span>
+                      <span className={m.completed ? 'line-through text-zinc-500' : ''}>{m.title}</span>
                     </button>
                   ))}
                 </div>
@@ -114,11 +114,11 @@ export function BankMilestoneTracker({ offers, onToggleMilestone, onEdit, onDele
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-1.5 pt-3 border-t border-slate-800">
+            <div className="flex justify-end gap-1.5 pt-3 border-t border-zinc-800">
               <button
                 type="button"
                 onClick={() => onEdit(offer)}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-lg bg-slate-800 text-zinc-400 hover:text-white"
               >
                 <Edit3 size={14} />
               </button>

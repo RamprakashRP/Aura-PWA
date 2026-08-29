@@ -274,24 +274,24 @@ export function AccountManager() {
   return (
     <div className="space-y-6">
       {/* Country Switcher & Summary Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 rounded-2xl bg-[#080808]/90 border border-zinc-800 backdrop-blur-xl">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xl">🇨🇦</span>
             <h2 className="text-xl font-bold text-white">Canadian & Global Bank Accounts</h2>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Track Chequing fee waivers, High-Interest Savings rates (HISA), and Wallets
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div className="flex bg-[#000000] p-1 rounded-xl border border-zinc-800">
             <button
               type="button"
               onClick={() => setSelectedCountry('CA')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                selectedCountry === 'CA' ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                selectedCountry === 'CA' ? 'bg-rose-500 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
               }`}
             >
               🇨🇦 Canada (CAD)
@@ -300,7 +300,7 @@ export function AccountManager() {
               type="button"
               onClick={() => setSelectedCountry('IN')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                selectedCountry === 'IN' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                selectedCountry === 'IN' ? 'bg-orange-500 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
               }`}
             >
               🇮🇳 India (INR)
@@ -325,16 +325,16 @@ export function AccountManager() {
       {/* Financial Health Intelligence Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Chequing Fee Waiver Card */}
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[#080808]/90 border border-zinc-800 flex items-center justify-between">
           <div className="space-y-1">
-            <div className="text-xs uppercase font-bold text-slate-400 flex items-center gap-1.5">
+            <div className="text-xs uppercase font-bold text-zinc-400 flex items-center gap-1.5">
               <ShieldCheck size={14} className="text-emerald-400" />
               <span>Chequing Fees Avoided</span>
             </div>
             <div className="text-2xl font-black text-emerald-400">
-              +${totalFeesAvoidedAnnual.toFixed(2)}<span className="text-xs text-slate-400 font-normal">/yr</span>
+              +${totalFeesAvoidedAnnual.toFixed(2)}<span className="text-xs text-zinc-400 font-normal">/yr</span>
             </div>
-            <div className="text-[11px] text-slate-400">Via minimum balance waivers</div>
+            <div className="text-[11px] text-zinc-400">Via minimum balance waivers</div>
           </div>
           <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-emerald-500/10 text-emerald-400">
             <DollarSign size={24} />
@@ -342,16 +342,16 @@ export function AccountManager() {
         </div>
 
         {/* HISA Projected Interest Card */}
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[#080808]/90 border border-zinc-800 flex items-center justify-between">
           <div className="space-y-1">
-            <div className="text-xs uppercase font-bold text-slate-400 flex items-center gap-1.5">
+            <div className="text-xs uppercase font-bold text-zinc-400 flex items-center gap-1.5">
               <TrendingUp size={14} className="text-cyan-400" />
               <span>Projected Savings Interest</span>
             </div>
             <div className="text-2xl font-black text-cyan-400">
-              +${totalEstimatedAnnualInterest.toFixed(2)}<span className="text-xs text-slate-400 font-normal">/yr</span>
+              +${totalEstimatedAnnualInterest.toFixed(2)}<span className="text-xs text-zinc-400 font-normal">/yr</span>
             </div>
-            <div className="text-[11px] text-slate-400">~ ${(totalEstimatedAnnualInterest / 12).toFixed(2)}/mo passive payout</div>
+            <div className="text-[11px] text-zinc-400">~ ${(totalEstimatedAnnualInterest / 12).toFixed(2)}/mo passive payout</div>
           </div>
           <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-cyan-500/10 text-cyan-400">
             <PiggyBank size={24} />
@@ -359,16 +359,16 @@ export function AccountManager() {
         </div>
 
         {/* Total Liquid Capital */}
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[#080808]/90 border border-zinc-800 flex items-center justify-between">
           <div className="space-y-1">
-            <div className="text-xs uppercase font-bold text-slate-400 flex items-center gap-1.5">
+            <div className="text-xs uppercase font-bold text-zinc-400 flex items-center gap-1.5">
               <Landmark size={14} className="text-rose-400" />
               <span>Total Liquid Capital</span>
             </div>
             <div className="text-2xl font-black text-white">
               ${(totalChequingBalance + totalSavingsBalance).toFixed(2)}
             </div>
-            <div className="text-[11px] text-slate-400">Chequing + Savings/HISA combined</div>
+            <div className="text-[11px] text-zinc-400">Chequing + Savings/HISA combined</div>
           </div>
           <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-400">
             <Sparkles size={24} />
@@ -396,7 +396,7 @@ export function AccountManager() {
           return (
             <div
               key={acc.id}
-              className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 relative overflow-hidden transition-all hover:border-slate-700 shadow-xl flex flex-col justify-between"
+              className="p-5 rounded-2xl bg-[#0a0a0a]/95 border border-zinc-800 relative overflow-hidden transition-all hover:border-zinc-700 shadow-xl flex flex-col justify-between"
             >
               {/* Top Bank Accent Stripe */}
               <div 
@@ -417,37 +417,37 @@ export function AccountManager() {
 
                     <div>
                       <h3 className="font-bold text-white text-base leading-tight">{acc.accountName}</h3>
-                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400">
                         <span>{bank.name}</span>
                         {acc.last4Digits && <span>• (••• {acc.last4Digits})</span>}
                       </div>
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-zinc-300 border border-zinc-700">
                     {acc.accountType}
                   </span>
                 </div>
 
                 {/* Balance Display */}
-                <div className="my-4 p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex justify-between items-center">
+                <div className="my-4 p-3.5 rounded-xl bg-[#000000]/70 border border-zinc-800/80 flex justify-between items-center">
                   <div>
-                    <span className="text-[11px] uppercase font-bold text-slate-400">Current Balance</span>
+                    <span className="text-[11px] uppercase font-bold text-zinc-400">Current Balance</span>
                     <div className={`text-2xl font-black font-mono ${isCredit ? 'text-rose-400' : 'text-white'}`}>
                       ${Math.abs(acc.balance).toFixed(2)}
-                      {isCredit && <span className="text-xs font-normal text-slate-400 ml-1">due</span>}
+                      {isCredit && <span className="text-xs font-normal text-zinc-400 ml-1">due</span>}
                     </div>
                   </div>
 
                   {/* Digital Wallet Badges */}
                   <div className="flex items-center gap-1.5">
                     {acc.isApplePay && (
-                      <span className="px-2 py-1 rounded bg-black text-white text-[10px] font-bold border border-slate-700 flex items-center gap-1">
+                      <span className="px-2 py-1 rounded bg-black text-white text-[10px] font-bold border border-zinc-700 flex items-center gap-1">
                          Pay
                       </span>
                     )}
                     {acc.isGoogleWallet && (
-                      <span className="px-2 py-1 rounded bg-slate-800 text-cyan-400 text-[10px] font-bold border border-slate-700 flex items-center gap-1">
+                      <span className="px-2 py-1 rounded bg-slate-800 text-cyan-400 text-[10px] font-bold border border-zinc-700 flex items-center gap-1">
                         G Pay
                       </span>
                     )}
@@ -499,25 +499,25 @@ export function AccountManager() {
                 )}
 
                 {isCredit && acc.statementDateDay && (
-                  <div className="p-3 rounded-xl mb-3 text-xs bg-slate-800/60 border border-slate-700/80 text-slate-300 flex justify-between items-center">
+                  <div className="p-3 rounded-xl mb-3 text-xs bg-slate-800/60 border border-zinc-700/80 text-zinc-300 flex justify-between items-center">
                     <div>
-                      <span className="text-slate-400">Statement Close:</span> <b>{acc.statementDateDay}th of month</b>
+                      <span className="text-zinc-400">Statement Close:</span> <b>{acc.statementDateDay}th of month</b>
                     </div>
                     <div>
-                      <span className="text-slate-400">Due:</span> <b className="text-rose-400">{acc.paymentDueDateDay}th of month</b>
+                      <span className="text-zinc-400">Due:</span> <b className="text-rose-400">{acc.paymentDueDateDay}th of month</b>
                     </div>
                   </div>
                 )}
 
                 {acc.notes && (
-                  <p className="text-xs text-slate-400 mt-2 mb-3 bg-slate-950/40 p-2 rounded-lg border border-slate-800/60">
+                  <p className="text-xs text-zinc-400 mt-2 mb-3 bg-[#050505]/60 p-2 rounded-lg border border-zinc-800/60">
                     💡 {acc.notes}
                   </p>
                 )}
               </div>
 
               {/* Action Toolbar */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800/80">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800/80">
                 <button
                   type="button"
                   onClick={() => {
@@ -545,15 +545,15 @@ export function AccountManager() {
       {/* ADD / EDIT ACCOUNT MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-[#0a0a0a] border border-zinc-700 shadow-2xl">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
               <h2 className="text-lg font-bold text-white">
                 {editingAccount ? 'Edit Bank Account' : 'Connect New Bank Account'}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-white"
+                className="p-1 rounded-md text-zinc-400 hover:text-white"
               >
                 ✕
               </button>
@@ -562,7 +562,7 @@ export function AccountManager() {
             <form onSubmit={handleSaveAccount} className="space-y-4 text-xs">
               {/* Select Bank */}
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-2">Select Bank / Institution</label>
+                <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-2">Select Bank / Institution</label>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                   {BANK_CATALOG.filter(b => b.country === selectedCountry || b.country === 'GLOBAL').map((b) => (
                     <button
@@ -572,7 +572,7 @@ export function AccountManager() {
                       className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                         formData.bankId === b.id
                           ? 'border-rose-500 bg-rose-500/10 text-white shadow-lg'
-                          : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                          : 'border-zinc-800 bg-[#050505]/80 text-zinc-400 hover:border-zinc-700'
                       }`}
                     >
                       <div 
@@ -589,7 +589,7 @@ export function AccountManager() {
 
               {/* Account Type Selector */}
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-2">Account Type</label>
+                <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-2">Account Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['chequing', 'savings', 'credit', 'tfsa', 'fhsa', 'wallet'] as AccountType[]).map((type) => (
                     <button
@@ -599,7 +599,7 @@ export function AccountManager() {
                       className={`p-2 rounded-lg border text-center font-bold uppercase tracking-wider text-[11px] ${
                         formData.accountType === type
                           ? 'border-cyan-500 bg-cyan-500/10 text-cyan-300'
-                          : 'border-slate-800 bg-slate-950/40 text-slate-400'
+                          : 'border-zinc-800 bg-[#050505]/60 text-zinc-400'
                       }`}
                     >
                       {type}
@@ -610,13 +610,13 @@ export function AccountManager() {
 
               {/* Account Name */}
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Account Display Name</label>
+                <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-1">Account Display Name</label>
                 <input
                   type="text"
                   value={formData.accountName || ''}
                   onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
                   placeholder="e.g. TD Every Day Chequing"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                  className="w-full bg-[#000000] border border-zinc-800 rounded-lg p-2.5 text-white"
                   required
                 />
               </div>
@@ -624,57 +624,57 @@ export function AccountManager() {
               {/* Balance & Last 4 Digits */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Current Balance ($)</label>
+                  <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-1">Current Balance ($)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.balance !== undefined ? formData.balance : ''}
                     onChange={(e) => setFormData({ ...formData, balance: parseFloat(e.target.value) })}
                     placeholder="4250.00"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono"
+                    className="w-full bg-[#000000] border border-zinc-800 rounded-lg p-2.5 text-white font-mono"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Last 4 Digits</label>
+                  <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-1">Last 4 Digits</label>
                   <input
                     type="text"
                     maxLength={4}
                     value={formData.last4Digits || ''}
                     onChange={(e) => setFormData({ ...formData, last4Digits: e.target.value })}
                     placeholder="4821"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono"
+                    className="w-full bg-[#000000] border border-zinc-800 rounded-lg p-2.5 text-white font-mono"
                   />
                 </div>
               </div>
 
               {/* Chequing Specific: Minimum Balance for Fee Waiver */}
               {formData.accountType === 'chequing' && (
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 space-y-3">
                   <div className="font-bold text-amber-400 flex items-center gap-1.5">
                     <ShieldCheck size={14} />
                     <span>Monthly Fee & Waiver Threshold</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-400 mb-1">Monthly Maintenance Fee ($/mo)</label>
+                      <label className="block text-zinc-400 mb-1">Monthly Maintenance Fee ($/mo)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.monthlyFee !== undefined ? formData.monthlyFee : ''}
                         onChange={(e) => setFormData({ ...formData, monthlyFee: parseFloat(e.target.value) })}
                         placeholder="16.95"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                        className="w-full bg-[#0a0a0a] border border-zinc-800 rounded-lg p-2 text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 mb-1">Min Balance to Waive Fee ($)</label>
+                      <label className="block text-zinc-400 mb-1">Min Balance to Waive Fee ($)</label>
                       <input
                         type="number"
                         value={formData.minBalanceForFeeWaiver !== undefined ? formData.minBalanceForFeeWaiver : ''}
                         onChange={(e) => setFormData({ ...formData, minBalanceForFeeWaiver: parseFloat(e.target.value) })}
                         placeholder="4000"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                        className="w-full bg-[#0a0a0a] border border-zinc-800 rounded-lg p-2 text-white"
                       />
                     </div>
                   </div>
@@ -683,41 +683,41 @@ export function AccountManager() {
 
               {/* Savings / HISA Specific: Interest Rates */}
               {(formData.accountType === 'savings' || formData.accountType === 'tfsa') && (
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 space-y-3">
                   <div className="font-bold text-cyan-400 flex items-center gap-1.5">
                     <TrendingUp size={14} />
                     <span>Interest Rates & Promotional Period</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-slate-400 mb-1">Base APY (%)</label>
+                      <label className="block text-zinc-400 mb-1">Base APY (%)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.interestRateApy !== undefined ? formData.interestRateApy : ''}
                         onChange={(e) => setFormData({ ...formData, interestRateApy: parseFloat(e.target.value) })}
                         placeholder="2.25"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                        className="w-full bg-[#0a0a0a] border border-zinc-800 rounded-lg p-2 text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 mb-1">Promo APY (%)</label>
+                      <label className="block text-zinc-400 mb-1">Promo APY (%)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.promoInterestRateApy !== undefined ? formData.promoInterestRateApy : ''}
                         onChange={(e) => setFormData({ ...formData, promoInterestRateApy: parseFloat(e.target.value) })}
                         placeholder="5.50"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                        className="w-full bg-[#0a0a0a] border border-zinc-800 rounded-lg p-2 text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 mb-1">Promo Expiration</label>
+                      <label className="block text-zinc-400 mb-1">Promo Expiration</label>
                       <input
                         type="date"
                         value={formData.promoExpiryDate || ''}
                         onChange={(e) => setFormData({ ...formData, promoExpiryDate: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                        className="w-full bg-[#0a0a0a] border border-zinc-800 rounded-lg p-2 text-white"
                       />
                     </div>
                   </div>
@@ -726,47 +726,47 @@ export function AccountManager() {
 
               {/* Digital Wallets Checkboxes */}
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-2">Linked to Mobile Wallets</label>
+                <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-2">Linked to Mobile Wallets</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.isApplePay || false}
                       onChange={(e) => setFormData({ ...formData, isApplePay: e.target.checked })}
-                      className="rounded bg-slate-950 border-slate-800"
+                      className="rounded bg-[#000000] border-zinc-800"
                     />
-                    <span className="text-slate-300">Apple Pay (iPhone / Apple Watch)</span>
+                    <span className="text-zinc-300">Apple Pay (iPhone / Apple Watch)</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.isGoogleWallet || false}
                       onChange={(e) => setFormData({ ...formData, isGoogleWallet: e.target.checked })}
-                      className="rounded bg-slate-950 border-slate-800"
+                      className="rounded bg-[#000000] border-zinc-800"
                     />
-                    <span className="text-slate-300">Google Wallet (Android)</span>
+                    <span className="text-zinc-300">Google Wallet (Android)</span>
                   </label>
                 </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Notes & Conditions</label>
+                <label className="block text-zinc-400 font-bold uppercase tracking-wider mb-1">Notes & Conditions</label>
                 <textarea
                   rows={2}
                   value={formData.notes || ''}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="e.g. Free Interac e-Transfers included. 4% cashback on dining."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white"
+                  className="w-full bg-[#000000] border border-zinc-800 rounded-lg p-2.5 text-white"
                 />
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold"
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-zinc-300 hover:bg-slate-700 font-bold"
                 >
                   Cancel
                 </button>

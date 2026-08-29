@@ -103,7 +103,7 @@ export function SmartTransactionAnnotator() {
   }
 
   return (
-    <div className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-[#0a0f1a] to-slate-900 border border-slate-700/80 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-top-3 duration-400">
+    <div className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-[#080808] to-slate-900 border border-zinc-700/80 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-top-3 duration-400">
       {/* Glow highlight line */}
       <div 
         className="absolute top-0 left-0 right-0 h-1"
@@ -127,7 +127,7 @@ export function SmartTransactionAnnotator() {
                 ${Math.abs(recentTx.amount).toFixed(2)} {recentTx.currency}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               What was this purchase for? (Adds context to your monthly budget)
             </p>
           </div>
@@ -136,7 +136,7 @@ export function SmartTransactionAnnotator() {
         <button
           type="button"
           onClick={() => setIsDismissed(true)}
-          className="p-1 rounded-md text-slate-500 hover:text-white self-end md:self-auto cursor-pointer"
+          className="p-1 rounded-md text-zinc-500 hover:text-white self-end md:self-auto cursor-pointer"
         >
           <X size={16} />
         </button>
@@ -151,7 +151,7 @@ export function SmartTransactionAnnotator() {
               value={noteInput}
               onChange={(e) => setNoteInput(e.target.value)}
               placeholder="e.g. Iced coffee with Sarah, Birthday party snacks, Winter boots..."
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
+              className="w-full bg-[#000000] border border-zinc-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all"
               autoFocus
             />
           </div>
@@ -169,7 +169,7 @@ export function SmartTransactionAnnotator() {
 
         {/* Quick Tag Pills */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-1 flex items-center gap-1">
+          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mr-1 flex items-center gap-1">
             <Tag size={10} /> Quick Tags:
           </span>
           {QUICK_TAGS.map((tag) => (
@@ -180,7 +180,7 @@ export function SmartTransactionAnnotator() {
               className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
                 selectedTag === tag
                   ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700'
+                  : 'bg-[#000000] text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-700'
               }`}
             >
               {tag}

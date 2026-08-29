@@ -90,7 +90,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#000000] flex items-center justify-center p-4 relative overflow-hidden">
       
       {/* Background Gate Energy */}
       <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
@@ -108,7 +108,7 @@ const Login = () => {
               initial={{ scale: 0.8, y: 50, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{ delay: 0.5, type: 'spring', bounce: 0.5 }}
-              className="px-8 py-6 rounded-xl border border-blue-500/50 bg-[#0a0f1a] shadow-[0_0_50px_rgba(59,130,246,0.3)] text-center max-w-lg mx-4"
+              className="px-8 py-6 rounded-xl border border-blue-500/50 bg-[#080808] shadow-[0_0_50px_rgba(59,130,246,0.3)] text-center max-w-lg mx-4"
             >
               <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-4 tracking-widest uppercase flex items-center justify-center gap-3">
                 <Sparkles className="text-blue-400" />
@@ -119,7 +119,7 @@ const Login = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.5, duration: 1 }}
-                className="text-lg text-slate-300 font-mono typing-effect"
+                className="text-lg text-zinc-300 font-mono typing-effect"
               >
                 [SYSTEM: You have been chosen as the Monarch of Finance.]
               </motion.div>
@@ -141,7 +141,7 @@ const Login = () => {
         className="w-full max-w-md relative z-10"
       >
         {/* The Gate UI */}
-        <div className="glass p-8 rounded-2xl border-2 border-blue-500/30 bg-[#0a0f1a]/80 backdrop-blur-xl shadow-[0_0_40px_rgba(59,130,246,0.15)] relative overflow-hidden">
+        <div className="glass p-8 rounded-2xl border-2 border-blue-500/30 bg-[#080808]/80 backdrop-blur-xl shadow-[0_0_40px_rgba(59,130,246,0.15)] relative overflow-hidden">
           
           {/* Top Rank Badge */}
           <div className="absolute top-0 right-0">
@@ -160,7 +160,7 @@ const Login = () => {
               <Activity className="text-blue-500" size={32} />
               AURA <span className="text-blue-500">GATE</span>
             </h1>
-            <p className="text-slate-400 font-mono text-sm tracking-widest uppercase">Select your entry method</p>
+            <p className="text-zinc-400 font-mono text-sm tracking-widest uppercase">Select your entry method</p>
           </div>
 
           {error && (
@@ -175,7 +175,7 @@ const Login = () => {
               whileHover={{ boxShadow: "0 0 25px rgba(59,130,246,0.4)", backgroundColor: "rgba(59,130,246,0.1)", borderColor: "rgba(59,130,246,0.5)" }}
               whileTap={{ scale: 0.98 }}
               onClick={handleGoogleLogin}
-              className="w-full relative overflow-hidden group border border-slate-700 bg-white/5 rounded-xl py-3.5 px-4 flex items-center justify-center gap-3 transition-all"
+              className="w-full relative overflow-hidden group border border-zinc-700 bg-white/5 rounded-xl py-3.5 px-4 flex items-center justify-center gap-3 transition-all"
             >
               {/* Google G Logo SVG Wrapper */}
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -188,15 +188,15 @@ const Login = () => {
             </motion.button>
 
             <div className="relative flex items-center py-4">
-              <div className="flex-grow border-t border-slate-800"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-500 text-xs font-bold uppercase tracking-widest">Or initiate manual entry</span>
-              <div className="flex-grow border-t border-slate-800"></div>
+              <div className="flex-grow border-t border-zinc-800"></div>
+              <span className="flex-shrink-0 mx-4 text-zinc-500 text-xs font-bold uppercase tracking-widest">Or initiate manual entry</span>
+              <div className="flex-grow border-t border-zinc-800"></div>
             </div>
 
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div className="space-y-4">
                 <div className="relative">
-                  <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     id="email"
                     name="email"
@@ -205,12 +205,12 @@ const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="Hunter Email"
-                    className="w-full bg-[#020617] border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    className="w-full bg-[#000000] border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                   />
                 </div>
 
                 <div className="relative">
-                  <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     id="password"
                     name="password"
@@ -219,7 +219,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="Access Key"
-                    className="w-full bg-[#020617] border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    className="w-full bg-[#000000] border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                   />
                 </div>
               </div>
@@ -235,9 +235,9 @@ const Login = () => {
               </motion.button>
 
               <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-slate-800/80"></div>
+                <div className="flex-grow border-t border-zinc-800/80"></div>
                 <span className="flex-shrink-0 mx-4 text-slate-600 text-[10px] font-bold uppercase tracking-widest">or bypass requirements</span>
-                <div className="flex-grow border-t border-slate-800/80"></div>
+                <div className="flex-grow border-t border-zinc-800/80"></div>
               </div>
 
               <motion.button

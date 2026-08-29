@@ -172,7 +172,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl relative overflow-hidden"
+        className="w-full max-w-lg p-6 rounded-2xl bg-[#0a0a0a] border border-zinc-800 shadow-2xl relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow border line */}
@@ -182,20 +182,20 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
         />
 
         {/* Header */}
-        <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-800">
+        <div className="flex justify-between items-center pb-4 mb-4 border-b border-zinc-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 flex items-center justify-center">
               <Fingerprint size={18} />
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Biometric Passkeys (WebAuthn)</h2>
-              <p className="text-[11px] text-slate-400">1-Click Face ID, Touch ID & Windows Hello Login</p>
+              <p className="text-[11px] text-zinc-400">1-Click Face ID, Touch ID & Windows Hello Login</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-white cursor-pointer"
+            className="p-1 rounded-md text-zinc-400 hover:text-white cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -219,7 +219,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
         {step === 'list' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-400">Registered Devices ({passkeys.length})</span>
+              <span className="text-xs font-semibold text-zinc-400">Registered Devices ({passkeys.length})</span>
               <button
                 type="button"
                 onClick={handleRequestOtp}
@@ -233,12 +233,12 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
             </div>
 
             {loading ? (
-              <div className="py-8 text-center text-xs text-slate-500 font-mono">Scanning registered passkeys...</div>
+              <div className="py-8 text-center text-xs text-zinc-500 font-mono">Scanning registered passkeys...</div>
             ) : passkeys.length === 0 ? (
-              <div className="p-8 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-2">
-                <ShieldCheck size={28} className="text-slate-500 mx-auto" />
+              <div className="p-8 rounded-xl bg-[#050505]/80 border border-zinc-800 text-center space-y-2">
+                <ShieldCheck size={28} className="text-zinc-500 mx-auto" />
                 <h4 className="text-sm font-bold text-white">No Passkeys Enrolled Yet</h4>
-                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                <p className="text-xs text-zinc-400 max-w-xs mx-auto">
                   Add your Samsung Galaxy S26 Ultra, iPhone, or PC to log in instantly with your fingerprint or face.
                 </p>
               </div>
@@ -247,10 +247,10 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                 {passkeys.map((pk) => (
                   <div
                     key={pk.id}
-                    className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex justify-between items-center"
+                    className="p-3 rounded-xl bg-[#050505]/80 border border-zinc-800 flex justify-between items-center"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-slate-900 text-cyan-400">
+                      <div className="p-2 rounded-lg bg-[#0a0a0a] text-cyan-400">
                         {pk.name?.toLowerCase().includes('phone') || pk.name?.toLowerCase().includes('samsung') || pk.name?.toLowerCase().includes('android') ? (
                           <Smartphone size={16} />
                         ) : (
@@ -259,7 +259,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white">{pk.name}</h4>
-                        <span className="text-[10px] text-slate-400 block font-mono">
+                        <span className="text-[10px] text-zinc-400 block font-mono">
                           Enrolled: {new Date(pk.createdAt).toLocaleDateString()}
                         </span>
                       </div>
@@ -268,7 +268,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                     <button
                       type="button"
                       onClick={() => handleDeletePasskey(pk.id, pk.name)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/20"
+                      className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/20"
                       title="Revoke Passkey"
                     >
                       <Trash2 size={14} />
@@ -283,15 +283,15 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
         {/* VIEW 2: VERIFY EMAIL OTP CODE */}
         {step === 'verify_otp' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <div className="p-4 rounded-xl bg-[#000000]/90 border border-zinc-800 space-y-2">
               <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold">
                 <Mail size={16} />
                 <span>Security Code Required</span>
               </div>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-zinc-300">
                 To authorize adding a new biometric device, enter the 6-digit confirmation code sent to:
               </p>
-              <span className="text-xs font-mono font-bold text-white bg-slate-900 px-2 py-1 rounded border border-slate-800 inline-block">
+              <span className="text-xs font-mono font-bold text-white bg-[#0a0a0a] px-2 py-1 rounded border border-zinc-800 inline-block">
                 {userEmail}
               </span>
             </div>
@@ -311,7 +311,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 6-Digit Security Code
               </label>
               <input
@@ -320,7 +320,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-lg font-mono font-bold text-white tracking-widest focus:outline-none focus:border-cyan-500 transition-all"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-4 py-3 text-center text-lg font-mono font-bold text-white tracking-widest focus:outline-none focus:border-cyan-500 transition-all"
                 autoFocus
               />
             </div>
@@ -330,7 +330,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                 type="button"
                 onClick={handleRequestOtp}
                 disabled={resendCooldown > 0 || isProcessing}
-                className="text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50 cursor-pointer"
+                className="text-xs text-zinc-400 hover:text-cyan-400 disabled:opacity-50 cursor-pointer"
               >
                 {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend Code'}
               </button>
@@ -339,7 +339,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                 <button
                   type="button"
                   onClick={() => setStep('list')}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white"
                 >
                   Cancel
                 </button>
@@ -360,18 +360,18 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
         {/* VIEW 3: ENROLL BIOMETRIC SENSOR */}
         {step === 'enroll_biometric' && (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <div className="p-4 rounded-xl bg-[#000000]/90 border border-zinc-800 space-y-2">
               <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
                 <ShieldCheck size={16} />
                 <span>Identity Verified!</span>
               </div>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-zinc-300">
                 You are authorized to bind this device. Give your device a friendly name:
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 Device Name / Nickname
               </label>
               <input
@@ -379,7 +379,7 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
                 value={deviceNickname}
                 onChange={(e) => setDeviceNickname(e.target.value)}
                 placeholder="e.g. Samsung Galaxy S26 Ultra, MacBook Pro..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-all"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-all"
               />
             </div>
 
@@ -400,12 +400,12 @@ export function PasskeyManagerModal({ onClose, onPasskeyAdded }: PasskeyManagerM
 
         {/* VIEW 4: SUCCESS CONFIRMATION */}
         {step === 'success' && (
-          <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 text-center space-y-3">
+          <div className="p-6 rounded-xl bg-[#000000]/90 border border-zinc-800 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
               <CheckCircle2 size={24} />
             </div>
             <h3 className="text-base font-bold text-white">Device Enrolled Successfully!</h3>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
               Your biometric passkey is linked. You can now authenticate with 1 tap using your fingerprint or Face ID.
             </p>
             <button

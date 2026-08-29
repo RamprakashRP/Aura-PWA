@@ -25,13 +25,13 @@ export function ReturnWarrantyTracker({ items, onEdit, onDelete, onStatusChange,
 
   if (items.length === 0) {
     return (
-      <div className="p-12 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center space-y-3">
+      <div className="p-12 rounded-2xl bg-[#080808]/50 border border-zinc-800/80 text-center space-y-3">
         <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-pink-400 flex items-center justify-center mx-auto shadow-xl">
           <Package size={26} />
         </div>
         <div>
           <h3 className="text-base font-bold text-white">No Return Windows Tracked</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+          <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
             Bought something on Amazon, Best Buy, or Apple? Track 14-day and 30-day return windows so you never get stuck with unwanted items.
           </p>
         </div>
@@ -57,7 +57,7 @@ export function ReturnWarrantyTracker({ items, onEdit, onDelete, onStatusChange,
         return (
           <div
             key={item.id}
-            className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all"
+            className="p-5 rounded-2xl bg-[#0a0a0a]/95 border border-zinc-800 backdrop-blur-xl shadow-xl flex flex-col justify-between hover:border-zinc-700 transition-all"
           >
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -70,25 +70,25 @@ export function ReturnWarrantyTracker({ items, onEdit, onDelete, onStatusChange,
               </div>
 
               <h4 className="font-bold text-white text-base">{item.title}</h4>
-              <span className="text-xs text-slate-400 block mt-0.5">
+              <span className="text-xs text-zinc-400 block mt-0.5">
                 Return Deadline: {format(new Date(item.renewalDate), 'MMM d, yyyy')} ({daysLeft >= 0 ? `${daysLeft} days remaining` : 'Window Closed'})
               </span>
 
               {item.notes && (
-                <p className="text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl border border-slate-800 my-3">
+                <p className="text-xs text-zinc-300 bg-[#050505]/80 p-3 rounded-xl border border-zinc-800 my-3">
                   📦 {item.notes}
                 </p>
               )}
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-zinc-800">
               {item.actionUrl && (
                 <a
                   href={item.actionUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg bg-slate-800 text-zinc-400 hover:text-white"
                 >
                   <ExternalLink size={14} />
                 </a>
@@ -96,7 +96,7 @@ export function ReturnWarrantyTracker({ items, onEdit, onDelete, onStatusChange,
               <button
                 type="button"
                 onClick={() => onStatusChange(item.id, item.status === 'active' ? 'returned' : 'active')}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 hover:bg-slate-700 flex items-center gap-1"
+                className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-zinc-300 hover:bg-slate-700 flex items-center gap-1"
               >
                 {item.status === 'active' ? <CheckCircle size={12} className="text-emerald-400" /> : <RotateCcw size={12} className="text-cyan-400" />}
                 <span>{item.status === 'active' ? 'Returned' : 'Reactivate'}</span>
@@ -104,7 +104,7 @@ export function ReturnWarrantyTracker({ items, onEdit, onDelete, onStatusChange,
               <button
                 type="button"
                 onClick={() => onEdit(item)}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-lg bg-slate-800 text-zinc-400 hover:text-white"
               >
                 <Edit3 size={14} />
               </button>

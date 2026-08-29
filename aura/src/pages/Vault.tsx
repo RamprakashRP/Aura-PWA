@@ -100,7 +100,7 @@ export default function Vault() {
   return (
     <div className="space-y-6 pb-24 text-slate-100 max-w-7xl mx-auto">
       {/* Top Vault Command Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl shadow-xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 rounded-2xl bg-[#080808]/90 border border-zinc-800 backdrop-blur-xl shadow-xl">
         <div className="flex items-center gap-3">
           <div 
             className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
@@ -112,7 +112,7 @@ export default function Vault() {
             <h1 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
               VAULT // Reminder Command
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               Bill Due Dates • Bank Bonus Deadlines • 1-Yr Free Checking Conversions • Return Windows
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function Vault() {
           <button
             type="button"
             onClick={() => setShowTelegramModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 border border-zinc-700 hover:bg-slate-700/80 transition-all cursor-pointer"
             style={{
               borderColor: notifSettings.telegramChatId ? 'rgba(0, 242, 254, 0.4)' : undefined,
               color: notifSettings.telegramChatId ? '#38bdf8' : undefined,
@@ -148,12 +148,12 @@ export default function Vault() {
       </div>
 
       {/* Segmented Desktop Navigation Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-slate-900/90 border border-slate-800 rounded-xl overflow-x-auto">
+      <div className="flex items-center gap-1 p-1 bg-[#0a0a0a]/95 border border-zinc-800 rounded-xl overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'overview' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'overview' ? 'text-white shadow-md' : 'text-zinc-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'overview' ? auraColor : 'transparent' }}
         >
@@ -165,7 +165,7 @@ export default function Vault() {
           type="button"
           onClick={() => setActiveTab('credit_cards')}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'credit_cards' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'credit_cards' ? 'text-white shadow-md' : 'text-zinc-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'credit_cards' ? auraColor : 'transparent' }}
         >
@@ -177,7 +177,7 @@ export default function Vault() {
           type="button"
           onClick={() => setActiveTab('bank_offers')}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'bank_offers' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'bank_offers' ? 'text-white shadow-md' : 'text-zinc-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'bank_offers' ? auraColor : 'transparent' }}
         >
@@ -189,7 +189,7 @@ export default function Vault() {
           type="button"
           onClick={() => setActiveTab('fee_transitions')}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'fee_transitions' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'fee_transitions' ? 'text-white shadow-md' : 'text-zinc-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'fee_transitions' ? auraColor : 'transparent' }}
         >
@@ -201,7 +201,7 @@ export default function Vault() {
           type="button"
           onClick={() => setActiveTab('returns_warranties')}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'returns_warranties' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'returns_warranties' ? 'text-white shadow-md' : 'text-zinc-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'returns_warranties' ? auraColor : 'transparent' }}
         >
@@ -213,7 +213,7 @@ export default function Vault() {
           type="button"
           onClick={() => setActiveTab('subscriptions')}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'subscriptions' ? 'text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'subscriptions' ? 'text-white shadow-md' : 'text-zinc-400 hover:text-slate-200'
           }`}
           style={{ background: activeTab === 'subscriptions' ? auraColor : 'transparent' }}
         >
@@ -224,7 +224,7 @@ export default function Vault() {
 
       {/* Tab Views */}
       {isLoading ? (
-        <div className="text-center py-16 text-slate-400 font-mono text-xs">Loading Money Saver reminders...</div>
+        <div className="text-center py-16 text-zinc-400 font-mono text-xs">Loading Money Saver reminders...</div>
       ) : activeTab === 'credit_cards' ? (
         <CreditCardWallet
           cards={creditCards}
@@ -270,13 +270,13 @@ export default function Vault() {
       {/* CREATE MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-[#0a0a0a] border border-zinc-700 shadow-2xl">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
               <h2 className="text-lg font-bold text-white">Create New Tracking Reminder</h2>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-white"
+                className="p-1 rounded-md text-zinc-400 hover:text-white"
               >
                 ✕
               </button>
@@ -293,13 +293,13 @@ export default function Vault() {
       {/* EDIT MODAL */}
       {editingReminder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-[#0a0a0a] border border-zinc-700 shadow-2xl">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
               <h2 className="text-lg font-bold text-white">Edit Reminder: {editingReminder.title}</h2>
               <button
                 type="button"
                 onClick={() => setEditingReminder(null)}
-                className="p-1 rounded-md text-slate-400 hover:text-white"
+                className="p-1 rounded-md text-zinc-400 hover:text-white"
               >
                 ✕
               </button>
