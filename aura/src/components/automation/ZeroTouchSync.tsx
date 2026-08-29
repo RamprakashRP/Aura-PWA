@@ -1,140 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Mail, 
-  Landmark, 
   CheckCircle, 
   Copy, 
   Radio, 
   Smartphone,
-  Zap,
-  Key,
-  ExternalLink,
-  AlertCircle,
-  Building2
+  Zap
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
-
-declare global {
-  interface Window {
-    Plaid: any;
-  }
-}
 
 export function ZeroTouchSync() {
   const { getAuraColor } = useTheme();
   const auraColor = getAuraColor();
-  const { user } = useAuth();
 
-  const [activeChannel, setActiveChannel] = useState<'android' | 'plaid' | 'ios' | 'email'>('plaid');
+  const [activeChannel, setActiveChannel] = useState<'android' | 'ios' | 'email'>('android');
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  // Plaid state
-  const [plaidClientId, setPlaidClientId] = useState(localStorage.getItem('aura_plaid_client_id') || '');
-  const [plaidSecret, setPlaidSecret] = useState(localStorage.getItem('aura_plaid_secret') || '');
-  const [plaidEnv, setPlaidEnv] = useState<'development' | 'sandbox'>('development');
-  const [isConnectingPlaid, setIsConnectingPlaid] = useState(false);
-  const [plaidError, setPlaidError] = useState<string | null>(null);
-  const [connectedBankSummary, setConnectedBankSummary] = useState<any[] | null>(null);
-
   const webhookUrl = window.location.origin + '/api/webhook/transaction';
-
-  // Load Plaid Link SDK Script
-  useEffect(() => {
-    if (!document.getElementById('plaid-link-script')) {
-      const script = document.createElement('script');
-      script.id = 'plaid-link-script';
-      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedText(id);
     setTimeout(() => setCopiedText(null), 2500);
-  };
-
-  const handleSavePlaidKeys = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('aura_plaid_client_id', plaidClientId.trim());
-    localStorage.setItem('aura_plaid_secret', plaidSecret.trim());
-    setPlaidError(null);
-    launchPlaidLink();
-  };
-
-  // Launch Plaid Link Modal
-  const launchPlaidLink = async () => {
-    const cId = plaidClientId.trim() || localStorage.getItem('aura_plaid_client_id');
-    const sec = plaidSecret.trim() || localStorage.getItem('aura_plaid_secret');
-
-    if (!cId || !sec) {
-      setPlaidError('Please enter your Plaid Client ID and Secret first.');
-      return;
-    }
-
-    setIsConnectingPlaid(true);
-    setPlaidError(null);
-
-    try {
-      // 1. Get Link Token from server
-      const res = await fetch('/api/plaid/create-link-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: cId,
-          secret: sec,
-          env: plaidEnv,
-          userId: user?.id || 'aura_user_1',
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.link_token) {
-        throw new Error(data.error || 'Failed to generate Plaid Link token.');
-      }
-
-      // 2. Open Plaid Link UI
-      if (window.Plaid) {
-        const handler = window.Plaid.create({
-          token: data.link_token,
-          onSuccess: async (publicToken: string, metadata: any) => {
-            console.log('Plaid Link success:', metadata);
-            // 3. Exchange public token & sync accounts
-            const exchangeRes = await fetch('/api/plaid/exchange-public-token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                publicToken,
-                clientId: cId,
-                secret: sec,
-                env: plaidEnv,
-                userId: user?.id,
-              }),
-            });
-            const exchangeData = await exchangeRes.json();
-            if (exchangeData.accounts) {
-              setConnectedBankSummary(exchangeData.accounts);
-            }
-            setIsConnectingPlaid(false);
-          },
-          onExit: (err: any) => {
-            if (err) {
-              setPlaidError(err.message || 'Plaid connection exited.');
-            }
-            setIsConnectingPlaid(false);
-          },
-        });
-        handler.open();
-      } else {
-        throw new Error('Plaid Link SDK is loading. Please try again in a few seconds.');
-      }
-    } catch (err: any) {
-      console.error('Plaid Launch error:', err);
-      setPlaidError(err.message || 'Failed to open Plaid Link.');
-      setIsConnectingPlaid(false);
-    }
   };
 
   return (
@@ -150,13 +37,13 @@ export function ZeroTouchSync() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-white tracking-tight">Zero-Touch Automation & Open Banking</h2>
+              <h2 className="text-xl font-black text-white tracking-tight">Zero-Touch Payment Automation</h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30">
-                Live Background Ingestion
+                100% Free & Live
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Choose your preferred method to sync Canadian bank accounts, credit cards, Google Wallet, and Interac
+              Automatically capture Canadian spending from your Samsung S26 Ultra, Google Wallet, Apple Pay, and Interac
             </p>
           </div>
         </div>
@@ -170,230 +57,66 @@ export function ZeroTouchSync() {
       </div>
 
       {/* Channel Selector Tabs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveChannel('plaid')}
-          className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-            activeChannel === 'plaid'
-              ? 'border-purple-500 bg-purple-500/10 text-white shadow-lg'
-              : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <Landmark size={16} className="text-purple-400" />
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300">
-              Direct API
-            </span>
-          </div>
-          <div className="font-bold text-xs text-white">Canadian Open Banking</div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">Plaid / Flinks OAuth Sync</div>
-        </button>
-
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <button
           type="button"
           onClick={() => setActiveChannel('android')}
-          className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
             activeChannel === 'android'
-              ? 'border-cyan-500 bg-cyan-500/10 text-white shadow-lg'
+              ? 'border-cyan-500 bg-cyan-500/10 text-white shadow-lg ring-1 ring-cyan-500/50'
               : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <Smartphone size={16} className="text-cyan-400" />
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300">
-              Samsung / Android
+          <div className="flex items-center justify-between mb-2">
+            <Smartphone size={18} className="text-cyan-400" />
+            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300">
+              Recommended (Samsung / Android)
             </span>
           </div>
-          <div className="font-bold text-xs text-white">Google Wallet Tap</div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">Instant MacroDroid bridge</div>
+          <div className="font-bold text-sm text-white">Google / Samsung Wallet Tap</div>
+          <div className="text-[11px] text-zinc-400 mt-0.5">Instant MacroDroid notification bridge (0 seconds)</div>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveChannel('ios')}
-          className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
             activeChannel === 'ios'
-              ? 'border-rose-500 bg-rose-500/10 text-white shadow-lg'
+              ? 'border-rose-500 bg-rose-500/10 text-white shadow-lg ring-1 ring-rose-500/50'
               : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <Zap size={16} className="text-rose-400" />
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300">
-              iPhone / Watch
+          <div className="flex items-center justify-between mb-2">
+            <Zap size={18} className="text-rose-400" />
+            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300">
+              iOS / Apple Watch
             </span>
           </div>
-          <div className="font-bold text-xs text-white">Apple Pay Automation</div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">Native iOS Shortcuts</div>
+          <div className="font-bold text-sm text-white">Apple Pay Shortcuts</div>
+          <div className="text-[11px] text-zinc-400 mt-0.5">Native background automation for iPhone</div>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveChannel('email')}
-          className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
             activeChannel === 'email'
-              ? 'border-amber-500 bg-amber-500/10 text-white shadow-lg'
+              ? 'border-amber-500 bg-amber-500/10 text-white shadow-lg ring-1 ring-amber-500/50'
               : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <Mail size={16} className="text-amber-400" />
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300">
+          <div className="flex items-center justify-between mb-2">
+            <Mail size={18} className="text-amber-400" />
+            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300">
               Interac e-Transfer
             </span>
           </div>
-          <div className="font-bold text-xs text-white">Email Auto-Forwarding</div>
-          <div className="text-[10px] text-zinc-400 mt-0.5">Gmail / Outlook rules</div>
+          <div className="font-bold text-sm text-white">Email Auto-Forwarding</div>
+          <div className="text-[11px] text-zinc-400 mt-0.5">Gmail / Outlook 1-time automated rule</div>
         </button>
       </div>
 
-      {/* CHANNEL 1: CANADIAN OPEN BANKING (PLAID & FLINKS) */}
-      {activeChannel === 'plaid' && (
-        <div className="p-6 rounded-2xl bg-[#080808]/95 border border-purple-500/40 shadow-2xl space-y-5">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Landmark className="text-purple-400" size={20} />
-                <span>Direct Canadian Open Banking Sync (Plaid Canada & Flinks)</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
-                Connect your TD, RBC, Scotiabank, BMO, CIBC, or Tangerine accounts via official bank API OAuth tokens for automated daily ledger sync.
-              </p>
-            </div>
-            <a
-              href="https://dashboard.plaid.com/signup"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-200 flex items-center gap-1.5 cursor-pointer flex-shrink-0"
-            >
-              <span>Get Free Plaid Keys</span>
-              <ExternalLink size={12} />
-            </a>
-          </div>
-
-          {/* Success Banner */}
-          {connectedBankSummary && (
-            <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-2 animate-in fade-in">
-              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
-                <CheckCircle size={16} />
-                <span>Bank Accounts Successfully Connected & Synced to Aura!</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {connectedBankSummary.map((acc: any) => (
-                  <div key={acc.account_id} className="p-2.5 rounded-lg bg-[#000000] border border-zinc-800 text-xs flex justify-between items-center">
-                    <div>
-                      <b className="text-white block">{acc.name}</b>
-                      <span className="text-[10px] text-zinc-500 font-mono">•••• {acc.mask} ({acc.subtype || acc.type})</span>
-                    </div>
-                    <span className="font-mono font-bold text-emerald-400">
-                      ${acc.balances?.current?.toFixed(2)} {acc.balances?.iso_currency_code || 'CAD'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {plaidError && (
-            <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-300 flex items-center gap-2">
-              <AlertCircle size={16} className="flex-shrink-0" />
-              <span>{plaidError}</span>
-            </div>
-          )}
-
-          {/* Step by Step Connector Card */}
-          <form onSubmit={handleSavePlaidKeys} className="p-5 rounded-2xl bg-[#000000] border border-zinc-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2 text-xs font-bold text-white">
-                <Key size={14} className="text-purple-400" />
-                <span>Step 1: Plaid Developer API Credentials</span>
-              </div>
-
-              {/* Environment Toggle (Development vs Sandbox) */}
-              <div className="flex items-center gap-1 p-1 bg-zinc-900 rounded-lg text-[10px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setPlaidEnv('development')}
-                  className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                    plaidEnv === 'development' ? 'bg-purple-600 text-white' : 'text-zinc-400'
-                  }`}
-                >
-                  Live / Development (Canada)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlaidEnv('sandbox')}
-                  className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                    plaidEnv === 'sandbox' ? 'bg-purple-600 text-white' : 'text-zinc-400'
-                  }`}
-                >
-                  Sandbox (Test Mode)
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                  Plaid Client ID
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 64a8b7c9e1234567890..."
-                  value={plaidClientId}
-                  onChange={(e) => setPlaidClientId(e.target.value)}
-                  className="w-full bg-[#080808] border border-zinc-800 rounded-lg p-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-purple-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                  Plaid Secret Key
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••••••••••••••••••••••"
-                  value={plaidSecret}
-                  onChange={(e) => setPlaidSecret(e.target.value)}
-                  className="w-full bg-[#080808] border border-zinc-800 rounded-lg p-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-purple-500"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Launch Button */}
-            <div className="pt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-t border-zinc-800/80">
-              <div className="text-[11px] text-zinc-400">
-                <span>Step 2: </span>
-                <span className="text-zinc-300">Clicking below opens the official <strong>Plaid Link</strong> window in Aura.</span>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isConnectingPlaid}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl transition-all hover:scale-105 cursor-pointer flex items-center justify-center gap-2"
-                style={{ background: 'linear-gradient(135deg, #9333ea, #6b21a8)' }}
-              >
-                {isConnectingPlaid ? (
-                  <>
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    <span>Opening Bank Connection...</span>
-                  </>
-                ) : (
-                  <>
-                    <Building2 size={15} />
-                    <span>🏦 Connect Canadian Bank (Launch Plaid Link)</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* CHANNEL 2: ANDROID / SAMSUNG S26 GOOGLE WALLET */}
+      {/* CHANNEL 1: ANDROID / SAMSUNG S26 GOOGLE WALLET */}
       {activeChannel === 'android' && (
         <div className="p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-2xl space-y-5">
           <div>
@@ -414,15 +137,15 @@ export function ZeroTouchSync() {
               <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">1</span>
               <div>
                 <b className="text-white">Install MacroDroid (Free on Google Play Store)</b>
-                <p className="text-zinc-400 mt-0.5">MacroDroid is a lightweight, safe automation app with zero background battery drain.</p>
+                <p className="text-zinc-400 mt-0.5">MacroDroid is a safe, lightweight automation app that runs locally with zero battery impact.</p>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
               <div>
-                <b className="text-white">Trigger: Notification Received $\rightarrow$ Select (Google Wallet / TD / RBC / Scotiabank)</b>
-                <p className="text-zinc-400 mt-0.5">Choose Google Wallet or your bank app as the monitored notification source.</p>
+                <b className="text-white">Trigger: Notification Received $\rightarrow$ Select (Google Wallet / Bank App)</b>
+                <p className="text-zinc-400 mt-0.5">Choose Google Wallet, TD, RBC, or Scotiabank as the monitored notification source.</p>
               </div>
             </div>
 
@@ -447,7 +170,7 @@ export function ZeroTouchSync() {
         </div>
       )}
 
-      {/* CHANNEL 3: APPLE PAY / IOS SHORTCUT */}
+      {/* CHANNEL 2: APPLE PAY / IOS SHORTCUT */}
       {activeChannel === 'ios' && (
         <div className="p-6 rounded-2xl bg-[#080808]/95 border border-rose-500/40 shadow-2xl space-y-5">
           <div>
@@ -501,7 +224,7 @@ export function ZeroTouchSync() {
         </div>
       )}
 
-      {/* CHANNEL 4: EMAIL & INTERAC AUTO-FORWARDER */}
+      {/* CHANNEL 3: EMAIL & INTERAC AUTO-FORWARDER */}
       {activeChannel === 'email' && (
         <div className="p-6 rounded-2xl bg-[#080808]/95 border border-amber-500/40 shadow-2xl space-y-5">
           <div>

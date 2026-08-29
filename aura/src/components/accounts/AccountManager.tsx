@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import React, { useState, useEffect } from 'react';
@@ -104,7 +103,6 @@ function mapAccountToDb(acc: BankAccount, userId: string): any {
 }
 
 export function AccountManager() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { getAuraColor } = useTheme();
   const auraColor = getAuraColor();
@@ -309,14 +307,6 @@ export function AccountManager() {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/upload')}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-200 shadow-md cursor-pointer transition-all"
-          >
-            <Landmark size={14} className="text-purple-400" />
-            <span>Open Banking Sync</span>
-          </button>
           <button
             type="button"
             onClick={() => {
