@@ -225,22 +225,33 @@ export default defineConfig({
     pythonParserPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['logo.png', 'pwa-192x192.png', 'pwa-512x512.png', 'apple-touch-icon.png', 'favicon.svg'],
       manifest: {
-        name: 'Aura',
+        name: 'Aura Finance',
         short_name: 'Aura',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        description: 'Zero-touch Canadian personal finance and bill split tracker',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
+        orientation: 'portrait',
         icons: [
           {
-            src: '/logo.png',
+            src: '/pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: '/logo.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }
