@@ -358,7 +358,7 @@ export const vaultApi = {
   async getPasskeyRegistrationOptions(): Promise<any> {
     return {
       challenge: 'aura_local_challenge_' + Date.now(),
-      rp: { name: 'Aura Finance Vault', id: window.location.hostname },
+      rp: { name: 'Aura Vault', id: window.location.hostname },
       user: {
         id: 'aura_user_id',
         name: 'operative@aura.finance',

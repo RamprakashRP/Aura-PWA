@@ -227,7 +227,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png', 'pwa-192x192.png', 'pwa-512x512.png', 'apple-touch-icon.png', 'favicon.svg'],
       manifest: {
-        name: 'Aura Finance',
+        name: 'Aura',
         short_name: 'Aura',
         description: 'Zero-touch Canadian personal finance and bill split tracker',
         theme_color: '#000000',
