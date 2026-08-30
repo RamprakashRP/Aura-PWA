@@ -278,10 +278,10 @@ export function AccountManager() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xl">🇨🇦</span>
-            <h2 className="text-xl font-bold text-white">Canadian & Global Bank Accounts</h2>
+            <h2 className="text-xl font-bold text-white">Bank Accounts & Cards</h2>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Track Chequing fee waivers, High-Interest Savings rates (HISA), and Wallets
+            Track Chequing balance waivers, High-Interest Savings (HISA), and credit limits
           </p>
         </div>
 

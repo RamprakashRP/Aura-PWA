@@ -1,3 +1,5 @@
+import { ReceiptScannerModal } from '../components/expenses/ReceiptScannerModal';
+import { Camera, Receipt } from 'lucide-react';
 import { ZeroTouchSync } from '../components/automation/ZeroTouchSync';
 import { useState, useEffect } from 'react';
 import { Upload as UploadIcon, FileJson, CheckCircle, Edit2, Play, Trash2 } from 'lucide-react';
@@ -37,6 +39,7 @@ const categorize = (desc: string) => {
 };
 
 const Upload = () => {
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const { user } = useAuth();
   const { getAuraColor, getAuraGlow } = useTheme();
   const [dragActive, setDragActive] = useState(false);
@@ -239,6 +242,13 @@ const Upload = () => {
   };
 
   return (
+    <>
+      {showReceiptScanner && (
+        <ReceiptScannerModal 
+          onClose={() => setShowReceiptScanner(false)} 
+          onReceiptProcessed={() => setShowReceiptScanner(false)} 
+        />
+      )}
     <div className="max-w-7xl mx-auto px-4 space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
       <header className="mb-6 md:mb-10 text-center md:text-left flex flex-col md:flex-row justify-between items-center md:items-start gap-3">
         <div>
@@ -257,6 +267,46 @@ const Upload = () => {
         <div className="space-y-8">
           {/* 100% Zero-Touch Real-Time Sync (Apple Pay / Google Wallet) */}
           <ZeroTouchSync />
+
+          
+          {/* Smart Receipt & E-Bill Scanner Card */}
+          <div className="p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-2xl backdrop-blur-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+            <div 
+              className="absolute top-0 left-0 right-0 h-1"
+              style={{ background: `linear-gradient(90deg, ${getAuraColor()}, #00f2fe)` }}
+            />
+            <div className="flex items-center gap-3.5">
+              <div 
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${getAuraColor()}, #00b4d8)` }}
+              >
+                <Camera size={24} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Smart Receipt & E-Bill Scanner
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                    Itemized OCR + Split
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5 max-w-lg">
+                  Snap a photo of any store receipt or upload a digital PDF invoice. Aura itemizes each product and lets you split equally, by %, or custom amounts with roommates!
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowReceiptScanner(true)}
+              className="w-full md:w-auto px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 flex items-center justify-center gap-2 flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${getAuraColor()}, #00b4d8)` }}
+            >
+              <Receipt size={16} />
+              <span>📸 Scan & Split Bill</span>
+            </button>
+          </div>
 
           <div className="pt-6 border-t border-zinc-800">
             <h3 className="text-xs uppercase font-bold tracking-widest text-zinc-400 mb-3">
@@ -540,6 +590,7 @@ const Upload = () => {
         </motion.div>
       )}
     </div>
+    </>
   );
 };
 

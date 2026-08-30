@@ -1,3 +1,5 @@
+import { ReceiptScannerModal } from '../components/expenses/ReceiptScannerModal';
+import { Camera } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { 
   tabsApi, 
@@ -36,6 +38,7 @@ export default function Tabs() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'owes_you' | 'you_owe' | 'settled'>('all');
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
 
   // Modals state
   const [showAddContact, setShowAddContact] = useState(false);
@@ -177,6 +180,15 @@ export default function Tabs() {
             <span>+ Lent / Borrowed</span>
           </button>
 
+          
+          <button
+            type="button"
+            onClick={() => setShowReceiptScanner(true)}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 shadow-md cursor-pointer transition-all hover:scale-105 flex items-center gap-1.5"
+          >
+            <Camera size={14} />
+            <span>📸 Scan Receipt</span>
+          </button>
           <button
             type="button"
             onClick={() => setShowSplitBill(true)}
@@ -533,6 +545,15 @@ export default function Tabs() {
       )}
 
       {/* MODAL 1: ADD CONTACT */}
+      {showReceiptScanner && (
+        <ReceiptScannerModal 
+          onClose={() => setShowReceiptScanner(false)}
+          onReceiptProcessed={() => {
+            setShowReceiptScanner(false);
+            loadAllData();
+          }}
+        />
+      )}
       {showAddContact && (
         <AddContactModal
           onClose={() => setShowAddContact(false)}
