@@ -20,6 +20,47 @@ export function ZeroTouchSync() {
   const [activeChannel, setActiveChannel] = useState<'android' | 'ios' | 'email'>('android');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [customHost, setCustomHost] = useState('');
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleSendTestWebhook = async () => {
+    setIsTestingWebhook(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/webhook/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: 'Tim Hortons (MacroDroid Test)',
+          amount: 4.25,
+          category: 'Food',
+          currency: 'CAD',
+          card: 'Google Wallet (Samsung Pay / NFC)',
+          payment_method: 'Google Wallet',
+          user_id: user?.id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestResult({
+          success: true,
+          message: 'HTTP 200 OK! Webhook is live and test transaction was recorded.',
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error || 'Webhook returned an error.',
+        });
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err.message || 'Failed to reach webhook endpoint.',
+      });
+    } finally {
+      setIsTestingWebhook(false);
+    }
+  };
 
   // Intelligent URL resolution:
   // If running locally, provides option for live cloud endpoint so phone automations work outside the PC
@@ -191,6 +232,52 @@ export function ZeroTouchSync() {
                       )}
                     </button>
                   </div>
+
+
+                {/* 1-Click Interactive Test Simulator */}
+                <div className="p-3.5 rounded-xl bg-[#080808] border border-cyan-500/30 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <b className="text-xs text-white block flex items-center gap-1.5">
+                        <Zap size={14} className="text-cyan-400" />
+                        <span>Step 4: Verify Your Webhook Live</span>
+                      </b>
+                      <span className="text-[11px] text-zinc-400">
+                        Click to simulate a $4.25 coffee purchase from your phone
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSendTestWebhook}
+                      disabled={isTestingWebhook}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      {isTestingWebhook ? (
+                        <>
+                          <div className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                          <span>Sending Ping...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={13} />
+                          <span>Send Test Payment</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {testResult && (
+                    <div className={`p-2.5 rounded-lg text-xs font-mono flex items-center gap-2 ${
+                      testResult.success 
+                        ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' 
+                        : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
+                    }`}>
+                      {testResult.success ? <CheckCircle size={15} className="flex-shrink-0" /> : null}
+                      <span>{testResult.message}</span>
+                    </div>
+                  )}
+                </div>
 
                   {isLocalhost && (
                     <div className="pt-2 border-t border-zinc-800/80 text-[11px] text-zinc-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
