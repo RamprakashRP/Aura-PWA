@@ -202,17 +202,71 @@ export function parseReceiptText(text: string): ParsedReceipt {
   let parsedTip = 0;
   let parsedTotal = 0;
 
-  // 2. Detect Merchant from Header Lines (Top 12 lines)
-  for (let i = 0; i < Math.min(rawLines.length, 12); i++) {
-    const lineLower = rawLines[i].toLowerCase();
-    for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
-      if (lineLower.includes(key)) {
-        detectedMerchant = info.name;
-        detectedCategory = info.category;
-        break;
+  // 2. Comprehensive Merchant Detection (Checking Top lines & domain signatures across whole receipt)
+  const fullTextLower = normalizedText.toLowerCase();
+
+  // Signature checks
+  if (fullTextLower.includes('dollarama')) {
+    detectedMerchant = 'Dollarama';
+    detectedCategory = 'Shopping';
+  } else if (fullTextLower.includes('shoppers') || fullTextLower.includes('pharmaprix') || fullTextLower.includes('surveysdm.com')) {
+    detectedMerchant = 'Shoppers Drug Mart';
+    detectedCategory = 'Studies';
+  } else if (fullTextLower.includes('costco')) {
+    detectedMerchant = 'Costco Wholesale';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('walmart')) {
+    detectedMerchant = 'Walmart Canada';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('loblaws')) {
+    detectedMerchant = 'Loblaws';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('metro')) {
+    detectedMerchant = 'Metro';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('no frills')) {
+    detectedMerchant = 'No Frills';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('sobeys')) {
+    detectedMerchant = 'Sobeys';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('food basics')) {
+    detectedMerchant = 'Food Basics';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('freshco')) {
+    detectedMerchant = 'FreshCo';
+    detectedCategory = 'Groceries';
+  } else if (fullTextLower.includes('tim hortons') || fullTextLower.includes('tims')) {
+    detectedMerchant = 'Tim Hortons';
+    detectedCategory = 'Food';
+  } else if (fullTextLower.includes('starbucks')) {
+    detectedMerchant = 'Starbucks Coffee';
+    detectedCategory = 'Food';
+  } else if (fullTextLower.includes('lcbo')) {
+    detectedMerchant = 'LCBO';
+    detectedCategory = 'Entertainment';
+  } else if (fullTextLower.includes('keg steakhouse') || fullTextLower.includes('the keg')) {
+    detectedMerchant = 'The Keg Steakhouse';
+    detectedCategory = 'Food';
+  } else {
+    // Fallback: Check header lines against merchant catalog
+    for (let i = 0; i < Math.min(rawLines.length, 12); i++) {
+      const lineLower = rawLines[i].toLowerCase();
+      for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
+        if (key === 'a&w') {
+          if (lineLower.includes('a&w') || lineLower.includes('a & w')) {
+            detectedMerchant = info.name;
+            detectedCategory = info.category;
+            break;
+          }
+        } else if (lineLower.includes(key)) {
+          detectedMerchant = info.name;
+          detectedCategory = info.category;
+          break;
+        }
       }
+      if (detectedMerchant !== 'Store Receipt') break;
     }
-    if (detectedMerchant !== 'Store Receipt') break;
   }
 
   // 3. Detect Purchase Date

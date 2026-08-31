@@ -1,15 +1,14 @@
 /**
- * High-Performance Image Pre-Processor for Receipt OCR
- * Applies scaling, grayscale conversion, and contrast enhancement
- * to dramatically improve Tesseract text recognition accuracy on phone camera photos.
+ * High-Precision Receipt Image Pre-Processor
+ * Enhances thermal printer and dot-matrix receipt text without destroying letter geometry.
  */
 export async function preprocessImageForOcr(imageSource: string | File): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
 
     img.onload = () => {
-      // Calculate optimal OCR dimensions (max width 1600px for speed and clarity)
-      const maxDim = 1600;
+      // High-resolution ceiling for crisp character recognition (2048px)
+      const maxDim = 2048;
       let width = img.width;
       let height = img.height;
 
@@ -33,33 +32,30 @@ export async function preprocessImageForOcr(imageSource: string | File): Promise
         return;
       }
 
-      // Draw scaled image
+      // High quality image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Extract pixel data for contrast enhancement
       const imageData = ctx.getImageData(0, 0, width, height);
       const d = imageData.data;
 
-      // High-contrast grayscale conversion (enhancing dark text against receipt paper)
-      const contrast = 1.35; // +35% contrast
+      // Gentle contrast curve that preserves delicate dot-matrix thermal print
+      const contrast = 1.18; // +18% contrast (optimal for thermal receipts without clipping)
       const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
 
       for (let i = 0; i < d.length; i += 4) {
-        // Luminance grayscale
+        // High-accuracy Luminance
         const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        // Apply contrast factor
         const enhanced = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
 
-        // Slight thresholding to make text crisper
-        const finalVal = enhanced < 140 ? Math.max(0, enhanced - 20) : Math.min(255, enhanced + 20);
-
-        d[i] = finalVal;
-        d[i + 1] = finalVal;
-        d[i + 2] = finalVal;
+        d[i] = enhanced;
+        d[i + 1] = enhanced;
+        d[i + 2] = enhanced;
       }
 
       ctx.putImageData(imageData, 0, 0);
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
 
     img.onerror = () => {
