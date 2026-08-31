@@ -125,8 +125,8 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
 };
 
 /**
- * Intelligent Section-Aware Canadian Receipt Parser
- * Segments receipts into Header -> Items Zone -> Totals/Tax Zone -> Footer Noise Zone
+ * Super-Resilient Canadian & Universal Receipt Parser
+ * Reconciles line items, subtotal, tax, and total accurately
  */
 export function parseReceiptText(text: string): ParsedReceipt {
   if (!text || typeof text !== 'string') {
@@ -146,9 +146,9 @@ export function parseReceiptText(text: string): ParsedReceipt {
 
   // 1. Normalize OCR Artifacts
   const normalizedText = text
-    .replace(/(\d+),(\d{2})/g, '$1.$2') // Convert European/OCR comma decimals (1,75 -> 1.75)
-    .replace(/\$\s+/g, '$')             // Clean space after $
-    .replace(/([0-9])\s*\.\s*([0-9]{2})/g, '$1.$2'); // Fix broken decimal spaces (1 . 75 -> 1.75)
+    .replace(/(\d+),(\d{2})/g, '$1.$2')
+    .replace(/\$\s+/g, '$')
+    .replace(/([0-9])\s*\.\s*([0-9]{2})/g, '$1.$2');
 
   const rawLines = normalizedText
     .split(/\r?\n/)
@@ -164,8 +164,8 @@ export function parseReceiptText(text: string): ParsedReceipt {
   let tip = 0;
   let total = 0;
 
-  // 2. Detect Merchant from Header Lines (first 12 lines)
-  for (let i = 0; i < Math.min(rawLines.length, 12); i++) {
+  // 2. Detect Canadian Merchant Name (from top 15 lines)
+  for (let i = 0; i < Math.min(rawLines.length, 15); i++) {
     const lineLower = rawLines[i].toLowerCase();
     for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
       if (lineLower.includes(key)) {
@@ -184,7 +184,6 @@ export function parseReceiptText(text: string): ParsedReceipt {
   };
 
   for (const line of rawLines) {
-    // Matches "Aug 27, 2026" or "27-Aug-2026"
     const textMonthMatch = line.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})[,\s]+(\d{4})/i);
     if (textMonthMatch) {
       const m = monthMap[textMonthMatch[1].slice(0, 3).toLowerCase()];
@@ -194,7 +193,6 @@ export function parseReceiptText(text: string): ParsedReceipt {
       break;
     }
 
-    // Matches "2026-08-27" or "08/27/2026" or "26/08/27"
     const numDateMatch = line.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
     if (numDateMatch) {
       detectedDate = `${numDateMatch[1]}-${numDateMatch[2].padStart(2, '0')}-${numDateMatch[3].padStart(2, '0')}`;
@@ -207,7 +205,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // Helper to extract numeric price from string
+  // Helper to extract last numeric price from string
   const getPriceFromLine = (line: string): number | null => {
     const matches = [...line.matchAll(/(?:\$\s*)?([0-9]+\.[0-9]{2})/g)];
     if (matches && matches.length > 0) {
@@ -216,59 +214,54 @@ export function parseReceiptText(text: string): ParsedReceipt {
     return null;
   };
 
-  // 4. Locate Boundary Indexes
-  // Items Zone starts after store address/phone and ENDS at the first Subtotal / Total / Tax line.
-  // Everything AFTER Total is discarded as footer noise (Debit Card, PC Optimum, Survey promo, Interac slip).
-  let inItemsZone = false;
-  let hitTotalZone = false;
+  // Comprehensive Noise Filter: Any line containing these MUST NEVER be an item
+  const noiseKeywords = ["subtotal", "sub total", "sub-total", "total", "grand total", "amount due", "balance due", "hst", "gst", "pst", "tvh", "tps", "tvq", "tax", "tip", "gratuity", "debit", "visa", "mastercard", "amex", "interac", "cash", "change", "tendered", "approved", "auth", "terminal", "merchant id", "member", "cashier", "item", "return", "policy", "thank you", "merci", "telephone", "phone", "fax", "street", "waterloo", "toronto", "ottawa", "canada", "ontario", "www", "http", "optimum", "points", "pc optimum", "gift card", "gift cards", "giftcard", "win", "prize", "million", "contest", "certificate", "purchase", "chequing", "savings", "card number", "card type", "date", "time", "reference", "verified by pin", "reprint", "customer copy"];
+
+  let passedTotalSection = false;
 
   for (let idx = 0; idx < rawLines.length; idx++) {
     const line = rawLines[idx];
     const lineLower = line.toLowerCase();
     const linePrice = getPriceFromLine(line);
 
-    // Identify TOTAL Line
+    // Check for TOTAL
     if (
       lineLower.startsWith('total') || 
       lineLower.includes('total:') || 
       lineLower.includes('grand total') || 
-      lineLower.includes('balance due')
+      lineLower.includes('balance due') ||
+      lineLower.includes('total :')
     ) {
       if (linePrice && linePrice > 0) {
         total = linePrice;
       }
-      hitTotalZone = true;
-      inItemsZone = false;
+      passedTotalSection = true;
       continue;
     }
 
-    // Identify SUBTOTAL Line
+    // Check for SUBTOTAL
     if (lineLower.includes('subtotal') || lineLower.includes('sub total') || lineLower.includes('sub-total')) {
       if (linePrice && linePrice > 0) {
         subtotal = linePrice;
       }
-      inItemsZone = false;
       continue;
     }
 
-    // Identify TAX Line (HST, GST, PST, TVH)
+    // Check for TAX (HST / GST / PST / TVH)
     if (
-      lineLower.startsWith('hst') || 
-      lineLower.startsWith('gst') || 
-      lineLower.startsWith('pst') || 
-      lineLower.includes('hst :') ||
-      lineLower.includes('gst :') ||
-      lineLower.includes('tax :') ||
-      lineLower.includes('tax ')
+      lineLower.includes('hst') || 
+      lineLower.includes('gst') || 
+      lineLower.includes('pst') || 
+      lineLower.includes('tvh') || 
+      lineLower.includes('tax')
     ) {
-      if (linePrice && linePrice > 0 && linePrice < (total || 500)) {
+      if (linePrice && linePrice > 0) {
         tax = linePrice;
       }
-      inItemsZone = false;
       continue;
     }
 
-    // Identify TIP Line
+    // Check for TIP
     if (lineLower.includes('tip') || lineLower.includes('gratuity')) {
       if (linePrice && linePrice > 0) {
         tip = linePrice;
@@ -276,34 +269,28 @@ export function parseReceiptText(text: string): ParsedReceipt {
       continue;
     }
 
-    // If we have already passed the Total line, IGNORE everything (Debit slip, PC Optimum, survey WIN $1,000, Interac)
-    if (hitTotalZone) {
-      // Secondary check: If card payment line has a total and we missed it
-      if ((lineLower.includes('debit') || lineLower.includes('visa') || lineLower.includes('mastercard')) && total === 0 && linePrice) {
+    // If we've passed the Total / Subtotal section, STOP adding items completely!
+    if (passedTotalSection) {
+      // If we missed total earlier, grab it from card payment line
+      if (total === 0 && linePrice && (lineLower.includes('debit') || lineLower.includes('card') || lineLower.includes('approved') || lineLower.includes('chequing'))) {
         total = linePrice;
       }
       continue;
     }
 
-    // Check if we entered items zone (first line with a price that is not address/phone)
-    if (!inItemsZone && linePrice && linePrice > 0 && linePrice < 2000) {
-      // Avoid phone numbers like 519-886-6130
-      if (!/(tel|phone|fax|street|ave|road|blvd|hwy|suite|d{3}-d{3})/i.test(line)) {
-        inItemsZone = true;
-      }
+    // Check if line is noise
+    if (noiseKeywords.some(kw => lineLower.includes(kw))) {
+      continue;
     }
 
-    // Extract Line Items (ONLY before hitting Total/Subtotal)
-    if (inItemsZone && linePrice && linePrice > 0 && linePrice < 2000) {
-      // Filter out meta lines
-      if (/(cashier|lane|term|auth|order|member|discount|item)/i.test(lineLower)) continue;
-
-      // Clean line from prices and tax codes
-      // In Shoppers: "NESTLE AERO CH 1.75 GP 1.75 S" -> extract name "NESTLE AERO CH" and price 1.75
+    // Line Item Matcher: Only valid products before Total
+    if (linePrice && linePrice > 0 && linePrice < 1500) {
+      // Clean product name from prices, tax codes, and UPC numbers
       let cleanName = line
-        .replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, '') // remove all price occurrences
-        .replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|[A-Z])\b/g, '')             // remove tax codes
-        .replace(/^[0-9]{6,16}\s+/, '')                                     // strip UPC barcode
+        .replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, '') // strip all prices
+        .replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|[A-Z])\b/g, '')             // strip tax codes
+        .replace(/^[0-9]{6,16}\s+/, '')                                     // strip UPC barcode numbers
+        .replace(/^[|!/\-•#\d.\s]+/, '')                                  // strip OCR artifact symbols like |
         .trim();
 
       // Quantity Multiplier (e.g. "2x", "1 @")
@@ -313,8 +300,6 @@ export function parseReceiptText(text: string): ParsedReceipt {
         quantity = Math.max(1, parseInt(qtyMatch[1], 10) || 1);
         cleanName = qtyMatch[2].trim();
       }
-
-      cleanName = cleanName.replace(/^[-*•#\d.\s]+/, '').trim();
 
       if (cleanName.length >= 2 && !/^[0-9]+$/.test(cleanName)) {
         if (cleanName.length > 35) cleanName = cleanName.slice(0, 35);
@@ -328,18 +313,28 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // 5. Final Reconciliation & Calculations
-  const calculatedSum = items.reduce((s, i) => s + (i.price * i.quantity), 0);
+  // 4. Mathematical Reconciliation & Accurate Total Fallbacks
+  const calculatedItemsSum = items.reduce((s, i) => s + (i.price * i.quantity), 0);
 
   if (subtotal === 0) {
-    subtotal = calculatedSum > 0 ? Number(calculatedSum.toFixed(2)) : total;
+    subtotal = calculatedItemsSum > 0 ? Number(calculatedItemsSum.toFixed(2)) : total;
+  }
+
+  // If tax wasn't explicitly read by OCR, calculate it mathematically from Total - Subtotal
+  if (tax === 0 && total > 0 && subtotal > 0 && total > subtotal) {
+    tax = Number((total - subtotal).toFixed(2));
   }
 
   if (total === 0) {
     total = Number((subtotal + tax + tip).toFixed(2));
   }
 
-  // If items is empty (e.g. single compact total slip)
+  // If subtotal is still 0
+  if (subtotal === 0 && total > 0) {
+    subtotal = total;
+  }
+
+  // If items list is empty, create single primary item
   if (items.length === 0) {
     items.push({
       id: `item-auto-${Date.now()}`,
@@ -353,10 +348,10 @@ export function parseReceiptText(text: string): ParsedReceipt {
     merchant: detectedMerchant,
     date: detectedDate,
     items,
-    subtotal: subtotal > 0 ? subtotal : total,
+    subtotal: Number(subtotal.toFixed(2)),
     tax: Number(tax.toFixed(2)),
     tip: Number(tip.toFixed(2)),
-    total: total > 0 ? total : subtotal,
+    total: Number(total.toFixed(2)),
     currency: 'CAD',
     category: detectedCategory,
     rawText: text,
