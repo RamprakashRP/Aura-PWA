@@ -141,6 +141,74 @@ function extractAllPrices(str: string): number[] {
  * Intelligent Product Name Sanitizer
  * Strips middle/start/end barcodes, tax tags (H, GP, S, FP), OCR margin garbage
  */
+
+// Retail vocabulary dictionary for Canadian supermarkets, pharmacies & dollar stores
+const COMMON_RETAIL_WORDS: Record<string, string> = {
+  'FOLDING': 'FOLDING', 'UMBRELLA': 'UMBRELLA', 'BENTO': 'BENTO', 'BOX': 'BOX',
+  'SILKIES': 'SILKIES', 'QUEEN': 'QUEEN', 'PAPER': 'PAPER', 'TOWELS': 'TOWELS',
+  'NEEDLEWORK': 'NEEDLEWORK', 'KIT': 'KIT', 'ERASE': 'ERASE', 'BOARD': 'BOARD',
+  'FOIL': 'FOIL', 'ROLL': 'ROLL', 'AIR': 'AIR', 'FRESHENER': 'FRESHENER',
+  'BATH': 'BATH', 'GLOVE': 'GLOVE', 'ICE': 'ICE', 'STIX': 'STIX', 'TRAY': 'TRAY',
+  'DVD': 'DVD', 'RACK': 'RACK', 'TYLENOL': 'TYLENOL', 'TOOTHPASTE': 'TOOTHPASTE',
+  'KLEENEX': 'KLEENEX', 'TISSUES': 'TISSUES', 'WATER': 'WATER', 'MILK': 'MILK',
+  'EGGS': 'EGGS', 'BREAD': 'BREAD', 'CHICKEN': 'CHICKEN', 'BANANAS': 'BANANAS',
+  'APPLES': 'APPLES', 'ORANGES': 'ORANGES', 'CHOCOLATE': 'CHOCOLATE', 'COFFEE': 'COFFEE',
+  'SUGAR': 'SUGAR', 'SALT': 'SALT', 'SOAP': 'SOAP', 'SHAMPOO': 'SHAMPOO',
+  'DETERGENT': 'DETERGENT', 'CLEANER': 'CLEANER', 'BATTERIES': 'BATTERIES',
+  'CANDLE': 'CANDLE', 'SNACKS': 'SNACKS', 'CHIPS': 'CHIPS', 'COOKIE': 'COOKIE',
+  'BAG': 'BAG', 'CONTAINER': 'CONTAINER', 'STORAGE': 'STORAGE', 'ORGANIZER': 'ORGANIZER',
+  'BOWL': 'BOWL', 'PLATE': 'PLATE', 'MUG': 'MUG', 'BOTTLE': 'BOTTLE',
+  'SCISSORS': 'SCISSORS', 'TAPE': 'TAPE', 'GLUE': 'GLUE', 'NOTEBOOK': 'NOTEBOOK',
+  'PEN': 'PEN', 'PENCIL': 'PENCIL', 'MARKER': 'MARKER', 'CHARGER': 'CHARGER',
+  'CABLE': 'CABLE', 'HEADPHONES': 'HEADPHONES', 'CASE': 'CASE', 'SOCKS': 'SOCKS'
+};
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function autoCorrectWord(word: string): string {
+  const upper = word.toUpperCase();
+  if (COMMON_RETAIL_WORDS[upper]) return COMMON_RETAIL_WORDS[upper];
+  if (upper.length < 3) return word;
+
+  let bestMatch = word;
+  let minDistance = 99;
+
+  for (const dictWord of Object.keys(COMMON_RETAIL_WORDS)) {
+    // Only compare words of similar length
+    if (Math.abs(dictWord.length - upper.length) <= 2) {
+      const dist = levenshteinDistance(upper, dictWord);
+      // If within 2 typos, auto-correct!
+      if (dist <= 2 && dist < minDistance && dist <= Math.floor(dictWord.length / 2)) {
+        minDistance = dist;
+        bestMatch = dictWord;
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
 function cleanProductName(rawLine: string): string {
   let text = rawLine;
   // Strip all price occurrences
@@ -152,8 +220,9 @@ function cleanProductName(rawLine: string): string {
   // Strip punctuation & OCR noise symbols
   text = text.replace(/[/\\|!?"'#*•:_~`=+<>{}()\[\]]/g, ' ');
 
-  const words = text.split(/\s+/).filter((w) => w.length > 0);
-  const cleanedWords = words.filter((w) => {
+  const rawWords = text.split(/\s+/).filter((w) => w.length > 0);
+  const correctedWords = rawWords.map((w) => autoCorrectWord(w));
+  const cleanedWords = correctedWords.filter((w) => {
     if (w.length === 1 && !/[0-9aAiI]/.test(w)) return false;
     if (/^[0-9]+$/.test(w)) return false;
     return true;

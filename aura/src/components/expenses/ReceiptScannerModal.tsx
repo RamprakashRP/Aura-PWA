@@ -153,7 +153,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
       setScanProgress(25);
       setScanStatusMessage('Reading store name, line items & prices...');
 
-      // 2. Execute Tesseract OCR
+      // 2. Execute Tesseract OCR with Column-Aware PSM 6
       const { data: { text } } = await Tesseract.recognize(
         preprocessed,
         'eng',
@@ -164,7 +164,10 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
               setScanProgress(Math.max(25, pct));
               setScanStatusMessage(`Scanning items & totals (${pct}%)...`);
             }
-          }
+          },
+          // @ts-ignore
+          tessedit_pageseg_mode: '6', // Assume a single uniform block of columnar text
+          preserve_interword_spaces: '1',
         }
       );
 
