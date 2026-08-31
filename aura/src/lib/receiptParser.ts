@@ -47,9 +47,15 @@ export const CANADIAN_MERCHANTS: Record<string, { name: string; category: string
   cactus: { name: 'Cactus Club Cafe', category: 'Food' },
   subway: { name: 'Subway', category: 'Food' },
   chipotle: { name: 'Chipotle Mexican Grill', category: 'Food' },
+  wendy: { name: "Wendy's", category: 'Food' },
+  popeyes: { name: 'Popeyes', category: 'Food' },
+  harveys: { name: "Harvey's", category: 'Food' },
+  aw: { name: 'A&W Canada', category: 'Food' },
+  shell: { name: 'Shell Gas Station', category: 'Transport' },
+  esso: { name: 'Esso / Mobil', category: 'Transport' },
+  petro: { name: 'Petro-Canada', category: 'Transport' },
 };
 
-// Preset Demo Receipts for Instant Testing
 export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
   costco_groceries: {
     merchant: 'Costco Wholesale',
@@ -105,23 +111,26 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
 };
 
 /**
- * Intelligent Receipt OCR Parser
- * Parses raw text from OCR / camera scan / PDF e-bill into structured line items
+ * Intelligent Real OCR Receipt Parser
+ * Parses raw extracted text lines into structured line items, taxes, and totals
  */
 export function parseReceiptText(text: string): ParsedReceipt {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
 
-  let detectedMerchant = 'Scanned Receipt / Bill';
+  let detectedMerchant = 'Scanned Store Receipt';
   let detectedCategory = 'Groceries';
-  const detectedDate = new Date().toISOString().split('T')[0];
+  let detectedDate = new Date().toISOString().split('T')[0];
   const items: ReceiptItem[] = [];
   let subtotal = 0;
   let tax = 0;
   let tip = 0;
   let total = 0;
 
-  // 1. Detect Merchant from top lines
-  for (let i = 0; i < Math.min(lines.length, 6); i++) {
+  // 1. Detect Merchant Name from header lines (first 10 lines)
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
     const lineLower = lines[i].toLowerCase();
     for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
       if (lineLower.includes(key)) {
@@ -130,100 +139,171 @@ export function parseReceiptText(text: string): ParsedReceipt {
         break;
       }
     }
-    if (detectedMerchant !== 'Scanned Receipt / Bill') break;
+    if (detectedMerchant !== 'Scanned Store Receipt') break;
   }
 
-  // If merchant still generic, use first prominent text line
-  if (detectedMerchant === 'Scanned Receipt / Bill' && lines.length > 0) {
-    const firstLine = lines[0].replace(/[^A-Za-z0-9\s&'.-]/g, '').trim();
-    if (firstLine.length >= 3 && firstLine.length <= 35) {
-      detectedMerchant = firstLine;
+  // If merchant still generic, look for clean brand title in top lines
+  if (detectedMerchant === 'Scanned Store Receipt') {
+    for (let i = 0; i < Math.min(lines.length, 4); i++) {
+      const clean = lines[i].replace(/[^A-Za-z0-9\s&'.-]/g, '').trim();
+      if (
+        clean.length >= 3 && 
+        clean.length <= 35 && 
+        !/(welcome|receipt|store|invoice|order|tel|phone|address|date|cashier|terminal|lane)/i.test(clean) &&
+        !/^[0-9]+$/.test(clean)
+      ) {
+        detectedMerchant = clean;
+        break;
+      }
     }
   }
 
-  // 2. Regex line item matcher
+  // 2. Detect Date (e.g. 2026-08-30, 08/30/2026, 30-Aug-2026)
+  for (const line of lines) {
+    const dateMatch = line.match(/(?:\b)(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})(?:\b)/);
+    if (dateMatch) {
+      try {
+        const d = new Date(dateMatch[1]);
+        if (!isNaN(d.getTime())) {
+          detectedDate = d.toISOString().split('T')[0];
+          break;
+        }
+      } catch (e) {}
+    }
+  }
+
+  // 3. Scan Lines for Line Items & Financial Summary
   const priceRegex = /(?:\$\s*)?([0-9]+\.[0-9]{2})/g;
+
+  // Ignored metadata phrases
+  const noisePatterns = [
+    'subtotal', 'sub total', 'sub-total', 'total', 'grand total', 'amount due', 'balance due',
+    'tax', 'hst', 'gst', 'pst', 'tvh', 'tps', 'tvq', 'tip', 'gratuity',
+    'visa', 'mastercard', 'amex', 'debit', 'interac', 'cash', 'change', 'tendered',
+    'approved', 'auth', 'terminal', 'merchant id', 'member', 'cashier', 'items sold',
+    'return', 'policy', 'thank you', 'merci', 'telephone', 'phone', 'www.', '.com', '.ca'
+  ];
 
   lines.forEach((line, idx) => {
     const lineLower = line.toLowerCase();
 
-    // Check for Subtotal
-    if (lineLower.includes('subtotal') || lineLower.includes('sub total') || lineLower.includes('amount due')) {
+    // Check Subtotal
+    if (lineLower.includes('subtotal') || lineLower.includes('sub total') || lineLower.includes('sub-total')) {
       const match = line.match(priceRegex);
       if (match) {
-        const amt = parseFloat(match[match.length - 1].replace('$', ''));
-        if (amt > 0) subtotal = amt;
+        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
+        if (lastNum > 0) subtotal = lastNum;
       }
       return;
     }
 
-    // Check for Tax
-    if (lineLower.includes('tax') || lineLower.includes('hst') || lineLower.includes('gst') || lineLower.includes('pst')) {
+    // Check Tax (HST / GST / PST / TVH)
+    if (
+      lineLower.includes('hst') || 
+      lineLower.includes('gst') || 
+      lineLower.includes('pst') || 
+      lineLower.includes('tvh') || 
+      lineLower.includes('tax')
+    ) {
       const match = line.match(priceRegex);
       if (match) {
-        const amt = parseFloat(match[match.length - 1].replace('$', ''));
-        if (amt > 0) tax = amt;
+        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
+        if (lastNum > 0 && lastNum < (total || 1000)) tax += lastNum;
       }
       return;
     }
 
-    // Check for Tip
+    // Check Tip / Gratuity
     if (lineLower.includes('tip') || lineLower.includes('gratuity')) {
       const match = line.match(priceRegex);
       if (match) {
-        const amt = parseFloat(match[match.length - 1].replace('$', ''));
-        if (amt > 0) tip = amt;
+        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
+        if (lastNum > 0) tip = lastNum;
       }
       return;
     }
 
-    // Check for Total
-    if (lineLower.startsWith('total') || lineLower.includes('balance') || lineLower.includes('grand total') || lineLower.includes('mastercard') || lineLower.includes('visa')) {
+    // Check Grand Total / Amount Due
+    if (
+      lineLower.startsWith('total') || 
+      lineLower.includes('grand total') || 
+      lineLower.includes('amount due') || 
+      lineLower.includes('balance') ||
+      lineLower.includes('mastercard') ||
+      lineLower.includes('visa')
+    ) {
       const match = line.match(priceRegex);
       if (match) {
-        const amt = parseFloat(match[match.length - 1].replace('$', ''));
-        if (amt > 0 && amt >= total) total = amt;
+        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
+        if (lastNum > 0 && lastNum >= total) total = lastNum;
       }
       return;
     }
 
-    // Attempt to extract item line
-    const match = line.match(/(.+?)\s+(?:\$\s*)?([0-9]+\.[0-9]{2})(?:\s+[A-Za-z0-9*]+)?$/);
-    if (match) {
-      let itemName = match[1].replace(/^[0-9]+[xX*]\s*/, '').trim();
-      const itemPrice = parseFloat(match[2]);
+    // Check if line is metadata noise
+    const isNoise = noisePatterns.some((np) => lineLower.includes(np));
+    if (isNoise) return;
 
-      // Filter out meta terms
-      if (!/(subtotal|total|tax|hst|gst|change|cash|visa|mastercard|debit|interac|approved|auth)/i.test(itemName) && itemPrice > 0) {
-        if (itemName.length > 30) itemName = itemName.slice(0, 30);
+    // Line Item Matcher: Look for text followed by price at the end
+    // Patterns:
+    // "1  Organic Milk 2L    5.49"
+    // "Kirkland Eggs 30pk   $8.49"
+    // "Bananas 1.2kg         2.30 H"
+    const itemMatch = line.match(/^([A-Za-z0-9\s&'.,#/-]{3,45})\s+(?:\$\s*)?([0-9]+\.[0-9]{2})(?:\s+[A-Za-z0-9*]+)?$/);
+    if (itemMatch) {
+      let rawName = itemMatch[1].trim();
+      const rawPrice = parseFloat(itemMatch[2]);
+
+      // Remove quantity prefix if present (e.g. "1x", "2 @")
+      let quantity = 1;
+      const qtyMatch = rawName.match(/^([0-9]+)(?:\s*[xX*@]|\s+)\s*(.+)/);
+      if (qtyMatch) {
+        quantity = Math.max(1, parseInt(qtyMatch[1], 10) || 1);
+        rawName = qtyMatch[2].trim();
+      }
+
+      // Clean up item name
+      rawName = rawName.replace(/^[-*•#\d.\s]+/, '').trim();
+
+      if (rawName.length >= 2 && rawPrice > 0 && rawPrice < 5000) {
         items.push({
           id: `item-${idx}-${Date.now()}`,
-          name: itemName,
-          price: itemPrice,
-          quantity: 1,
+          name: rawName,
+          price: rawPrice,
+          quantity,
         });
       }
     }
   });
 
-  // Calculate totals if missing
+  // Post-processing and fallbacks
   const calculatedItemsSum = items.reduce((s, i) => s + (i.price * i.quantity), 0);
+
   if (subtotal === 0) {
-    subtotal = calculatedItemsSum > 0 ? calculatedItemsSum : 0;
+    subtotal = Number(calculatedItemsSum.toFixed(2));
   }
+
   if (total === 0) {
-    total = subtotal + tax + tip;
+    total = Number((subtotal + tax + tip).toFixed(2));
+  }
+
+  // If no line items were detected (e.g., blurry photo or compact slip), create single primary item
+  if (items.length === 0) {
+    items.push({
+      id: `item-auto-${Date.now()}`,
+      name: `${detectedMerchant} Purchase`,
+      price: total > 0 ? total : subtotal > 0 ? subtotal : 0,
+      quantity: 1,
+    });
   }
 
   return {
     merchant: detectedMerchant,
     date: detectedDate,
-    items: items.length > 0 ? items : [
-      { id: 'item-default-1', name: 'Scanned Purchase Item', price: total > 0 ? total : 0, quantity: 1 }
-    ],
+    items,
     subtotal: subtotal > 0 ? subtotal : total,
-    tax: tax || 0,
-    tip: tip || 0,
+    tax: Number(tax.toFixed(2)),
+    tip: Number(tip.toFixed(2)),
     total: total > 0 ? total : subtotal,
     currency: 'CAD',
     category: detectedCategory,

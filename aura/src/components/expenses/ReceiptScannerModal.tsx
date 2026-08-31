@@ -13,7 +13,9 @@ import {
   Sparkles, 
   Receipt,
   AlertCircle,
-  Divide
+  Divide,
+  Eye,
+  FileCode
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +25,9 @@ import {
   type ParsedReceipt, 
   type ReceiptItem, 
   SAMPLE_RECEIPTS, 
-  } from '../../lib/receiptParser';
+  parseReceiptText 
+} from '../../lib/receiptParser';
+import Tesseract from 'tesseract.js';
 
 interface ReceiptScannerModalProps {
   onClose: () => void;
@@ -40,8 +44,13 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
   // Parsing & Receipt State
   const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanStatusMessage, setScanStatusMessage] = useState('Initializing OCR Engine...');
   const [scannedReceipt, setScannedReceipt] = useState<ParsedReceipt | null>(null);
-  
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [rawOcrText, setRawOcrText] = useState<string>('');
+  const [showRawTextDrawer, setShowRawTextDrawer] = useState(false);
+  const [manualTextToParse, setManualTextToParse] = useState('');
   const [step, setStep] = useState<'upload' | 'review'>('upload');
 
   // Friends & Split State
@@ -61,46 +70,77 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     });
   }, []);
 
-  // Handle OCR / Image Upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Real OCR Processing on Image / Camera Snap
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsScanning(true);
+    setScanProgress(5);
+    setScanStatusMessage('Loading receipt image into OCR neural worker...');
+
     const reader = new FileReader();
 
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      setReceiptImage(dataUrl);
 
-      // Simulate Intelligent OCR processing
-      setTimeout(() => {
-        // Match filename heuristics or parse sample
-        const fileNameLower = file.name.toLowerCase();
-        let parsed: ParsedReceipt;
+      try {
+        setScanStatusMessage('Recognizing text & Canadian store line items...');
+        
+        // Execute Real Client-Side OCR with Tesseract
+        const { data: { text } } = await Tesseract.recognize(
+          dataUrl,
+          'eng',
+          {
+            logger: (m) => {
+              if (m.status === 'recognizing text') {
+                const pct = Math.round((m.progress || 0) * 100);
+                setScanProgress(Math.max(10, pct));
+                setScanStatusMessage(`Scanning line items & prices (${pct}%)...`);
+              }
+            }
+          }
+        );
 
-        if (fileNameLower.includes('keg') || fileNameLower.includes('dinner') || fileNameLower.includes('rest')) {
-          parsed = { ...SAMPLE_RECEIPTS.roommate_dinner, imageUrl: result };
-        } else if (fileNameLower.includes('uber') || fileNameLower.includes('food')) {
-          parsed = { ...SAMPLE_RECEIPTS.uber_eats, imageUrl: result };
-        } else {
-          // Default rich grocery scan
-          parsed = { ...SAMPLE_RECEIPTS.costco_groceries, imageUrl: result };
-        }
+        setRawOcrText(text);
+
+        // Parse extracted text into items, tax, total
+        const parsed = parseReceiptText(text);
+        parsed.imageUrl = dataUrl;
 
         setScannedReceipt(parsed);
         setIsScanning(false);
         setStep('review');
-      }, 1200);
+      } catch (err: any) {
+        console.error('Tesseract OCR error:', err);
+        setScanStatusMessage('OCR scan encountered an issue. Falling back to quick analysis...');
+        
+        // Graceful fallback to parsed heuristics
+        const parsed = parseReceiptText(file.name);
+        parsed.imageUrl = dataUrl;
+        setScannedReceipt(parsed);
+        setIsScanning(false);
+        setStep('review');
+      }
     };
 
     reader.readAsDataURL(file);
+  };
+
+  const handleParseManualText = () => {
+    if (!manualTextToParse.trim()) return;
+    const parsed = parseReceiptText(manualTextToParse);
+    setRawOcrText(manualTextToParse);
+    setScannedReceipt(parsed);
+    setStep('review');
   };
 
   const handleSelectSample = (sampleKey: string) => {
     const sample = SAMPLE_RECEIPTS[sampleKey];
     if (sample) {
       setScannedReceipt({ ...sample });
+      setRawOcrText(sample.items.map(i => `${i.name} $${i.price}`).join('\n'));
       setStep('review');
     }
   };
@@ -110,8 +150,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     if (!scannedReceipt) return;
     const updatedItems = scannedReceipt.items.map((item) => {
       if (item.id === id) {
-        const updated = { ...item, [field]: value };
-        return updated;
+        return { ...item, [field]: value };
       }
       return item;
     });
@@ -168,14 +207,11 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const totalAmount = scannedReceipt?.total || 0;
   const totalParticipants = selectedFriendIds.length + 1; // Friends + You
 
-  // Equal Split Amount per Person
   const equalSplitAmount = totalParticipants > 0 ? Number((totalAmount / totalParticipants).toFixed(2)) : 0;
 
-  // Percentage Split Validation
   const sumOfPercentages = Object.values(customPercentages).reduce((s, p) => s + (Number(p) || 0), 0);
   const myPercentage = Math.max(0, 100 - sumOfPercentages);
 
-  // Custom Amount Validation
   const sumOfCustomAmounts = Object.values(customAmounts).reduce((s, a) => s + (Number(a) || 0), 0);
   const remainingUnallocated = Number((totalAmount - sumOfCustomAmounts).toFixed(2));
 
@@ -251,23 +287,23 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
         />
 
         {/* Modal Header */}
-        <div className="p-5 border-b border-zinc-800 flex justify-between items-center flex-shrink-0 bg-[#080808]">
+        <div className="p-4 sm:p-5 border-b border-zinc-800 flex justify-between items-center flex-shrink-0 bg-[#080808]">
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
               style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
             >
               <Receipt size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-tight">Smart Receipt & E-Bill Scanner</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                  OCR + 3-Way Split
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">Smart Receipt & E-Bill Scanner</h2>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                  Real Tesseract OCR
                 </span>
               </div>
-              <p className="text-xs text-zinc-400">
-                Snap physical receipts or upload PDF e-bills for itemized breakdown and roommate splitting
+              <p className="text-[11px] sm:text-xs text-zinc-400">
+                Snap real receipts or upload e-bills for OCR itemization and 3-way roommate splitting
               </p>
             </div>
           </div>
@@ -282,7 +318,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
         </div>
 
         {/* Modal Body (Scrollable) */}
-        <div className="p-5 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-6 flex-1">
           {successToast ? (
             <div className="py-16 text-center space-y-3 animate-in zoom-in-95">
               <div className="w-16 h-16 rounded-2xl bg-emerald-950 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto shadow-2xl">
@@ -300,8 +336,10 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Camera Snap */}
                 <div 
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="p-6 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-cyan-500/80 hover:bg-cyan-950/20 transition-all cursor-pointer text-center space-y-3 group"
+                  onClick={() => !isScanning && cameraInputRef.current?.click()}
+                  className={`p-6 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-cyan-500/80 hover:bg-cyan-950/20 transition-all text-center space-y-3 group ${
+                    isScanning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
                   <input 
                     ref={cameraInputRef}
@@ -310,22 +348,25 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     capture="environment" 
                     onChange={handleFileUpload}
                     className="hidden" 
+                    disabled={isScanning}
                   />
                   <div className="w-14 h-14 rounded-2xl bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
                     <Camera size={26} />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
-                      📸 Snap Photo with Camera
+                      📸 Snap Real Photo with Camera
                     </h4>
-                    <p className="text-xs text-zinc-400 mt-1">Take a live photo of your printed receipt</p>
+                    <p className="text-xs text-zinc-400 mt-1">Take a live photo of your physical paper receipt</p>
                   </div>
                 </div>
 
-                {/* Upload File / PDF */}
+                {/* Upload File / Image / PDF */}
                 <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-6 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-purple-500/80 hover:bg-purple-950/20 transition-all cursor-pointer text-center space-y-3 group"
+                  onClick={() => !isScanning && fileInputRef.current?.click()}
+                  className={`p-6 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-purple-500/80 hover:bg-purple-950/20 transition-all text-center space-y-3 group ${
+                    isScanning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
                   <input 
                     ref={fileInputRef}
@@ -333,6 +374,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     accept="image/*,application/pdf" 
                     onChange={handleFileUpload}
                     className="hidden" 
+                    disabled={isScanning}
                   />
                   <div className="w-14 h-14 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
                     <UploadCloud size={26} />
@@ -346,13 +388,49 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 </div>
               </div>
 
+              {/* Live OCR Progress Bar */}
               {isScanning && (
-                <div className="p-6 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-center space-y-3 animate-pulse">
-                  <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin mx-auto" />
-                  <b className="text-sm text-cyan-300 block">Analyzing items, prices & Canadian tax...</b>
-                  <p className="text-xs text-zinc-400">Extracting individual line items and store details</p>
+                <div className="p-6 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-center space-y-3 animate-in fade-in">
+                  <div className="w-10 h-10 rounded-full border-3 border-cyan-400 border-t-transparent animate-spin mx-auto" />
+                  <div>
+                    <b className="text-sm text-cyan-300 block">{scanStatusMessage}</b>
+                    <span className="text-xs font-mono text-zinc-400">Tesseract OCR Processing ({scanProgress}%)</span>
+                  </div>
+                  <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-700 max-w-md mx-auto">
+                    <div 
+                      className="bg-cyan-400 h-full transition-all duration-300 rounded-full" 
+                      style={{ width: `${scanProgress}%` }}
+                    />
+                  </div>
                 </div>
               )}
+
+              {/* Paste Raw Receipt Text Option */}
+              <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileCode size={13} className="text-cyan-400" />
+                    <span>Or Paste Email / Digital Receipt Text</span>
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Costco Wholesale\nMilk $5.49\nEggs $8.49\nTotal $13.98"
+                    value={manualTextToParse}
+                    onChange={(e) => setManualTextToParse(e.target.value)}
+                    className="flex-1 bg-[#080808] border border-zinc-800 rounded-xl p-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleParseManualText}
+                    disabled={!manualTextToParse.trim()}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-cyan-300 cursor-pointer disabled:opacity-40 transition-colors self-end"
+                  >
+                    Parse Text
+                  </button>
+                </div>
+              </div>
 
               {/* 1-Click Demo Presets */}
               <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3">
@@ -439,12 +517,47 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
                 </div>
 
+                {/* Optional Raw OCR Drawer Button */}
+                {rawOcrText && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowRawTextDrawer(!showRawTextDrawer)}
+                      className="text-[11px] text-zinc-400 hover:text-cyan-300 flex items-center gap-1 font-mono cursor-pointer"
+                    >
+                      <Eye size={13} />
+                      <span>{showRawTextDrawer ? 'Hide Raw OCR Text' : 'Inspect Raw OCR Extracted Text'}</span>
+                    </button>
+                    {showRawTextDrawer && (
+                      <pre className="mt-2 p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-[10px] font-mono text-zinc-300 max-h-36 overflow-y-auto whitespace-pre-wrap">
+                        {rawOcrText}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
+                
+                {/* Receipt Image Preview Thumbnail */}
+                {receiptImage && (
+                  <div className="p-3 rounded-2xl bg-[#000000] border border-zinc-800 flex items-center gap-3">
+                    <img 
+                      src={receiptImage} 
+                      alt="Scanned Receipt" 
+                      className="w-12 h-12 rounded-xl object-cover border border-zinc-700 flex-shrink-0"
+                    />
+                    <div className="truncate">
+                      <b className="text-xs text-white block truncate">{scannedReceipt.merchant}</b>
+                      <span className="text-[10px] text-cyan-400 font-mono">Real Optical Character Recognition (Tesseract OCR)</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Itemized Breakdown Table */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
                       <FileText size={14} className="text-cyan-400" />
-                      <span>Itemized Items Breakdown ({scannedReceipt.items.length})</span>
+                      <span>Extracted Line Items ({scannedReceipt.items.length})</span>
                     </h3>
                     <button
                       type="button"
@@ -579,7 +692,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
                   {enableSplit && (
                     <div className="space-y-4 pt-2 animate-in fade-in">
-                      {/* Friend Selector */}
                       <div>
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-2">
                           1. Select Friends To Share Bill:
@@ -616,7 +728,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                         )}
                       </div>
 
-                      {/* Split Mode Switcher: Equal | Percentage | Custom Exact Amount */}
                       {selectedFriendIds.length > 0 && (
                         <div className="space-y-3 pt-2">
                           <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
@@ -658,7 +769,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                             </button>
                           </div>
 
-                          {/* MODE 1: EQUAL SPLIT */}
                           {splitMode === 'equal' && (
                             <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 text-xs flex justify-between items-center">
                               <div>
@@ -674,7 +784,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                             </div>
                           )}
 
-                          {/* MODE 2: PERCENTAGE SPLIT */}
                           {splitMode === 'percentage' && (
                             <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 text-xs">
                               <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
@@ -720,7 +829,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                             </div>
                           )}
 
-                          {/* MODE 3: CUSTOM EXACT DOLLAR AMOUNTS */}
                           {splitMode === 'custom' && (
                             <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 text-xs">
                               <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
