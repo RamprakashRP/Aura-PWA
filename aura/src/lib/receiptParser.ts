@@ -51,7 +51,7 @@ export const CANADIAN_MERCHANTS: Record<string, { name: string; category: string
   wendy: { name: "Wendy's", category: 'Food' },
   popeyes: { name: 'Popeyes', category: 'Food' },
   harveys: { name: "Harvey's", category: 'Food' },
-  aw: { name: 'A&W Canada', category: 'Food' },
+  'a&w': { name: 'A&W Canada', category: 'Food' },
   shell: { name: 'Shell Gas Station', category: 'Transport' },
   esso: { name: 'Esso / Mobil', category: 'Transport' },
   petro: { name: 'Petro-Canada', category: 'Transport' },
@@ -136,6 +136,36 @@ function extractAllPrices(str: string): number[] {
  * Super-Resilient Canadian Receipt & E-Bill Parser
  * Accurately reconciles line items, subtotal, HST/GST tax, and grand total
  */
+
+/**
+ * Intelligent Product Name Sanitizer
+ * Strips middle/start/end barcodes, tax tags (H, GP, S, FP), OCR margin garbage
+ */
+function cleanProductName(rawLine: string): string {
+  let text = rawLine;
+  // Strip all price occurrences
+  text = text.replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, ' ');
+  // Strip 5-16 digit SKU / Barcode numbers (Dollarama & Shoppers mid-line barcodes)
+  text = text.replace(/\b[0-9a-zA-Z]{5,16}\b/g, ' ');
+  // Strip tax flags and codes (H, GP, S, FP, GST, HST, PST)
+  text = text.replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|H|G|S|B|F|P)\b/g, ' ');
+  // Strip punctuation & OCR noise symbols
+  text = text.replace(/[/\\|!?"'#*•:_~`=+<>{}()\[\]]/g, ' ');
+
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  const cleanedWords = words.filter((w) => {
+    if (w.length === 1 && !/[0-9aAiI]/.test(w)) return false;
+    if (/^[0-9]+$/.test(w)) return false;
+    return true;
+  });
+
+  let result = cleanedWords.join(' ').trim();
+  if (result.length > 35) {
+    result = result.slice(0, 35).trim();
+  }
+  return result;
+}
+
 export function parseReceiptText(text: string): ParsedReceipt {
   if (!text || typeof text !== 'string') {
     return {
@@ -293,7 +323,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
     'optimum', 'points', 'pc optimum', 'gift card', 'gift cards', 'giftcard',
     'win', 'prize', 'million', 'contest', 'certificate', 'purchase', 'chequing',
     'savings', 'card number', 'card type', 'date', 'time', 'reference', 'verified by pin',
-    'reprint', 'customer copy'
+    'reprint', 'customer copy', 'questions', 'comments', 'eco fees', 'crf and deposit', 'no exchange', 'no return', 'hiring'
   ];
 
   let passedItemsZone = false;
@@ -327,13 +357,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
 
     // Must have a valid item price
     if (linePrice && linePrice > 0 && linePrice < 1500) {
-      // Clean product description from prices, Shoppers tax tags, and barcodes
-      let cleanName = line
-        .replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, '') // remove all price occurrences
-        .replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|[A-Z])\b/g, '')             // remove tax codes
-        .replace(/^[0-9]{6,16}\s+/, '')                                     // strip barcode
-        .replace(/^[|!/\-•#\d.\s]+/, '')                                  // strip OCR noise
-        .trim();
+      let cleanName = cleanProductName(line);
 
       // Quantity multiplier
       let quantity = 1;
