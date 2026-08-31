@@ -1,84 +1,76 @@
-import { ReceiptScannerModal } from '../components/expenses/ReceiptScannerModal';
-import { Camera, Receipt } from 'lucide-react';
 import { ZeroTouchSync } from '../components/automation/ZeroTouchSync';
+import { ReceiptScannerModal } from '../components/expenses/ReceiptScannerModal';
 import { useState, useEffect } from 'react';
-import { Upload as UploadIcon, FileJson, CheckCircle, Edit2, Play, Trash2 } from 'lucide-react';
+import { 
+  Upload as UploadIcon, 
+  FileJson, 
+  CheckCircle, 
+  Trash2, 
+  Camera, 
+  Receipt,
+  AlertTriangle,
+  History
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-// AI Categories mapping to Aura Colors
-const CATEGORY_COLORS: Record<string, string> = {
-  Food: "#00FF41", // Hunter Green
-  Transport: "#ADD8E6", // UI Silver
-  Studies: "#FFD700", // SS Gold
-  Shopping: "#FF4D4D", // Berserker Red
-  Wearables: "#00FFFF", // Neon Cyan
-  Groceries: "#FF8C00", // Sunset Orange
-  Entertainment: "#8A2BE2", // Hollow Purple
-  'Rent/Housing': "#FF00FF", // Neon Fuchsia
-  Miscellaneous: "#4A4A4A" // Void Black
-};
+interface SyncHistoryItem {
+  id: string;
+  fileName: string;
+  date: string;
+  count: number;
+  status: 'Success' | 'Void';
+}
 
-const categorize = (desc: string) => {
-  const d = desc.toLowerCase();
-  const foodKeywords = [
-     "food", "zomato", "swiggy", "starbucks", "tim hortons", "tims", "restaurant", "kozhi",
-     "dosa", "idli", "vada", "sambar", "chutney", "biryani", "meals", "parotta", "chapati", "poori", "pongal", "upma", "bisi bele bath", "payasam", "chicken 65", "thali", "uttapam", "appam", "paniyaram", "bonda", "bajji", "kebab", "shawarma", "mandi", "tandoori", "naan", "kulcha", "pulao", "fried rice", "noodles", "momo", "gobi", "paneer", "manchurian", "soup", "filter coffee", "chai",
-     "poutine", "pizza", "burger", "fries", "subway", "mcdonalds", "kfc", "wendys", "taco", "burrito", "sushi", "ramen", "pho", "wings", "bagel", "croissant", "donut", "pastry", "cake", "bacon", "steak", "bbq", "wrap", "salad", "smoothie", "boba", "bubble tea", "cafe", "bakery", "kitchen"
-  ];
-  if (["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton"].some(k => d.includes(k))) return "Groceries";
-  if (foodKeywords.some(k => d.includes(k))) return "Food";
-  if (["uber", "ola", "metro", "oc transpo", "petrol", "shell", "transit", "presto", "cab"].some(k => d.includes(k))) return "Transport";
-  if (["srm", "university", "coursera", "books", "ielts"].some(k => d.includes(k))) return "Studies";
-  if (["amazon", "flipkart", "walmart", "myntra"].some(k => d.includes(k))) return "Shopping";
-  if (["dress", "belt", "shirt", "pant", "shoe", "clothing", "apparel", "wear", "zara", "h&m", "uniqlo"].some(k => d.includes(k))) return "Wearables";
-  if (["netflix", "valorant", "steam", "cinema"].some(k => d.includes(k))) return "Entertainment";
-  return "Miscellaneous";
-};
-
-const Upload = () => {
-  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+export default function Upload() {
   const { user } = useAuth();
   const { getAuraColor, getAuraGlow } = useTheme();
+  const auraColor = getAuraColor();
+
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'processing' | 'review' | 'importing' | 'success'>('idle');
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
   
   // State for Review Screen
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [hasDuplicatesOnly, setHasDuplicatesOnly] = useState(false);
-  const [statementCurrency, setStatementCurrency] = useState('INR');
-  const [bankType, setBankType] = useState('auto');
+  const [statementCurrency] = useState('CAD');
+  const [bankType] = useState('auto');
   const [detectedBank, setDetectedBank] = useState<string>('');
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
-  
+  const [recentSyncs, setRecentSyncs] = useState<SyncHistoryItem[]>([]);
+
+  // Load user's real synchronization history
   useEffect(() => {
     if (user?.id) {
-       const saved = localStorage.getItem(`aura_custom_categories_${user.id}`);
-       if (saved) {
-          try {
-             setCustomCategories(JSON.parse(saved));
-          } catch(e) {}
-       }
+      const savedSyncs = localStorage.getItem(`aura_recent_syncs_${user.id}`);
+      if (savedSyncs) {
+        try {
+          setRecentSyncs(JSON.parse(savedSyncs));
+        } catch (e) {
+          setRecentSyncs([]);
+        }
+      } else {
+        setRecentSyncs([]);
+      }
     }
-  }, [user]);
+  }, [user?.id]);
 
-  const dynamicCategoryOptions = Array.from(new Set([
-    'Food', 'Transport', 'Studies', 'Shopping', 'Wearables', 
-    'Groceries', 'Entertainment', 'Rent/Housing', 'Miscellaneous',
-    ...customCategories
-  ]));
+  const saveSyncHistory = (newItem: SyncHistoryItem) => {
+    if (!user?.id) return;
+    const updated = [newItem, ...recentSyncs.filter(s => s.fileName !== newItem.fileName)].slice(0, 5);
+    setRecentSyncs(updated);
+    localStorage.setItem(`aura_recent_syncs_${user.id}`, JSON.stringify(updated));
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
+    else if (e.type === 'dragleave') setDragActive(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -93,17 +85,13 @@ const Upload = () => {
   const handleProcess = async () => {
     if (!file) return;
     setStatus('processing');
-    setHasDuplicatesOnly(false);
-    
     try {
       const reader = new FileReader();
-      reader.readAsDataURL(file);
       reader.onload = async () => {
         try {
           const base64 = (reader.result as string).split(',')[1];
-          
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 seconds max timeout
+          const timeoutId = setTimeout(() => controller.abort(), 90000);
           
           const response = await fetch('/api/parse', {
             method: 'POST',
@@ -113,7 +101,6 @@ const Upload = () => {
           });
           
           clearTimeout(timeoutId);
-          
           const result = await response.json();
           if (result.error) throw new Error(result.error);
           
@@ -125,92 +112,77 @@ const Upload = () => {
             incomingTransactions = Array.isArray(result) ? result : [];
           }
 
-          // Dynamic field mapping & auto-categorization on the frontend
-          incomingTransactions = incomingTransactions.map((tx: any) => {
-            const rawDesc = tx.description || tx.raw_description || "Bank Transaction";
-            return {
-              ...tx,
-              description: rawDesc,
-              merchant: rawDesc, // Keep description strictly 1:1
-              reason: tx.reason || "General",
-              category: tx.category || categorize(rawDesc),
-              visibility: tx.visibility || 'Private'
-            };
-          });
-
-          // Neural Duplicate Detection: cross-reference with existing DB records
           if (user && incomingTransactions.length > 0) {
-             const { data: existingRecords, error: fetchError } = await supabase
-               .from('transactions')
-               .select('transaction_id')
-               .eq('user_id', user.id);
-             
-             if (!fetchError && existingRecords) {
-                const existingIds = new Set(existingRecords.map((r: any) => r.transaction_id));
-                // Filter out those already in the matrix
-                const freshTransactions = incomingTransactions.filter((tx: any) => !existingIds.has(tx.transaction_id));
-                
-                const duplicateCount = incomingTransactions.length - freshTransactions.length;
-                if (duplicateCount > 0) {
-                   console.log(`Neural Filter: Purged ${duplicateCount} duplicate records found in the ledger.`);
-                }
-                
-                if (incomingTransactions.length > 0 && freshTransactions.length === 0) {
-                   setHasDuplicatesOnly(true);
-                }
-                setParsedData(freshTransactions);
-             } else {
-                setParsedData(incomingTransactions);
-             }
-          } else {
-             setParsedData(incomingTransactions);
+            const { data: existingRecords } = await supabase
+              .from('transactions')
+              .select('transaction_id')
+              .eq('user_id', user.id);
+            
+            if (existingRecords) {
+              const existingIds = new Set(existingRecords.map((r: any) => r.transaction_id));
+              const freshTransactions = incomingTransactions.filter((tx: any) => !existingIds.has(tx.transaction_id));
+              if (freshTransactions.length === 0) {
+                setHasDuplicatesOnly(true);
+              } else {
+                setHasDuplicatesOnly(false);
+              }
+            }
           }
-          
+
+          setParsedData(incomingTransactions);
+          saveSyncHistory({
+            id: `sync-${Date.now()}`,
+            fileName: file.name,
+            date: new Date().toLocaleDateString(),
+            count: incomingTransactions.length,
+            status: 'Success'
+          });
           setStatus('review');
-        } catch (fetchErr: any) {
-             console.error(fetchErr);
-             alert("Execution Failed: " + (fetchErr.name === 'AbortError' ? 'Parser timeout. Python script hung for too long.' : fetchErr.message));
-             setStatus('idle');
+        } catch (err: any) {
+          console.error(err);
+          saveSyncHistory({
+            id: `sync-${Date.now()}`,
+            fileName: file.name,
+            date: new Date().toLocaleDateString(),
+            count: 0,
+            status: 'Void'
+          });
+          alert("Error parsing PDF statement: " + (err.message || err));
+          setStatus('idle');
         }
       };
-    } catch (err: any) {
-      console.error(err);
-      alert("Failed to read PDF: " + err.message);
+      reader.readAsDataURL(file);
+    } catch (e: any) {
+      alert("Execution error: " + e.message);
       setStatus('idle');
     }
   };
 
-  const wipeDatabase = async () => {
-    if (!window.confirm("Are you sure you want to wipe all transaction records? This cannot be undone.")) return;
-    
-    // Delete all records using the correct Primary Key
-    if (!user) return;
-    const { error } = await supabase.from('transactions')
-      .delete()
-      .eq('user_id', user.id);
-    if (error) {
-      alert("Error wiping DB: " + error.message);
-    } else {
-      alert("Database wiped successfully. Universal Ledger is now empty.");
-    }
-  };
+  const handleWipeDatabase = async () => {
+    if (!user?.id) return;
+    const confirmWipe = window.confirm("⚠️ DANGER: Are you sure you want to wipe ALL transactions and sync history? This cannot be undone.");
+    if (!confirmWipe) return;
 
-  const handleReasonChange = (index: number, newReason: string) => {
-    const updated = [...parsedData];
-    updated[index].reason = newReason;
-    
-    // Auto-categorize based on the new custom typed reason logic
-    if (newReason !== "Needed input") {
-       updated[index].category = categorize(newReason);
-    }
-    
-    setParsedData(updated);
-  };
+    setIsWiping(true);
+    try {
+      // 1. Delete user transactions from Supabase
+      const { error } = await supabase.from('transactions').delete().eq('user_id', user.id);
+      if (error) throw error;
 
-  const handleCategoryChange = (index: number, newCategory: string) => {
-    const updated = [...parsedData];
-    updated[index].category = newCategory;
-    setParsedData(updated);
+      // 2. Clear real sync history
+      localStorage.removeItem(`aura_recent_syncs_${user.id}`);
+      setRecentSyncs([]);
+      setFile(null);
+      setParsedData([]);
+      setStatus('idle');
+
+      alert("Universal Ledger & Sync History wiped cleanly.");
+    } catch (err: any) {
+      console.error('Wipe failed:', err);
+      alert("Failed to wipe database: " + err.message);
+    } finally {
+      setIsWiping(false);
+    }
   };
 
   const confirmImport = async () => {
@@ -220,21 +192,18 @@ const Upload = () => {
     const payload = parsedData.map(tx => ({
       transaction_id: tx.transaction_id,
       date: tx.date,
-      description: tx.description || tx.raw_description || "Bank Transaction", // strictly 1:1 raw string
-      category: tx.category || "Miscellaneous", // Map AI category
+      description: tx.description || tx.raw_description || "Bank Transaction",
+      category: tx.category || "Miscellaneous",
       amount: tx.amount,
-      currency: statementCurrency, // Master override using user-selected native Statement Currency
-      visibility: tx.visibility,
-      bank: detectedBank || bankType, // Tag the source engine for advanced filtering
+      currency: statementCurrency,
+      visibility: tx.visibility || 'Private',
+      bank: detectedBank || bankType,
       user_id: user.id
     }));
 
-    // Use UPSERT on transaction_id constraint to prevent duplicates
     const { error } = await supabase.from('transactions').upsert(payload, { onConflict: 'transaction_id' });
-    
     if (error) {
-      console.error(error);
-      alert("Import error! " + error.message);
+      alert("Import error: " + error.message);
       setStatus('review');
     } else {
       setStatus('success');
@@ -249,349 +218,215 @@ const Upload = () => {
           onReceiptProcessed={() => setShowReceiptScanner(false)} 
         />
       )}
-    <div className="max-w-7xl mx-auto px-4 space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
-      <header className="mb-6 md:mb-10 text-center md:text-left flex flex-col md:flex-row justify-between items-center md:items-start gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white uppercase mt-4 md:mt-0">Awaken <span style={{ color: getAuraColor() }}>Aura</span></h1>
-          <p className="text-zinc-400 mt-1 md:mt-2 font-mono text-[10px] md:text-sm uppercase hidden md:block">Smart ML-Lite Categorization Engine</p>
-        </div>
-        <button 
-           onClick={wipeDatabase}
-           className="flex items-center justify-center gap-2 px-4 py-3 md:py-2 w-full md:w-auto border border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl md:rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors min-h-[44px]"
-        >
-           <Trash2 size={14} /> Wipe All Records 
-        </button>
-      </header>
 
-      {status === 'idle' || status === 'processing' ? (
-        <div className="space-y-8">
-          {/* 100% Zero-Touch Real-Time Sync (Apple Pay / Google Wallet) */}
-          <ZeroTouchSync />
-
-          
-          {/* Smart Receipt & E-Bill Scanner Card */}
-          <div className="p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-2xl backdrop-blur-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
-            <div 
-              className="absolute top-0 left-0 right-0 h-1"
-              style={{ background: `linear-gradient(90deg, ${getAuraColor()}, #00f2fe)` }}
-            />
-            <div className="flex items-center gap-3.5">
-              <div 
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
-                style={{ background: `linear-gradient(135deg, ${getAuraColor()}, #00b4d8)` }}
-              >
-                <Camera size={24} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-white tracking-tight">
-                    Smart Receipt & E-Bill Scanner
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                    Itemized OCR + Split
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 mt-0.5 max-w-lg">
-                  Snap a photo of any store receipt or upload a digital PDF invoice. Aura itemizes each product and lets you split equally, by %, or custom amounts with roommates!
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowReceiptScanner(true)}
-              className="w-full md:w-auto px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 flex items-center justify-center gap-2 flex-shrink-0"
-              style={{ background: `linear-gradient(135deg, ${getAuraColor()}, #00b4d8)` }}
-            >
-              <Receipt size={16} />
-              <span>📸 Scan & Split Bill</span>
-            </button>
+      {/* Main Container with ample bottom padding so mobile navigation bar never blocks elements */}
+      <div className="min-h-screen bg-[#000000] text-slate-100 px-4 sm:px-6 pt-4 pb-36 space-y-6 max-w-5xl mx-auto">
+        
+        {/* Top Header with subtle Wipe Action */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-zinc-800/80">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+              <span>AWAKEN</span>
+              <span style={{ color: auraColor }}>AURA</span>
+            </h1>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Zero-touch bank bridges, receipt OCR scanner & statement ingestion
+            </p>
           </div>
 
-          <div className="pt-6 border-t border-zinc-800">
-            <h3 className="text-xs uppercase font-bold tracking-widest text-zinc-400 mb-3">
+          <button
+            type="button"
+            onClick={handleWipeDatabase}
+            disabled={isWiping}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-400 hover:text-white bg-rose-950/40 hover:bg-rose-900 border border-rose-500/30 cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Trash2 size={13} />
+            <span>{isWiping ? 'Wiping...' : 'Wipe All Records'}</span>
+          </button>
+        </div>
+
+        {/* Section 1: Zero-Touch Automation (Android, Apple Pay, Email) */}
+        <ZeroTouchSync />
+
+        {/* Section 2: Smart Receipt & E-Bill Scanner */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative overflow-hidden">
+          <div 
+            className="absolute top-0 left-0 right-0 h-1"
+            style={{ background: `linear-gradient(90deg, ${auraColor}, #00f2fe)` }}
+          />
+          <div className="flex items-center gap-3.5">
+            <div 
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
+            >
+              <Camera size={22} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                  Smart Receipt & E-Bill Scanner
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                  Itemized OCR + Split
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5 max-w-xl">
+                Snap physical receipts or upload PDF e-bills. Aura extracts line items and lets you split equally, by %, or custom amounts with roommates!
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowReceiptScanner(true)}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 flex items-center justify-center gap-2 flex-shrink-0"
+            style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
+          >
+            <Receipt size={15} />
+            <span>📸 Scan & Split Bill</span>
+          </button>
+        </div>
+
+        {/* Section 3: Batch Statement Parsing Dropzone */}
+        <div className="space-y-4 pt-2">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xs uppercase font-bold tracking-widest text-zinc-400">
               Batch Statement Parsing Dropzone
             </h3>
+            <span className="text-[11px] text-zinc-500 font-mono">PDF & CSV Support</span>
           </div>
+
           <motion.div 
-            animate={dragActive ? { boxShadow: getAuraGlow(), borderColor: getAuraColor() } : { borderColor: '#334155' }}
-            className="glass p-6 md:p-12 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all bg-[#080808] relative md:h-auto h-[25vh] min-h-[160px]"
-            style={{ backgroundColor: dragActive ? `${getAuraColor()}05` : undefined }}
+            animate={dragActive ? { boxShadow: getAuraGlow(), borderColor: auraColor } : { borderColor: '#27272a' }}
+            className="p-6 sm:p-10 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all bg-[#080808] relative min-h-[160px]"
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <div className="w-12 h-12 md:w-20 md:h-20 rounded-full bg-[#0a0a0a] flex items-center justify-center mb-3 md:mb-6 shadow-xl border border-zinc-800">
-              <UploadIcon size={24} style={{ color: getAuraColor() }} className={dragActive ? 'animate-bounce' : 'opacity-80 md:w-8 md:h-8'} />
+            <div className="w-12 h-12 rounded-2xl bg-[#000000] flex items-center justify-center mb-3 shadow-xl border border-zinc-800">
+              <UploadIcon size={22} style={{ color: auraColor }} className={dragActive ? 'animate-bounce' : 'opacity-80'} />
             </div>
             
-            <h3 className="hidden md:block text-xl font-bold text-white mb-2 tracking-wide uppercase">
-              Inject Statement Data
-            </h3>
-            <p className="hidden md:block text-zinc-500 text-sm mb-6 text-center max-w-sm">
-              Upload PDF exports (Kotak format supported). Neural engine maps UPI/Merchant/Note directly.
+            <h4 className="text-sm sm:text-base font-bold text-white mb-1 tracking-wide">
+              Drop Statement PDF Here
+            </h4>
+            <p className="text-zinc-400 text-xs mb-4 text-center max-w-sm">
+              Supports Canadian & Indian bank statements. Neural engine categorizes transactions automatically.
             </p>
 
             <label 
-               className="cursor-pointer bg-[#080808] border hover:bg-[#0a0a0a] border-zinc-700 text-white font-black py-3 px-6 rounded-xl tracking-widest uppercase transition-colors flex items-center justify-center gap-3 w-full md:w-auto shadow-2xl min-h-[44px]"
-               style={dragActive ? { borderColor: getAuraColor() } : {}}
+              className="cursor-pointer bg-[#000000] border hover:bg-[#0a0a0a] border-zinc-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs tracking-wider uppercase transition-colors flex items-center justify-center gap-2 shadow-xl"
             >
-              <FileJson size={18} style={{ color: getAuraColor() }} />
-              <span className="text-[10px] md:text-base">Tap to Upload Statement</span>
+              <FileJson size={16} style={{ color: auraColor }} />
+              <span>Choose Statement File</span>
               <input 
                 type="file" 
                 className="hidden" 
                 accept=".csv,.pdf" 
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
-                     setFile(e.target.files[0]);
+                    setFile(e.target.files[0]);
                   }
                 }}
               />
             </label>
           </motion.div>
 
-          {/* Quick History Status Bar (Mocked last 3 for UX immersion) */}
-          <div className="md:hidden glass p-4 rounded-xl space-y-3 bg-[#000000]/50">
-             <h4 className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest border-b border-zinc-800 pb-2">Recent Synchronizations</h4>
-             <div className="flex justify-between items-center text-[10px] font-mono p-2 rounded bg-green-500/10 border border-green-500/20 text-green-500">
-                <span className="truncate max-w-[150px]">Kotak_Dec.pdf</span>
-                <span>Success</span>
-             </div>
-             <div className="flex justify-between items-center text-[10px] font-mono p-2 rounded bg-green-500/10 border border-green-500/20 text-green-500">
-                <span className="truncate max-w-[150px]">Kotak_Nov.pdf</span>
-                <span>Success</span>
-             </div>
-             <div className="flex justify-between items-center text-[10px] font-mono p-2 rounded bg-slate-800 border border-zinc-700 text-zinc-400">
-                <span className="truncate max-w-[150px]">Kotak_Oct.pdf</span>
-                <span>Void</span>
-             </div>
-          </div>
+          {/* Real Dynamic Recent Synchronizations */}
+          {recentSyncs.length > 0 && (
+            <div className="p-4 rounded-2xl bg-[#080808] border border-zinc-800 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] uppercase font-bold text-zinc-400 tracking-wider">
+                <History size={13} className="text-cyan-400" />
+                <span>Recent Synchronizations ({recentSyncs.length})</span>
+              </div>
+              <div className="space-y-2">
+                {recentSyncs.map((sync) => (
+                  <div 
+                    key={sync.id}
+                    className="flex justify-between items-center text-xs font-mono p-2.5 rounded-xl bg-[#000000] border border-zinc-800"
+                  >
+                    <div className="flex items-center gap-2 truncate max-w-[220px] sm:max-w-md">
+                      <span className="text-zinc-300 font-medium truncate">{sync.fileName}</span>
+                      <span className="text-zinc-500 text-[10px]">({sync.date})</span>
+                    </div>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                      sync.status === 'Success' 
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' 
+                        : 'bg-zinc-900 text-zinc-400 border border-zinc-700'
+                    }`}>
+                      {sync.status === 'Success' ? `${sync.count} Parsed` : 'Void'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {/* File Selected Action Bar */}
           {file && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="glass p-4 md:p-6 rounded-2xl border-l-4 flex flex-col md:flex-row items-center justify-between gap-4 w-full"
-              style={{ borderLeftColor: getAuraColor() }}
+              className="p-4 sm:p-5 rounded-2xl bg-[#080808] border border-zinc-700 flex flex-col sm:flex-row items-center justify-between gap-3"
             >
-              <div className="w-full md:w-auto text-center md:text-left">
-                <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Target Payload</p>
-                <p className="text-white font-mono text-xs truncate max-w-[200px] md:max-w-none">{file.name} <span className="text-zinc-500 text-[10px] ml-1">({(file.size / 1024).toFixed(1)} KB)</span></p>
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ready to Parse</p>
+                <p className="text-white font-mono text-xs font-bold">{file.name} <span className="text-zinc-500 font-normal">({(file.size / 1024).toFixed(1)} KB)</span></p>
               </div>
               
               <button 
                 onClick={handleProcess}
                 disabled={status !== 'idle'}
-                className="w-full md:w-auto rounded-xl px-6 py-3 font-black text-[10px] md:text-xs uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 border relative min-h-[44px] mt-4 md:mt-0 bg-[#080808]/40 hover:bg-[#0a0a0a] border-zinc-700 hover:border-slate-500 shadow-xl"
-                style={{ 
-                  color: getAuraColor(),
-                  borderColor: `${getAuraColor()}40`,
-                  boxShadow: status === 'idle' ? `0 4px 20px ${getAuraColor()}20` : 'none',
-                  backgroundColor: status === 'idle' ? `${getAuraColor()}10` : undefined
-                }}
+                className="w-full sm:w-auto rounded-xl px-5 py-2.5 font-bold text-xs uppercase tracking-wider text-white shadow-xl cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
               >
                 {status === 'idle' && 'Execute Neural Parse'}
-                {status === 'processing' && <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: getAuraColor(), borderTopColor: 'transparent' }}></div> Extracting...</span>}
+                {status === 'processing' && (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Extracting Transactions...</span>
+                  </>
+                )}
               </button>
             </motion.div>
           )}
         </div>
-      ) : status === 'review' || status === 'importing' ? (
-        <motion.div 
-           initial={{ opacity: 0, scale: 0.98 }}
-           animate={{ opacity: 1, scale: 1 }}
-           className="glass rounded-2xl border overflow-hidden pb-24 md:pb-0 relative shadow-2xl"
-           style={{ borderColor: `${getAuraColor()}20` }}
-        >
-           {/* High-Contrast Control Header */}
-           <div className="p-5 md:p-8 border-b border-zinc-800/50 flex flex-col xl:flex-row justify-between items-center bg-[#080808]/80 backdrop-blur-xl gap-6">
-             <div className="text-center md:text-left">
-               <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
-                 <div className="w-2 h-8 rounded-full" style={{ backgroundColor: getAuraColor(), boxShadow: `0 0 15px ${getAuraColor()}` }}></div>
-                 <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">Review Imports</h3>
-               </div>
-               <p className="text-[10px] md:text-xs text-zinc-500 font-mono tracking-widest uppercase">
-                 <span style={{ color: getAuraColor() }}>{parsedData.length}</span> Records Synchronized • Verify Neural Mapping
-               </p>
-             </div>
-             
-             <div className="flex flex-wrap items-center justify-center md:justify-end gap-6 w-full xl:w-auto">
-               {/* Modular Selectors */}
-               <div className="flex gap-4">
-                 <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] uppercase font-black text-zinc-500 tracking-[0.2em] text-center md:text-left">Bank Engine</span>
-                    <select 
-                       value={detectedBank || bankType}
-                       onChange={(e) => {
-                          const newBank = e.target.value;
-                          setBankType(newBank);
-                          setDetectedBank(newBank);
-                          handleProcess();
-                       }}
-                       className="bg-[#000000] text-white text-[11px] font-bold uppercase tracking-widest border border-zinc-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[140px] appearance-none text-center shadow-lg"
-                       style={{ 
-                          boxShadow: `inset 0 0 10px ${getAuraColor()}05`,
-                          borderLeft: `3px solid ${getAuraColor()}50`
-                       }}
-                    >
-                       <option value="kotak">Kotak</option>
-                       <option value="hdfc">HDFC</option>
-                       <option value="jio">Jio</option>
-                       <option value="union">Union</option>
-                    </select>
-                 </div>
 
-                 <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] uppercase font-black text-zinc-500 tracking-[0.2em] text-center md:text-left">Currency</span>
-                    <select 
-                       value={statementCurrency}
-                       onChange={(e) => setStatementCurrency(e.target.value)}
-                       className="bg-[#000000] text-white text-[11px] font-bold uppercase tracking-widest border border-zinc-800 rounded-xl px-4 py-2.5 focus:outline-none cursor-pointer transition-all hover:border-slate-600 min-w-[100px] appearance-none text-center shadow-lg"
-                       style={{ 
-                          boxShadow: `inset 0 0 10px ${getAuraColor()}05`,
-                          borderLeft: `3px solid ${getAuraColor()}50`
-                       }}
-                    >
-                       {['INR', 'CAD', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                 </div>
-               </div>
-               
-               {/* Level-Up Action Button */}
-               <motion.button 
-                  whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={confirmImport}
-                  disabled={status === 'importing' || parsedData.length === 0}
-                  className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-white transition-all disabled:opacity-30 disabled:grayscale z-50 text-xs md:text-sm min-h-[56px] shadow-2xl relative overflow-hidden group"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${getAuraColor()}, ${getAuraColor()}dd)`,
-                    boxShadow: `0 15px 40px ${getAuraColor()}40`
-                  }}
-                >
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  {status === 'importing' ? (
-                     <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                     <>
-                       <Play size={18} fill="white" className="drop-shadow-lg" /> 
-                       <span>Confirm & Commit</span>
-                     </>
-                  )}
-                </motion.button>
+        {/* Review Modal / Screen */}
+        {status === 'review' && (
+          <div className="p-5 rounded-2xl bg-[#080808] border border-zinc-700 space-y-4 animate-in fade-in">
+            <div className="flex justify-between items-center pb-3 border-b border-zinc-800">
+              <div>
+                <h3 className="text-base font-bold text-white">Review Extracted Statement</h3>
+                <p className="text-xs text-zinc-400">Detected {parsedData.length} transactions from {detectedBank || file?.name}</p>
               </div>
-           </div>
-           
-           <div className="overflow-x-auto w-full">
-              <table className="w-full text-left whitespace-nowrap table-auto block">
-                <thead className="bg-[#000000] sticky top-0 z-10 hidden md:table-header-group">
-                  <tr className="flex flex-col md:table-row">
-                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Date</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Description</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Chq/Ref. No.</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-[#FF4D4D] uppercase tracking-widest border-b border-zinc-800">Withdrawal (Dr.)</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-[#00FF41] uppercase tracking-widest border-b border-zinc-800">Deposit (Cr.)</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-800">Balance</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 bg-blue-900/10">Reason</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-purple-400 uppercase tracking-widest border-b border-zinc-800 bg-purple-900/10">AI Category</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50 block md:table-row-group w-full">
-                  {parsedData.map((tx, idx) => (
-                    <tr key={tx.transaction_id || idx} className="hover:bg-slate-800/30 transition-colors flex flex-col md:table-row p-4 md:p-0 border-b border-zinc-800">
-                      <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-zinc-300 font-mono align-top order-5 md:order-1">{tx.date}</td>
-                      <td className="px-0 md:px-4 py-1 md:py-3 text-[10px] md:text-xs text-zinc-400 font-mono w-full md:w-64 whitespace-normal break-words max-w-none md:max-w-[250px] align-top order-1 md:order-2">{tx.raw_description}</td>
-                      <td className="hidden md:table-cell px-4 py-3 text-xs text-zinc-500 font-mono align-top md:order-3">{tx.transaction_id}</td>
-                      
-                      <td className="px-4 py-3 font-mono font-black align-top order-2 md:order-4">
-                        <span className="text-[#FF4D4D]">
-                          {Number(tx.withdrawal) !== 0 ? `-${tx.withdrawal}` : <span className="opacity-30">-</span>}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono font-black align-top order-2 md:order-5">
-                        <span className="text-[#00FF41]">
-                          {Number(tx.deposit) !== 0 ? `+${tx.deposit}` : <span className="opacity-30">-</span>}
-                        </span>
-                      </td>
-                      <td className="hidden md:table-cell px-4 py-3 font-mono text-zinc-500 text-xs align-top">{tx.balance}</td>
-                      
-                      <td className="px-0 md:px-4 py-2 md:py-3 bg-transparent md:bg-blue-900/5 align-top order-3 md:order-7">
-                        <div className="flex items-center gap-2 group w-full">
-                          <Edit2 size={12} className="text-blue-500 opacity-50 hidden md:block group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                          <input 
-                            type="text"
-                            value={tx.reason}
-                            onChange={(e) => handleReasonChange(idx, e.target.value)}
-                            className="bg-[#000000] md:bg-transparent border border-zinc-700 md:border-b md:border-transparent md:hover:border-slate-600 focus:border-blue-500 focus:outline-none text-white font-bold py-2 md:py-1 px-3 md:px-1 w-full transition-colors rounded-lg md:rounded-none text-[10px] md:text-xs min-h-[44px] md:min-h-0"
-                            placeholder="Reason"
-                          />
-                        </div>
-                      </td>
-                      
-                      <td className="px-0 md:px-4 py-2 md:py-3 bg-transparent md:bg-purple-900/5 align-top relative order-4 md:order-8">
-                         <select 
-                            value={tx.category || "Miscellaneous"}
-                            onChange={(e) => handleCategoryChange(idx, e.target.value)}
-                            className="w-full text-[10px] md:text-xs font-bold uppercase tracking-widest py-2 md:py-1 px-3 md:px-2 rounded-lg cursor-pointer appearance-none text-center bg-[#000000] bg-opacity-80 focus:outline-none transition-all shadow-lg border border-zinc-700 hover:border-current inline-block min-h-[44px] md:min-h-0"
-                            style={{ 
-                               color: CATEGORY_COLORS[tx.category] || "#ff69b4",
-                               borderColor: `${CATEGORY_COLORS[tx.category] || "#ff69b4"}50`
-                            }}
-                         >
-                            {dynamicCategoryOptions.map(cat => (
-                               <option key={cat} value={cat} className="bg-[#000000] font-bold text-white text-left tracking-widest uppercase text-[10px]" style={{ color: CATEGORY_COLORS[cat] || "#ff69b4" }}>
-                                   {cat}
-                               </option>
-                            ))}
-                         </select>
-                      </td>
-                    </tr>
-                  ))}
-                  {parsedData.length === 0 && (
-                     <tr>
-                        <td colSpan={8} className="text-center p-8 text-zinc-500 font-mono">
-                           {hasDuplicatesOnly 
-                             ? "All transactions from this statement have already been imported (duplicates filtered)." 
-                             : "No valid transactions extracted. Verify PDF format."}
-                        </td>
-                     </tr>
-                  )}
-                </tbody>
-              </table>
-           </div>
-        </motion.div>
-      ) : (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="border p-8 rounded-2xl flex flex-col items-center justify-center text-center mt-4 glass shadow-2xl mx-4"
-          style={{ backgroundColor: `${getAuraColor()}05`, borderColor: `${getAuraColor()}40` }}
-        >
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: `${getAuraColor()}20` }}>
-             <CheckCircle size={32} style={{ color: getAuraColor() }} />
+              <button
+                type="button"
+                onClick={confirmImport}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
+              >
+                Confirm & Import to Ledger
+              </button>
+            </div>
+
+            {hasDuplicatesOnly && (
+              <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-500/40 text-xs text-amber-300 flex items-center gap-2">
+                <AlertTriangle size={15} />
+                <span>All transactions in this statement have already been imported previously.</span>
+              </div>
+            )}
           </div>
-          <h4 className="text-xl md:text-2xl font-black tracking-wide text-white uppercase mb-2">Resonance Achieved</h4>
-          <p className="text-[10px] md:text-sm text-zinc-400 max-w-sm mb-6">
-            Supabase synchronization complete. Your Universal Ledger has been updated with {parsedData.length} records.
-          </p>
-          <button 
-             onClick={() => {
-               setFile(null);
-               setParsedData([]);
-               setStatus('idle');
-             }}
-             className="px-6 py-3 rounded-xl text-[10px] md:text-sm font-bold uppercase tracking-widest border transition-all w-full md:w-auto min-h-[44px]"
-             style={{ borderColor: getAuraColor(), color: getAuraColor() }}
-          >
-            Upload Another
-          </button>
-        </motion.div>
-      )}
-    </div>
+        )}
+
+        {status === 'success' && (
+          <div className="p-5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-center space-y-2 animate-in zoom-in-95">
+            <CheckCircle className="text-emerald-400 mx-auto" size={28} />
+            <h3 className="text-base font-bold text-white">Statement Ingested Successfully!</h3>
+            <p className="text-xs text-zinc-400">All transactions are now available in your Universal Ledger.</p>
+          </div>
+        )}
+      </div>
     </>
   );
-};
-
-export default Upload;
+}

@@ -23,6 +23,19 @@ export function ZeroTouchSync() {
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  const currentOrigin = window.location.origin;
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  const userParam = user?.id ? `?user_id=${user.id}` : '';
+  const effectiveOrigin = customHost.trim() ? (customHost.startsWith('http') ? customHost.trim() : `https://${customHost.trim()}`) : currentOrigin;
+  const webhookUrl = `${effectiveOrigin}/api/webhook/transaction${userParam}`;
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(id);
+    setTimeout(() => setCopiedText(null), 2500);
+  };
+
   const handleSendTestWebhook = async () => {
     setIsTestingWebhook(true);
     setTestResult(null);
@@ -62,158 +75,125 @@ export function ZeroTouchSync() {
     }
   };
 
-  // Intelligent URL resolution:
-  // If running locally, provides option for live cloud endpoint so phone automations work outside the PC
-  const currentOrigin = window.location.origin;
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
-  const userParam = user?.id ? `?user_id=${user.id}` : '';
-  const effectiveOrigin = customHost.trim() ? (customHost.startsWith('http') ? customHost.trim() : `https://${customHost.trim()}`) : currentOrigin;
-  const webhookUrl = `${effectiveOrigin}/api/webhook/transaction${userParam}`;
-
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedText(id);
-    setTimeout(() => setCopiedText(null), 2500);
-  };
-
   return (
-    <div className="space-y-6 text-slate-100 max-w-5xl mx-auto">
+    <div className="space-y-4 text-slate-100 max-w-5xl mx-auto">
       {/* Top Header Card */}
-      <div className="p-5 rounded-2xl bg-[#080808]/90 border border-zinc-800 backdrop-blur-xl shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#080808]/90 border border-zinc-800 backdrop-blur-xl shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-3">
           <div 
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
             style={{ background: `linear-gradient(135deg, ${auraColor}, #00f2fe)` }}
           >
-            <Radio size={22} className="animate-pulse" />
+            <Radio size={20} className="animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-white tracking-tight">Zero-Touch Payment Automation</h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30">
-                100% Free & Live
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">Zero-Touch Payment Automation</h2>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                100% Free
               </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
               Automatically capture Canadian spending from Android, Google Wallet, Apple Pay, and Interac
             </p>
           </div>
         </div>
 
         {/* Live Webhook Status */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#000000] border border-zinc-800 text-xs font-mono">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#000000] border border-zinc-800 text-xs font-mono self-start sm:self-auto">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-zinc-400">Webhook Node:</span>
-          <span className="text-emerald-400 font-bold">ONLINE</span>
+          <span className="text-zinc-400 text-[11px]">Webhook:</span>
+          <span className="text-emerald-400 font-bold text-[11px]">ONLINE</span>
         </div>
       </div>
 
-      {/* Channel Selector Tabs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Sleek Horizontal Channel Tabs */}
+      <div className="grid grid-cols-3 gap-2 p-1.5 bg-[#000000] rounded-2xl border border-zinc-800">
         <button
           type="button"
           onClick={() => setActiveChannel('android')}
-          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+          className={`py-2.5 px-2 rounded-xl text-center transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1.5 ${
             activeChannel === 'android'
-              ? 'border-cyan-500 bg-cyan-500/10 text-white shadow-lg ring-1 ring-cyan-500/50'
-              : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
+              ? 'bg-cyan-950/80 border border-cyan-500/50 text-white shadow-lg ring-1 ring-cyan-400/40'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-900/60'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Smartphone size={18} className="text-cyan-400" />
-            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300">
-              Android (Google Wallet & Samsung Pay)
-            </span>
-          </div>
-          <div className="font-bold text-sm text-white">Android Tap Automation</div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Instant MacroDroid notification bridge (0 seconds)</div>
+          <Smartphone size={16} className={activeChannel === 'android' ? 'text-cyan-400' : 'text-zinc-500'} />
+          <span className="text-xs font-bold">Android (Google Pay)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveChannel('ios')}
-          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+          className={`py-2.5 px-2 rounded-xl text-center transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1.5 ${
             activeChannel === 'ios'
-              ? 'border-rose-500 bg-rose-500/10 text-white shadow-lg ring-1 ring-rose-500/50'
-              : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
+              ? 'bg-rose-950/80 border border-rose-500/50 text-white shadow-lg ring-1 ring-rose-400/40'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-900/60'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Zap size={18} className="text-rose-400" />
-            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300">
-              iOS / Apple Watch
-            </span>
-          </div>
-          <div className="font-bold text-sm text-white">Apple Pay Shortcuts</div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Native background automation for iPhone</div>
+          <Zap size={16} className={activeChannel === 'ios' ? 'text-rose-400' : 'text-zinc-500'} />
+          <span className="text-xs font-bold">Apple Pay (iOS)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveChannel('email')}
-          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+          className={`py-2.5 px-2 rounded-xl text-center transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1.5 ${
             activeChannel === 'email'
-              ? 'border-amber-500 bg-amber-500/10 text-white shadow-lg ring-1 ring-amber-500/50'
-              : 'border-zinc-800 bg-[#080808]/70 text-zinc-400 hover:border-zinc-700'
+              ? 'bg-amber-950/80 border border-amber-500/50 text-white shadow-lg ring-1 ring-amber-400/40'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-900/60'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Mail size={18} className="text-amber-400" />
-            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300">
-              Interac e-Transfer
-            </span>
-          </div>
-          <div className="font-bold text-sm text-white">Email Auto-Forwarding</div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">Gmail / Outlook 1-time automated rule</div>
+          <Mail size={16} className={activeChannel === 'email' ? 'text-amber-400' : 'text-zinc-500'} />
+          <span className="text-xs font-bold">Interac e-Transfer</span>
         </button>
       </div>
 
       {/* CHANNEL 1: ANDROID (GOOGLE WALLET & SAMSUNG PAY) */}
       {activeChannel === 'android' && (
-        <div className="p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-2xl space-y-5">
+        <div className="p-4 sm:p-6 rounded-2xl bg-[#080808]/95 border border-cyan-500/40 shadow-xl space-y-4">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Smartphone className="text-cyan-400" size={20} />
-              <span>Android (Google Wallet & Samsung Pay) Real-Time Bridge</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Smartphone className="text-cyan-400" size={18} />
+              <span>Android Real-Time Google Wallet Bridge</span>
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                 0-Second Instant Tap
               </span>
             </h3>
-            <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
-              Whenever you pay at any store with Google Wallet or Samsung Pay on your Android phone, MacroDroid instantly captures the payment notification and forwards it to Aura in under 1 second.
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-1 max-w-2xl">
+              Whenever you pay at any store with Google Wallet on your Android phone, MacroDroid instantly captures the payment notification and forwards it to Aura in under 1 second.
             </p>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">1</span>
+          <div className="space-y-2.5 text-xs">
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">1</span>
               <div>
-                <b className="text-white">Install MacroDroid (Free on Google Play Store)</b>
-                <p className="text-zinc-400 mt-0.5">MacroDroid is a safe, lightweight automation app that runs locally with zero battery impact.</p>
+                <b className="text-white text-xs">Install MacroDroid (Free on Google Play Store)</b>
+                <p className="text-zinc-400 text-[11px] mt-0.5">MacroDroid is a safe, lightweight automation app with zero battery impact.</p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">2</span>
               <div>
-                <b className="text-white">Trigger: Notification Received → Select (Google Wallet / Bank App)</b>
-                <p className="text-zinc-400 mt-0.5">Choose Google Wallet, TD, RBC, or Scotiabank as the monitored notification source.</p>
+                <b className="text-white text-xs">Trigger: Notification Received → Select (Google Wallet / Bank App)</b>
+                <p className="text-zinc-400 text-[11px] mt-0.5">Choose Google Wallet, TD, RBC, or CIBC as the monitored notification source.</p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0">3</span>
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">3</span>
               <div className="w-full space-y-2">
                 <div>
-                  <b className="text-white">Action: HTTP Request → POST to Aura Endpoint</b>
-                  <p className="text-zinc-400 mt-0.5">Send notification title and body directly to your endpoint:</p>
+                  <b className="text-white text-xs">Action: HTTP Request → POST to Aura Endpoint</b>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">Send notification title and body directly to your endpoint:</p>
                 </div>
 
                 {/* Intelligent URL Display */}
-                <div className="p-3 rounded-xl bg-[#000000] border border-zinc-700/80 space-y-2">
+                <div className="p-3 rounded-xl bg-[#080808] border border-zinc-700/80 space-y-2">
                   <div className="flex items-center justify-between font-mono text-[11px] text-cyan-300">
-                    <span className="truncate">{webhookUrl}</span>
+                    <span className="truncate max-w-[200px] sm:max-w-md">{webhookUrl}</span>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(webhookUrl, 'webhook-url-android')}
@@ -221,78 +201,77 @@ export function ZeroTouchSync() {
                     >
                       {copiedText === 'webhook-url-android' ? (
                         <>
-                          <CheckCircle size={14} className="text-emerald-400" />
+                          <CheckCircle size={13} className="text-emerald-400" />
                           <span className="text-emerald-400 font-sans text-[11px]">Copied!</span>
                         </>
                       ) : (
                         <>
-                          <Copy size={14} />
+                          <Copy size={13} />
                           <span className="font-sans text-[11px]">Copy URL</span>
                         </>
                       )}
                     </button>
                   </div>
 
+                  {/* 1-Click Interactive Test Simulator */}
+                  <div className="pt-2 border-t border-zinc-800 space-y-2">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div>
+                        <b className="text-[11px] text-white block flex items-center gap-1">
+                          <Zap size={13} className="text-cyan-400" />
+                          <span>Step 4: Verify Your Webhook Live</span>
+                        </b>
+                        <span className="text-[10px] text-zinc-400">
+                          Click to simulate a $4.25 coffee purchase from your phone
+                        </span>
+                      </div>
 
-                {/* 1-Click Interactive Test Simulator */}
-                <div className="p-3.5 rounded-xl bg-[#080808] border border-cyan-500/30 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <b className="text-xs text-white block flex items-center gap-1.5">
-                        <Zap size={14} className="text-cyan-400" />
-                        <span>Step 4: Verify Your Webhook Live</span>
-                      </b>
-                      <span className="text-[11px] text-zinc-400">
-                        Click to simulate a $4.25 coffee purchase from your phone
-                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSendTestWebhook}
+                        disabled={isTestingWebhook}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-lg bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
+                      >
+                        {isTestingWebhook ? (
+                          <>
+                            <div className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                            <span>Sending Ping...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={12} />
+                            <span>Send Test Payment</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSendTestWebhook}
-                      disabled={isTestingWebhook}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
-                    >
-                      {isTestingWebhook ? (
-                        <>
-                          <div className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                          <span>Sending Ping...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap size={13} />
-                          <span>Send Test Payment</span>
-                        </>
-                      )}
-                    </button>
+                    {testResult && (
+                      <div className={`p-2 rounded-lg text-[11px] font-mono flex items-center gap-1.5 ${
+                        testResult.success 
+                          ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' 
+                          : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
+                      }`}>
+                        {testResult.success ? <CheckCircle size={13} className="flex-shrink-0" /> : null}
+                        <span>{testResult.message}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {testResult && (
-                    <div className={`p-2.5 rounded-lg text-xs font-mono flex items-center gap-2 ${
-                      testResult.success 
-                        ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' 
-                        : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
-                    }`}>
-                      {testResult.success ? <CheckCircle size={15} className="flex-shrink-0" /> : null}
-                      <span>{testResult.message}</span>
-                    </div>
-                  )}
-                </div>
-
                   {isLocalhost && (
-                    <div className="pt-2 border-t border-zinc-800/80 text-[11px] text-zinc-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="pt-2 border-t border-zinc-800 text-[10px] text-zinc-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                       <span className="flex items-center gap-1 text-amber-400/90">
-                        <Laptop size={12} />
-                        Viewing on Localhost. On your phone, open your deployed Render URL to copy the cloud link.
+                        <Laptop size={11} />
+                        Viewing on Localhost. On your phone, open your deployed Render URL.
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <Globe size={12} className="text-zinc-500" />
+                        <Globe size={11} className="text-zinc-500" />
                         <input
                           type="text"
-                          placeholder="or paste Render domain (e.g. aura.onrender.com)"
+                          placeholder="or paste Render domain"
                           value={customHost}
                           onChange={(e) => setCustomHost(e.target.value)}
-                          className="bg-[#080808] border border-zinc-700 rounded px-2 py-0.5 text-[10px] text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400"
+                          className="bg-[#000000] border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400"
                         />
                       </div>
                     </div>
@@ -306,52 +285,52 @@ export function ZeroTouchSync() {
 
       {/* CHANNEL 2: APPLE PAY / IOS SHORTCUT */}
       {activeChannel === 'ios' && (
-        <div className="p-6 rounded-2xl bg-[#080808]/95 border border-rose-500/40 shadow-2xl space-y-5">
+        <div className="p-4 sm:p-6 rounded-2xl bg-[#080808]/95 border border-rose-500/40 shadow-xl space-y-4">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Zap className="text-rose-400" size={20} />
+            <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Zap className="text-rose-400" size={18} />
               <span>Apple Pay Real-Time Automation</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                 Built into iPhone
               </span>
             </h3>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
               Whenever you tap your iPhone or Apple Watch at any store, iOS wakes up a background shortcut that automatically posts the transaction data to Aura.
             </p>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0">1</span>
+          <div className="space-y-2.5 text-xs">
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">1</span>
               <div>
-                <b className="text-white">Open the &quot;Shortcuts&quot; App on your iPhone</b>
-                <p className="text-zinc-400 mt-0.5">Tap the <b>Automation</b> tab at the bottom → Tap <b>+ (New Automation)</b>.</p>
+                <b className="text-white text-xs">Open the &quot;Shortcuts&quot; App on your iPhone</b>
+                <p className="text-zinc-400 text-[11px] mt-0.5">Tap the <b>Automation</b> tab at the bottom → Tap <b>+ (New Automation)</b>.</p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">2</span>
               <div>
-                <b className="text-white">Select &quot;Transaction&quot; (When I use Apple Pay)</b>
-                <p className="text-zinc-400 mt-0.5">Choose <b>Any Card</b> → Select <b>Run Immediately (No confirmation)</b>.</p>
+                <b className="text-white text-xs">Select &quot;Transaction&quot; (When I use Apple Pay)</b>
+                <p className="text-zinc-400 text-[11px] mt-0.5">Choose <b>Any Card</b> → Select <b>Run Immediately (No confirmation)</b>.</p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0">3</span>
+            <div className="p-3 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">3</span>
               <div className="w-full space-y-2">
                 <div>
-                  <b className="text-white">Add Action: &quot;Get Contents of URL&quot; (HTTP POST)</b>
-                  <p className="text-zinc-400 mt-0.5">Set Method to <b>POST</b> and paste your webhook endpoint URL:</p>
+                  <b className="text-white text-xs">Add Action: &quot;Get Contents of URL&quot; (HTTP POST)</b>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">Set Method to <b>POST</b> and paste your webhook endpoint URL:</p>
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-[#000000] border border-zinc-700 font-mono text-[11px] text-rose-300">
-                  <span className="truncate">{webhookUrl}</span>
+                  <span className="truncate max-w-[200px] sm:max-w-md">{webhookUrl}</span>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(webhookUrl, 'webhook-url-ios')}
                     className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white ml-2 flex-shrink-0 cursor-pointer flex items-center gap-1 text-xs"
                   >
-                    {copiedText === 'webhook-url-ios' ? <CheckCircle size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    {copiedText === 'webhook-url-ios' ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     <span className="font-sans text-[11px]">Copy URL</span>
                   </button>
                 </div>
@@ -363,20 +342,20 @@ export function ZeroTouchSync() {
 
       {/* CHANNEL 3: EMAIL & INTERAC AUTO-FORWARDER */}
       {activeChannel === 'email' && (
-        <div className="p-6 rounded-2xl bg-[#080808]/95 border border-amber-500/40 shadow-2xl space-y-5">
+        <div className="p-4 sm:p-6 rounded-2xl bg-[#080808]/95 border border-amber-500/40 shadow-xl space-y-4">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Mail className="text-amber-400" size={20} />
+            <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Mail className="text-amber-400" size={18} />
               <span>Interac e-Transfer & Bank Alert Auto-Forwarding</span>
             </h3>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
               Create a 1-time automated filter rule in Gmail, Outlook, or iCloud to forward Interac transaction emails automatically.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#000000] border border-zinc-800 text-xs space-y-3">
-            <div className="font-bold text-amber-400">Automated Forwarding Rule:</div>
-            <div className="p-2.5 rounded-lg bg-[#000000] border border-zinc-700 font-mono text-[11px] text-zinc-300">
+          <div className="p-4 rounded-xl bg-[#000000] border border-zinc-800 text-xs space-y-2">
+            <div className="font-bold text-amber-400 text-xs">Automated Forwarding Rule:</div>
+            <div className="p-2.5 rounded-lg bg-[#080808] border border-zinc-700 font-mono text-[11px] text-zinc-300">
               <b>Filter Condition:</b> From: (notify@payments.interac.ca OR alerts@rbc.com OR @td.com OR @scotiabank.com)<br />
               <b>Action:</b> Automatically Forward → <i>{webhookUrl}</i>
             </div>
