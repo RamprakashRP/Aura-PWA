@@ -507,7 +507,7 @@ export default function Tabs() {
 
       {/* CONFIRM DELETE MODAL */}
       {contactToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-sm p-6 rounded-2xl bg-[#080808] border border-rose-900/50 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-rose-400">
               <div className="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center">

@@ -240,7 +240,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div 
         className="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-3xl bg-[#080808] border border-zinc-800 shadow-2xl relative overflow-hidden text-slate-100"
         onClick={(e) => e.stopPropagation()}

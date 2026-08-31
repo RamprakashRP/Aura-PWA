@@ -269,7 +269,7 @@ export default function Vault() {
 
       {/* CREATE MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-[#0a0a0a] border border-zinc-700 shadow-2xl">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
               <h2 className="text-lg font-bold text-white">Create New Tracking Reminder</h2>
@@ -292,7 +292,7 @@ export default function Vault() {
 
       {/* EDIT MODAL */}
       {editingReminder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-[#0a0a0a] border border-zinc-700 shadow-2xl">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
               <h2 className="text-lg font-bold text-white">Edit Reminder: {editingReminder.title}</h2>
