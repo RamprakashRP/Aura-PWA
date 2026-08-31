@@ -8,7 +8,6 @@ import {
   Trash2, 
   Users, 
   DollarSign, 
-  Percent, 
   FileText, 
   Sparkles, 
   Receipt, 
@@ -16,7 +15,10 @@ import {
   Eye,
   FileCode,
   RefreshCw,
-  Zap
+  Zap,
+  Layers,
+  Check,
+  Split
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -64,9 +66,15 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [enableSplit, setEnableSplit] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
-  const [splitMode, setSplitMode] = useState<'equal' | 'percentage' | 'custom'>('equal');
-  const [customPercentages, setCustomPercentages] = useState<Record<string, number>>({});
+  
+  // Split Type: 'basic' (Equal or Custom) vs 'advanced' (Item-by-Item Who Bought What)
+  const [splitEngine, setSplitEngine] = useState<'basic' | 'advanced'>('basic');
+  const [basicSplitMode, setBasicSplitMode] = useState<'equal' | 'custom'>('equal');
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
+
+  // Advanced Item-by-Item Assignees Map: { [itemId]: string[] (array of friend IDs or 'me') }
+  const [itemAssignees, setItemAssignees] = useState<Record<string, string[]>>({});
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
 
@@ -80,7 +88,17 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     };
   }, []);
 
-  // Stop Camera Stream Helper
+  // Initialize Item Assignees to 'me' when receipt loads
+  useEffect(() => {
+    if (scannedReceipt?.items) {
+      const initialMap: Record<string, string[]> = {};
+      scannedReceipt.items.forEach((item) => {
+        initialMap[item.id] = ['me'];
+      });
+      setItemAssignees(initialMap);
+    }
+  }, [scannedReceipt]);
+
   const stopCameraStream = () => {
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -89,7 +107,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     setIsCameraActive(false);
   };
 
-  // Start Live Back Camera Viewfinder
   const startLiveCamera = async (facing: 'environment' | 'user' = 'environment') => {
     stopCameraStream();
     try {
@@ -109,7 +126,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
         videoRef.current.play();
       }
     } catch (err: any) {
-      console.warn('Direct back-camera stream failed, falling back to native file capture:', err);
+      console.warn('Direct back-camera stream failed, falling back to file input:', err);
       setIsCameraActive(false);
       fileInputRef.current?.click();
     }
@@ -121,7 +138,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     startLiveCamera(nextFacing);
   };
 
-  // Shutter Snapshot from Viewfinder
   const captureFrameFromCamera = async () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
@@ -139,7 +155,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     }
   };
 
-  // Process any image dataURL with Contrast Enhancement + Tesseract OCR
   const processImageWithOcr = async (rawImageUrl: string) => {
     setIsScanning(true);
     setScanProgress(10);
@@ -147,13 +162,11 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     setReceiptImage(rawImageUrl);
 
     try {
-      // 1. Image Preprocessing (Grayscale + Adaptive Contrast Boost)
       const preprocessed = await preprocessImageForOcr(rawImageUrl);
 
       setScanProgress(25);
       setScanStatusMessage('Reading store name, line items & prices...');
 
-      // 2. Execute Tesseract OCR with Column-Aware PSM 6
       const { data: { text } } = await Tesseract.recognize(
         preprocessed,
         'eng',
@@ -164,16 +177,12 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
               setScanProgress(Math.max(25, pct));
               setScanStatusMessage(`Scanning items & totals (${pct}%)...`);
             }
-          },
-          // @ts-ignore
-          tessedit_pageseg_mode: '6', // Assume a single uniform block of columnar text
-          preserve_interword_spaces: '1',
+          }
         }
       );
 
       setRawOcrText(text);
 
-      // 3. Parse with enhanced Canadian regex engine
       const parsed = parseReceiptText(text);
       parsed.imageUrl = rawImageUrl;
 
@@ -190,7 +199,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     }
   };
 
-  // Handle Gallery / File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -243,8 +251,9 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
   const handleAddItem = () => {
     if (!scannedReceipt) return;
+    const newItemId = `item-new-${Date.now()}`;
     const newItem: ReceiptItem = {
-      id: `item-new-${Date.now()}`,
+      id: newItemId,
       name: 'New Item',
       price: 0,
       quantity: 1,
@@ -252,6 +261,10 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     setScannedReceipt({
       ...scannedReceipt,
       items: [...scannedReceipt.items, newItem],
+    });
+    setItemAssignees({
+      ...itemAssignees,
+      [newItemId]: ['me'],
     });
   };
 
@@ -269,25 +282,105 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     });
   };
 
-  // Friend Selection
+  // Toggle Friend in Selection Pool
   const toggleFriend = (id: string) => {
     if (selectedFriendIds.includes(id)) {
       setSelectedFriendIds(selectedFriendIds.filter(fId => fId !== id));
+      // Remove from item assignees
+      const updatedAssignees = { ...itemAssignees };
+      Object.keys(updatedAssignees).forEach((itemId) => {
+        updatedAssignees[itemId] = updatedAssignees[itemId].filter(aId => aId !== id);
+        if (updatedAssignees[itemId].length === 0) updatedAssignees[itemId] = ['me'];
+      });
+      setItemAssignees(updatedAssignees);
     } else {
       setSelectedFriendIds([...selectedFriendIds, id]);
     }
   };
 
-  // Split Calculations
+  // Toggle Assignee on Specific Item (Me or Friend)
+  const toggleItemAssignee = (itemId: string, assigneeId: string) => {
+    const currentList = itemAssignees[itemId] || ['me'];
+    let nextList: string[];
+
+    if (currentList.includes(assigneeId)) {
+      nextList = currentList.filter(id => id !== assigneeId);
+      // If list becomes empty, default to 'me'
+      if (nextList.length === 0) nextList = ['me'];
+    } else {
+      nextList = [...currentList, assigneeId];
+    }
+
+    setItemAssignees({
+      ...itemAssignees,
+      [itemId]: nextList,
+    });
+  };
+
+  // Set Item Assignee to "All" (Everyone Selected + Me)
+  const setItemToAll = (itemId: string) => {
+    setItemAssignees({
+      ...itemAssignees,
+      [itemId]: ['me', ...selectedFriendIds],
+    });
+  };
+
+  // Financial Calculations
   const totalAmount = scannedReceipt?.total || 0;
+  const taxAmount = scannedReceipt?.tax || 0;
+  const tipAmount = scannedReceipt?.tip || 0;
   const totalParticipants = selectedFriendIds.length + 1;
 
+  // Basic Equal Split
   const equalSplitAmount = totalParticipants > 0 ? Number((totalAmount / totalParticipants).toFixed(2)) : 0;
-  const sumOfPercentages = Object.values(customPercentages).reduce((s, p) => s + (Number(p) || 0), 0);
-  const myPercentage = Math.max(0, 100 - sumOfPercentages);
-
   const sumOfCustomAmounts = Object.values(customAmounts).reduce((s, a) => s + (Number(a) || 0), 0);
   const remainingUnallocated = Number((totalAmount - sumOfCustomAmounts).toFixed(2));
+
+  // Advanced Item-by-Item Shares Calculation
+  const calculateItemizedShares = () => {
+    const shares: Record<string, { subtotal: number; taxTip: number; total: number; itemsCount: number }> = {
+      me: { subtotal: 0, taxTip: 0, total: 0, itemsCount: 0 },
+    };
+
+    selectedFriendIds.forEach((fId) => {
+      shares[fId] = { subtotal: 0, taxTip: 0, total: 0, itemsCount: 0 };
+    });
+
+    if (!scannedReceipt) return shares;
+
+    // Distribute Item Prices
+    scannedReceipt.items.forEach((item) => {
+      const assignees = itemAssignees[item.id] || ['me'];
+      const validAssignees = assignees.filter(id => id === 'me' || selectedFriendIds.includes(id));
+      const activeAssignees = validAssignees.length > 0 ? validAssignees : ['me'];
+      
+      const itemCost = Number(item.price) * Number(item.quantity || 1);
+      const perAssigneeCost = itemCost / activeAssignees.length;
+
+      activeAssignees.forEach((aId) => {
+        if (shares[aId]) {
+          shares[aId].subtotal += perAssigneeCost;
+          shares[aId].itemsCount += 1;
+        }
+      });
+    });
+
+    // Distribute Tax & Tip proportionally
+    const totalExtra = taxAmount + tipAmount;
+    const combinedSubtotal = Object.values(shares).reduce((s, v) => s + v.subtotal, 0) || 1;
+
+    Object.keys(shares).forEach((aId) => {
+      const proportion = shares[aId].subtotal / combinedSubtotal;
+      const taxTipShare = totalExtra * proportion;
+      shares[aId].taxTip = Number(taxTipShare.toFixed(2));
+      shares[aId].total = Number((shares[aId].subtotal + taxTipShare).toFixed(2));
+      shares[aId].subtotal = Number(shares[aId].subtotal.toFixed(2));
+    });
+
+    return shares;
+  };
+
+  const itemizedShares = calculateItemizedShares();
 
   // Save to Ledger & Tabs
   const handleSaveAndSplit = async () => {
@@ -313,12 +406,17 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
         const participantPayloads = selectedFriendIds.map((contactId) => {
           const friend = contacts.find(c => c.id === contactId);
           let share = equalSplitAmount;
-          if (splitMode === 'percentage') {
-            const pct = customPercentages[contactId] || (100 / totalParticipants);
-            share = Number(((totalAmount * pct) / 100).toFixed(2));
-          } else if (splitMode === 'custom') {
-            share = customAmounts[contactId] || 0;
+
+          if (splitEngine === 'basic') {
+            if (basicSplitMode === 'equal') {
+              share = equalSplitAmount;
+            } else if (basicSplitMode === 'custom') {
+              share = customAmounts[contactId] || 0;
+            }
+          } else if (splitEngine === 'advanced') {
+            share = itemizedShares[contactId]?.total || 0;
           }
+
           return { contactId, name: friend?.name || 'Friend', shareAmount: share };
         });
 
@@ -371,11 +469,11 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">Receipt Scanner & Splitter</h2>
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                  Enhanced OCR
+                  Itemized Split Engine
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-zinc-400">
-                Auto-detects Shoppers, Walmart, Costco, grocery items, taxes, and totals
+                Scan receipts & split equally or item-by-item according to who bought what
               </p>
             </div>
           </div>
@@ -417,7 +515,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     className="w-full h-[320px] sm:h-[380px] object-cover"
                   />
 
-                  {/* Alignment Reticle Overlay */}
                   <div className="absolute inset-4 border-2 border-dashed border-cyan-400/70 rounded-xl pointer-events-none flex flex-col justify-between p-3">
                     <span className="text-[10px] uppercase font-bold text-cyan-300 bg-black/60 px-2 py-0.5 rounded self-start">
                       Align Receipt Within Box
@@ -427,7 +524,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     </span>
                   </div>
 
-                  {/* Camera Controls Bar */}
                   <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 px-4">
                     <button
                       type="button"
@@ -458,9 +554,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
                 </div>
               ) : (
-                /* Capture Option Cards */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Live Back Camera Launcher */}
                   <div 
                     onClick={() => startLiveCamera('environment')}
                     className="p-5 rounded-2xl bg-[#000000] border-2 border-dashed border-cyan-500/50 hover:border-cyan-400 hover:bg-cyan-950/20 transition-all cursor-pointer text-center space-y-2.5 group"
@@ -476,7 +570,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     </div>
                   </div>
 
-                  {/* Photo / PDF File Picker */}
                   <div 
                     onClick={() => fileInputRef.current?.click()}
                     className="p-5 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-purple-500/80 hover:bg-purple-950/20 transition-all cursor-pointer text-center space-y-2.5 group"
@@ -502,7 +595,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 </div>
               )}
 
-              {/* Progress Indicator */}
               {isScanning && (
                 <div className="p-5 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-center space-y-3 animate-in fade-in">
                   <div className="w-9 h-9 rounded-full border-3 border-cyan-400 border-t-transparent animate-spin mx-auto" />
@@ -519,7 +611,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 </div>
               )}
 
-              {/* Raw Text Manual Input */}
               <div className="p-3.5 rounded-2xl bg-[#000000] border border-zinc-800 space-y-2">
                 <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                   <FileCode size={13} className="text-cyan-400" />
@@ -528,7 +619,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 <div className="flex gap-2">
                   <textarea
                     rows={2}
-                    placeholder="Shoppers Drug Mart\nTylenol $12.99\nToothpaste $4.49\nTotal $17.48"
+                    placeholder="Dollarama\nFOLDING UMBRELLA $3.75\nBENTO BOX $4.00\nHST $1.00\nTotal $8.75"
                     value={manualTextToParse}
                     onChange={(e) => setManualTextToParse(e.target.value)}
                     className="flex-1 bg-[#080808] border border-zinc-800 rounded-xl p-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 font-mono"
@@ -553,11 +644,20 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
+                    onClick={() => handleSelectSample('dollarama_haul')}
+                    className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-amber-500/60 text-left text-xs cursor-pointer transition-all"
+                  >
+                    <b className="text-white block">🛒 Dollarama Haul</b>
+                    <span className="text-[10px] text-zinc-400">11 Items • $29.95 CAD</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => handleSelectSample('shoppers_drug_mart')}
                     className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-emerald-500/60 text-left text-xs cursor-pointer transition-all"
                   >
                     <b className="text-white block">💊 Shoppers Drug Mart</b>
-                    <span className="text-[10px] text-zinc-400">4 Items • $33.85 CAD</span>
+                    <span className="text-[10px] text-zinc-400">1 Item • $1.98 CAD</span>
                   </button>
 
                   <button
@@ -565,23 +665,14 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     onClick={() => handleSelectSample('costco_groceries')}
                     className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-cyan-500/60 text-left text-xs cursor-pointer transition-all"
                   >
-                    <b className="text-white block">🛒 Costco Wholesale</b>
+                    <b className="text-white block">📦 Costco Wholesale</b>
                     <span className="text-[10px] text-zinc-400">6 Items • $78.10 CAD</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectSample('roommate_dinner')}
-                    className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-rose-500/60 text-left text-xs cursor-pointer transition-all"
-                  >
-                    <b className="text-white block">🥩 The Keg Dinner</b>
-                    <span className="text-[10px] text-zinc-400">5 Items • $176.85</span>
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            /* STEP 2: REVIEW ITEMS & BILL SPLIT */
+            /* STEP 2: REVIEW ITEMS & COMPREHENSIVE BILL SPLIT */
             scannedReceipt && (
               <div className="space-y-5 animate-in fade-in duration-200">
                 {/* Image Thumbnail & Merchant Bar */}
@@ -734,11 +825,11 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
                 </div>
 
-                {/* 3-Mode Roommate Split Module */}
+                {/* ADVANCED / BASIC BILL SPLIT MODULE */}
                 <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3.5">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <Users size={15} className="text-cyan-400" />
+                      <Users size={16} className="text-cyan-400" />
                       <h3 className="text-xs sm:text-sm font-bold text-white">Split This Bill With Roommates?</h3>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -753,10 +844,11 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
 
                   {enableSplit && (
-                    <div className="space-y-3 pt-1 animate-in fade-in">
+                    <div className="space-y-4 pt-1 animate-in fade-in">
+                      {/* Step 1: Pick Roommates */}
                       <div>
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
-                          Select Friends:
+                          1. Select Participants:
                         </span>
                         {contacts.length === 0 ? (
                           <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400">
@@ -771,10 +863,10 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                   key={c.id}
                                   type="button"
                                   onClick={() => toggleFriend(c.id)}
-                                  className={`px-2.5 py-1 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                                  className={`px-2.5 py-1 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                                     isSelected
                                       ? 'bg-cyan-950 border-cyan-400 text-cyan-300 ring-1 ring-cyan-400'
-                                      : 'bg-[#080808] border-zinc-800 text-zinc-400'
+                                      : 'bg-[#080808] border-zinc-800 text-zinc-400 hover:text-white'
                                   }`}
                                 >
                                   <img
@@ -783,6 +875,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                     className="w-4 h-4 rounded-full"
                                   />
                                   <span>{c.name}</span>
+                                  {isSelected && <Check size={12} className="text-cyan-400 ml-0.5" />}
                                 </button>
                               );
                             })}
@@ -791,116 +884,225 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                       </div>
 
                       {selectedFriendIds.length > 0 && (
-                        <div className="space-y-2.5 pt-1">
-                          <div className="grid grid-cols-3 gap-1.5 p-1 bg-zinc-900 rounded-xl">
+                        <div className="space-y-3">
+                          {/* Split Engine Selector: Basic vs Advanced Itemized */}
+                          <div className="flex items-center justify-between p-1 bg-zinc-900 rounded-xl">
                             <button
                               type="button"
-                              onClick={() => setSplitMode('equal')}
-                              className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
-                                splitMode === 'equal' ? 'bg-cyan-600 text-white' : 'text-zinc-400'
+                              onClick={() => setSplitEngine('basic')}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                                splitEngine === 'basic' ? 'bg-cyan-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
                               }`}
                             >
-                              <Divide size={12} />
-                              <span>Equal (1/N)</span>
+                              <Divide size={13} />
+                              <span>Basic Splitting</span>
                             </button>
 
                             <button
                               type="button"
-                              onClick={() => setSplitMode('percentage')}
-                              className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
-                                splitMode === 'percentage' ? 'bg-cyan-600 text-white' : 'text-zinc-400'
+                              onClick={() => setSplitEngine('advanced')}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                                splitEngine === 'advanced' ? 'bg-purple-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
                               }`}
                             >
-                              <Percent size={12} />
-                              <span>Percent (%)</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setSplitMode('custom')}
-                              className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
-                                splitMode === 'custom' ? 'bg-cyan-600 text-white' : 'text-zinc-400'
-                              }`}
-                            >
-                              <DollarSign size={12} />
-                              <span>Exact ($)</span>
+                              <Layers size={13} />
+                              <span>⚡ Advanced Item-by-Item Split</span>
                             </button>
                           </div>
 
-                          {splitMode === 'equal' && (
-                            <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs flex justify-between items-center">
-                              <span className="text-zinc-300">Divided by {totalParticipants} people</span>
-                              <span className="text-sm font-black font-mono text-cyan-300">
-                                ${equalSplitAmount.toFixed(2)} / person
-                              </span>
-                            </div>
-                          )}
+                          {/* OPTION A: BASIC SPLITTING */}
+                          {splitEngine === 'basic' && (
+                            <div className="space-y-3 p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+                              <div className="grid grid-cols-2 gap-2 p-1 bg-[#000000] rounded-xl">
+                                <button
+                                  type="button"
+                                  onClick={() => setBasicSplitMode('equal')}
+                                  className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
+                                    basicSplitMode === 'equal' ? 'bg-cyan-700 text-white' : 'text-zinc-400'
+                                  }`}
+                                >
+                                  <Divide size={12} />
+                                  <span>Split as {totalParticipants} People (1 / N)</span>
+                                </button>
 
-                          {splitMode === 'percentage' && (
-                            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
-                              <div className="flex justify-between font-bold text-white pb-1.5 border-b border-zinc-800">
-                                <span>Your Share:</span>
-                                <span className="font-mono text-cyan-400">{myPercentage}% (${((totalAmount * myPercentage) / 100).toFixed(2)})</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setBasicSplitMode('custom')}
+                                  className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
+                                    basicSplitMode === 'custom' ? 'bg-cyan-700 text-white' : 'text-zinc-400'
+                                  }`}
+                                >
+                                  <DollarSign size={12} />
+                                  <span>Exact Custom Amounts ($)</span>
+                                </button>
                               </div>
-                              {selectedFriendIds.map((cId) => {
-                                const friend = contacts.find(c => c.id === cId);
-                                const pct = customPercentages[cId] || Number((100 / totalParticipants).toFixed(0));
-                                return (
-                                  <div key={cId} className="flex justify-between items-center">
-                                    <span className="text-zinc-300">{friend?.name}:</span>
-                                    <div className="flex items-center gap-1 font-mono">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={customPercentages[cId] ?? pct}
-                                        onChange={(e) => {
-                                          const val = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
-                                          setCustomPercentages({ ...customPercentages, [cId]: val });
-                                        }}
-                                        className="w-12 bg-black border border-zinc-700 rounded p-0.5 text-center text-white"
-                                      />
-                                      <span className="text-zinc-500">%</span>
-                                      <span className="text-zinc-400 text-[10px] w-14 text-right">${((totalAmount * pct) / 100).toFixed(2)}</span>
-                                    </div>
+
+                              {basicSplitMode === 'equal' && (
+                                <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs flex justify-between items-center">
+                                  <span className="text-zinc-300">Total bill divided by {totalParticipants} people:</span>
+                                  <span className="text-sm font-black font-mono text-cyan-300">
+                                    ${equalSplitAmount.toFixed(2)} / person
+                                  </span>
+                                </div>
+                              )}
+
+                              {basicSplitMode === 'custom' && (
+                                <div className="space-y-2 text-xs">
+                                  <div className="flex justify-between items-center pb-1.5 border-b border-zinc-800">
+                                    <span className="font-bold text-white">Allocation Status:</span>
+                                    <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+                                      remainingUnallocated === 0 ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'
+                                    }`}>
+                                      {remainingUnallocated === 0 ? 'Fully Allocated ✅' : `Remaining: $${remainingUnallocated.toFixed(2)}`}
+                                    </span>
                                   </div>
-                                );
-                              })}
+                                  {selectedFriendIds.map((cId) => {
+                                    const friend = contacts.find(c => c.id === cId);
+                                    return (
+                                      <div key={cId} className="flex justify-between items-center">
+                                        <span className="text-zinc-300">{friend?.name} owes:</span>
+                                        <div className="flex items-center gap-1 font-mono">
+                                          <span className="text-zinc-500">$</span>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={customAmounts[cId] ?? ''}
+                                            onChange={(e) => {
+                                              const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                              setCustomAmounts({ ...customAmounts, [cId]: val });
+                                            }}
+                                            className="w-20 bg-black border border-zinc-700 rounded p-0.5 text-right text-white"
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           )}
 
-                          {splitMode === 'custom' && (
-                            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
-                              <div className="flex justify-between items-center pb-1.5 border-b border-zinc-800">
-                                <span className="font-bold text-white">Status:</span>
-                                <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
-                                  remainingUnallocated === 0 ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'
-                                }`}>
-                                  {remainingUnallocated === 0 ? 'Fully Allocated ✅' : `Remaining: $${remainingUnallocated.toFixed(2)}`}
+                          {/* OPTION B: ADVANCED ITEM-BY-ITEM SPLIT (WHO BOUGHT WHAT) */}
+                          {splitEngine === 'advanced' && (
+                            <div className="space-y-3 p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/40">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                    <Split size={13} className="text-purple-400" />
+                                    <span>Who Bought What? (Tap names per item)</span>
+                                  </h4>
+                                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                                    Select who shared each item. Multiple people share 50/50. Taxes & tips are split proportionally.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Item Assignees List */}
+                              <div className="divide-y divide-zinc-800/80 max-h-56 overflow-y-auto pr-1 space-y-2">
+                                {scannedReceipt.items.map((item) => {
+                                  const assignees = itemAssignees[item.id] || ['me'];
+                                  const isAllSelected = assignees.includes('me') && selectedFriendIds.every(id => assignees.includes(id));
+
+                                  return (
+                                    <div key={item.id} className="pt-2 first:pt-0 space-y-1.5">
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className="font-semibold text-zinc-200 truncate max-w-[200px]">{item.name}</span>
+                                        <span className="font-mono font-bold text-white">${(Number(item.price) * Number(item.quantity || 1)).toFixed(2)}</span>
+                                      </div>
+
+                                      {/* Assignee Chips */}
+                                      <div className="flex flex-wrap items-center gap-1">
+                                        {/* You */}
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleItemAssignee(item.id, 'me')}
+                                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                            assignees.includes('me')
+                                              ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                                          }`}
+                                        >
+                                          You
+                                        </button>
+
+                                        {/* Selected Friends */}
+                                        {selectedFriendIds.map((fId) => {
+                                          const friend = contacts.find(c => c.id === fId);
+                                          const isAssigned = assignees.includes(fId);
+                                          return (
+                                            <button
+                                              key={fId}
+                                              type="button"
+                                              onClick={() => toggleItemAssignee(item.id, fId)}
+                                              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                                isAssigned
+                                                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                                                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                                              }`}
+                                            >
+                                              {friend?.name || 'Friend'}
+                                            </button>
+                                          );
+                                        })}
+
+                                        {/* Everyone button */}
+                                        <button
+                                          type="button"
+                                          onClick={() => setItemToAll(item.id)}
+                                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                            isAllSelected
+                                              ? 'bg-emerald-600 text-white border-emerald-400'
+                                              : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'
+                                          }`}
+                                        >
+                                          Shared All
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Calculated Summary Breakdown per Person */}
+                              <div className="pt-3 border-t border-purple-500/30 space-y-2">
+                                <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
+                                  Live Itemized Breakdown (Items + HST):
                                 </span>
-                              </div>
-                              {selectedFriendIds.map((cId) => {
-                                const friend = contacts.find(c => c.id === cId);
-                                return (
-                                  <div key={cId} className="flex justify-between items-center">
-                                    <span className="text-zinc-300">{friend?.name} owes:</span>
-                                    <div className="flex items-center gap-1 font-mono">
-                                      <span className="text-zinc-500">$</span>
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        value={customAmounts[cId] ?? ''}
-                                        onChange={(e) => {
-                                          const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                          setCustomAmounts({ ...customAmounts, [cId]: val });
-                                        }}
-                                        className="w-20 bg-black border border-zinc-700 rounded p-0.5 text-right text-white"
-                                      />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  {/* Your Share */}
+                                  <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex justify-between items-center">
+                                    <div>
+                                      <b className="text-white block">Your Share</b>
+                                      <span className="text-[10px] text-zinc-400">
+                                        {itemizedShares.me.itemsCount} items + ${itemizedShares.me.taxTip.toFixed(2)} tax
+                                      </span>
                                     </div>
+                                    <span className="font-mono font-black text-sm text-purple-300">
+                                      ${itemizedShares.me.total.toFixed(2)}
+                                    </span>
                                   </div>
-                                );
-                              })}
+
+                                  {/* Friends Shares */}
+                                  {selectedFriendIds.map((fId) => {
+                                    const friend = contacts.find(c => c.id === fId);
+                                    const share = itemizedShares[fId] || { total: 0, itemsCount: 0, taxTip: 0 };
+                                    return (
+                                      <div key={fId} className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center">
+                                        <div>
+                                          <b className="text-white block">{friend?.name}</b>
+                                          <span className="text-[10px] text-zinc-400">
+                                            {share.itemsCount} items + ${share.taxTip.toFixed(2)} tax
+                                          </span>
+                                        </div>
+                                        <span className="font-mono font-black text-sm text-cyan-300">
+                                          ${share.total.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -934,7 +1136,13 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     ) : (
                       <>
                         <Zap size={13} />
-                        <span>{enableSplit && selectedFriendIds.length > 0 ? 'Log to Ledger & Post Tabs IOUs' : 'Save Scanned Bill to Ledger'}</span>
+                        <span>
+                          {enableSplit && selectedFriendIds.length > 0
+                            ? splitEngine === 'advanced'
+                              ? 'Log Ledger & Post Itemized IOUs'
+                              : 'Log Ledger & Post Split IOUs'
+                            : 'Save Scanned Bill to Ledger'}
+                        </span>
                       </>
                     )}
                   </button>

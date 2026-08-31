@@ -7,7 +7,6 @@ import {
   Check, 
   X, 
   Plus,
-  Percent,
   DollarSign,
   AlertCircle
 } from 'lucide-react';
@@ -39,8 +38,7 @@ export function SplitBillModal({
   const [currency] = useState('CAD');
   const [category, setCategory] = useState(initialCategory);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
-  const [splitMode, setSplitMode] = useState<'equal' | 'percentage' | 'custom'>('equal');
-  const [customPercentages, setCustomPercentages] = useState<Record<string, number>>({});
+  const [splitMode, setSplitMode] = useState<'equal' | 'custom'>('equal');
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,10 +57,6 @@ export function SplitBillModal({
     ? Math.round((parsedTotal / totalPeopleCount) * 100) / 100
     : 0;
 
-  // Percentage calculations
-  const sumOfPercentages = Object.values(customPercentages).reduce((s, p) => s + (Number(p) || 0), 0);
-  const myPercentage = Math.max(0, 100 - sumOfPercentages);
-
   // Custom Amount calculations
   const sumOfCustomAmounts = Object.values(customAmounts).reduce((s, a) => s + (Number(a) || 0), 0);
   const remainingUnallocated = Number((parsedTotal - sumOfCustomAmounts).toFixed(2));
@@ -80,46 +74,37 @@ export function SplitBillModal({
       return;
     }
     if (selectedContactIds.length === 0) {
-      setError('Please select at least 1 friend or roommate to split with.');
+      setError('Select at least one roommate to split with.');
       return;
     }
 
-    if (splitMode === 'percentage' && sumOfPercentages > 100) {
-      setError('Total percentages cannot exceed 100%.');
-      return;
-    }
+    // Build participant payloads
+    const participants = selectedFriends.map((contact) => {
+      let share = equalShare;
+      if (splitMode === 'custom') {
+        share = customAmounts[contact.id] || 0;
+      }
+      return {
+        contactId: contact.id,
+        name: contact.name,
+        shareAmount: share,
+      };
+    });
 
     setIsSubmitting(true);
     setError(null);
-
     try {
-      const participants = selectedFriends.map((friend) => {
-        let share = equalShare;
-        if (splitMode === 'percentage') {
-          const pct = customPercentages[friend.id] || (100 / totalPeopleCount);
-          share = Number(((parsedTotal * pct) / 100).toFixed(2));
-        } else if (splitMode === 'custom') {
-          share = customAmounts[friend.id] || 0;
-        }
-        return {
-          contactId: friend.id,
-          name: friend.name,
-          shareAmount: share,
-        };
-      });
-
       const newSplit = await tabsApi.createSplitBill({
-        title: title.trim(),
+        title,
         totalAmount: parsedTotal,
         category,
         date: new Date().toISOString().split('T')[0],
         participants,
       });
-
       onSplitCreated(newSplit);
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to create split bill.');
+      setError(err.message || 'Failed to create bill split');
     } finally {
       setIsSubmitting(false);
     }
@@ -128,7 +113,7 @@ export function SplitBillModal({
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-lg p-6 rounded-2xl bg-[#080808] border border-zinc-800 shadow-2xl relative overflow-hidden text-slate-100 max-h-[90vh] flex flex-col"
+        className="w-full max-w-lg rounded-3xl bg-[#080808] border border-zinc-800 shadow-2xl p-6 relative overflow-hidden text-slate-100 max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div 
@@ -136,121 +121,116 @@ export function SplitBillModal({
           style={{ background: `linear-gradient(90deg, ${auraColor}, #00f2fe)` }}
         />
 
-        {/* Header */}
-        <div className="flex justify-between items-center pb-4 mb-4 border-b border-zinc-800 flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 flex items-center justify-center">
-              <Divide size={18} />
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
+            >
+              <Divide size={20} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Split a Bill / Expense</h2>
-              <p className="text-[11px] text-zinc-400">Equal, percentage, or custom dollar split with roommates</p>
+              <h2 className="text-lg font-bold text-white tracking-tight">Split a Bill</h2>
+              <p className="text-xs text-zinc-400">Divide shared costs & log instant roommate IOUs</p>
             </div>
           </div>
           <button
-            type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-zinc-400 hover:text-white cursor-pointer"
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer transition-colors"
           >
             <X size={18} />
           </button>
         </div>
 
         {error && (
-          <div className="p-3 mb-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-300">
-            {error}
+          <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-300 flex items-center gap-2">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
-          {/* Bill Title & Category */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+              Bill Title / Merchant
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Costco Groceries, Dinner, Internet Bill"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 transition-colors"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                Bill Description *
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                Total Amount
               </label>
-              <input
-                type="text"
-                placeholder="e.g. Costco Groceries, Dinner"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-all"
-                required
-                autoFocus
-              />
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-mono">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={totalAmount}
+                  onChange={(e) => setTotalAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="w-full bg-[#000000] border border-zinc-800 rounded-xl pl-8 pr-3.5 py-2.5 text-sm font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 transition-colors font-bold"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition-all"
+                className="w-full bg-[#000000] border border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
               >
-                <option value="Groceries">🛒 Groceries</option>
-                <option value="Food">🍽️ Food & Dining</option>
-                <option value="Utilities">💡 Utilities / Internet</option>
-                <option value="Rent">🏠 Rent</option>
-                <option value="Transport">🚗 Transport / Uber</option>
-                <option value="Entertainment">🍿 Entertainment</option>
-                <option value="Miscellaneous">📦 Other</option>
+                <option value="Groceries">Groceries</option>
+                <option value="Food">Food & Dining</option>
+                <option value="Rent">Rent & Utilities</option>
+                <option value="Household">Household</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Transport">Transport</option>
               </select>
             </div>
           </div>
 
-          {/* Total Amount Paid */}
+          {/* Participant Selection */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1 flex items-center justify-between">
-              <span>Total Amount Paid (By You) *</span>
-              <span className="text-zinc-500 font-mono text-[11px]">{currency}</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">$</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="0.00"
-                value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full bg-[#000000] border border-zinc-800 rounded-xl pl-8 pr-3.5 py-2.5 text-base font-bold font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-all"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Friend Selection */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                <Users size={13} />
-                <span>Select Friends to Share With ({selectedContactIds.length})</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Split With Whom?
               </label>
               <button
                 type="button"
                 onClick={onOpenAddContact}
-                className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-0.5 cursor-pointer"
+                className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer"
               >
-                <Plus size={12} />
-                <span>Add Friend</span>
+                <Plus size={12} /> Add Roommate
               </button>
             </div>
 
             {contacts.length === 0 ? (
-              <div className="p-4 rounded-xl bg-[#000000] border border-zinc-800 text-center">
-                <p className="text-xs text-zinc-400 mb-2">No friends or roommates added yet.</p>
+              <div className="p-4 rounded-xl bg-[#000000] border border-zinc-800 text-center space-y-2">
+                <p className="text-xs text-zinc-400">No roommates found yet.</p>
                 <button
                   type="button"
                   onClick={onOpenAddContact}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-white font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
-                  + Add First Friend
+                  <Users size={13} /> Add First Roommate
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
                 {contacts.map((contact) => {
                   const isSelected = selectedContactIds.includes(contact.id);
                   return (
@@ -258,25 +238,21 @@ export function SplitBillModal({
                       key={contact.id}
                       type="button"
                       onClick={() => toggleContact(contact.id)}
-                      className={`p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all ${
-                        isSelected
-                          ? 'bg-cyan-950/80 border-cyan-400 text-white shadow-md'
-                          : 'bg-[#000000] border-zinc-800/80 text-zinc-400 hover:border-zinc-700'
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 cursor-pointer ${
+                        isSelected 
+                          ? 'bg-cyan-950/60 border-cyan-500/80 text-white ring-1 ring-cyan-500/50' 
+                          : 'bg-[#000000] border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img
-                          src={contact.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(contact.name)}`}
-                          alt={contact.name}
-                          className="w-6 h-6 rounded-lg bg-zinc-900 flex-shrink-0"
-                        />
-                        <span className="text-xs font-medium truncate">{contact.name}</span>
+                      <img 
+                        src={contact.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(contact.name)}`}
+                        alt={contact.name}
+                        className="w-7 h-7 rounded-full object-cover border border-zinc-700 flex-shrink-0"
+                      />
+                      <div className="truncate flex-1">
+                        <p className="text-xs font-bold truncate">{contact.name}</p>
                       </div>
-                      <div className={`w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 ${
-                        isSelected ? 'bg-cyan-400 text-black' : 'border border-zinc-700'
-                      }`}>
-                        {isSelected && <Check size={12} />}
-                      </div>
+                      {isSelected && <Check size={14} className="text-cyan-400 flex-shrink-0" />}
                     </button>
                   );
                 })}
@@ -284,122 +260,62 @@ export function SplitBillModal({
             )}
           </div>
 
-          {/* 3 Split Modes (Equal | Percentage | Custom Exact Amount) */}
+          {/* Split Mode Tabs (Equal 1/N vs Custom $) */}
           {selectedContactIds.length > 0 && parsedTotal > 0 && (
-            <div className="space-y-3 pt-2 border-t border-zinc-800/80">
-              <div className="grid grid-cols-3 gap-2 p-1 bg-zinc-900 rounded-xl">
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-900 rounded-xl">
                 <button
                   type="button"
                   onClick={() => setSplitMode('equal')}
-                  className={`py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                    splitMode === 'equal' ? 'bg-cyan-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                  className={`py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    splitMode === 'equal' ? 'bg-cyan-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <Divide size={13} />
-                  <span>Equal (1/N)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSplitMode('percentage')}
-                  className={`py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                    splitMode === 'percentage' ? 'bg-cyan-600 text-white shadow' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Percent size={13} />
-                  <span>Percent (%)</span>
+                  <span>Split as {totalPeopleCount} People (1 / N)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSplitMode('custom')}
-                  className={`py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                    splitMode === 'custom' ? 'bg-cyan-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                  className={`py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    splitMode === 'custom' ? 'bg-cyan-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <DollarSign size={13} />
-                  <span>Exact ($)</span>
+                  <span>Custom Amounts ($)</span>
                 </button>
               </div>
 
-              {/* EQUAL MODE */}
+              {/* EQUAL SPLIT BREAKDOWN */}
               {splitMode === 'equal' && (
-                <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-xs flex justify-between items-center">
-                  <div>
-                    <span className="font-bold text-white block">
-                      Divided equally by {totalPeopleCount} people
-                    </span>
-                    <span className="text-[11px] text-zinc-400">
-                      (You + {selectedContactIds.length} friends)
-                    </span>
-                  </div>
-                  <div className="text-right">
+                <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-xs space-y-2">
+                  <div className="flex justify-between items-center text-zinc-300">
+                    <span>Divided equally by {totalPeopleCount} people:</span>
                     <span className="text-base font-black font-mono text-cyan-300">
-                      ${equalShare.toFixed(2)}
+                      ${equalShare.toFixed(2)} <span className="text-xs text-zinc-400">{currency}/ea</span>
                     </span>
-                    <span className="text-[10px] text-zinc-400 block">/ person</span>
+                  </div>
+                  <div className="text-[11px] text-zinc-400 pt-1.5 border-t border-cyan-500/20">
+                    Your share: <b>${equalShare.toFixed(2)}</b> • Each roommate will owe you: <b>${equalShare.toFixed(2)}</b>
                   </div>
                 </div>
               )}
 
-              {/* PERCENTAGE MODE */}
-              {splitMode === 'percentage' && (
-                <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 space-y-2.5 text-xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
-                    <span className="font-bold text-white">Your Share (Payer):</span>
-                    <span className="font-mono font-bold text-cyan-400">
-                      {myPercentage}% (${((parsedTotal * myPercentage) / 100).toFixed(2)})
-                    </span>
-                  </div>
-                  {selectedFriends.map((friend) => {
-                    const pct = customPercentages[friend.id] || Number((100 / totalPeopleCount).toFixed(0));
-                    const friendShare = ((parsedTotal * pct) / 100).toFixed(2);
-                    return (
-                      <div key={friend.id} className="flex justify-between items-center gap-2">
-                        <span className="text-zinc-300 truncate">{friend.name}:</span>
-                        <div className="flex items-center gap-1.5 font-mono">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={customPercentages[friend.id] ?? pct}
-                            onChange={(e) => {
-                              const val = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
-                              setCustomPercentages({ ...customPercentages, [friend.id]: val });
-                            }}
-                            className="w-14 bg-zinc-900 border border-zinc-700 rounded p-1 text-center text-white"
-                          />
-                          <span className="text-zinc-500">%</span>
-                          <span className="text-zinc-400 text-[11px] w-14 text-right">${friendShare}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {sumOfPercentages > 100 && (
-                    <div className="text-rose-400 text-[11px] flex items-center gap-1 font-bold">
-                      <AlertCircle size={13} />
-                      <span>Total percentages exceed 100%!</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* CUSTOM AMOUNT MODE */}
+              {/* CUSTOM AMOUNT BREAKDOWN */}
               {splitMode === 'custom' && (
-                <div className="p-3.5 rounded-xl bg-[#000000] border border-zinc-800 space-y-2.5 text-xs">
+                <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 text-xs space-y-3">
                   <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
-                    <span className="font-bold text-white">Allocation Status:</span>
-                    <span className={`font-mono font-bold px-2 py-0.5 rounded ${
-                      remainingUnallocated === 0
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                    <span className="font-bold text-white">Remaining Balance:</span>
+                    <span className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${
+                      remainingUnallocated === 0 ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'
                     }`}>
                       {remainingUnallocated === 0 ? 'Fully Allocated ✅' : `Remaining: $${remainingUnallocated.toFixed(2)}`}
                     </span>
                   </div>
                   {selectedFriends.map((friend) => (
-                    <div key={friend.id} className="flex justify-between items-center gap-2">
-                      <span className="text-zinc-300 truncate">{friend.name} owes:</span>
+                    <div key={friend.id} className="flex justify-between items-center">
+                      <span className="text-zinc-300">{friend.name} owes:</span>
                       <div className="flex items-center gap-1 font-mono">
                         <span className="text-zinc-500">$</span>
                         <input
@@ -411,7 +327,7 @@ export function SplitBillModal({
                             const val = Math.max(0, parseFloat(e.target.value) || 0);
                             setCustomAmounts({ ...customAmounts, [friend.id]: val });
                           }}
-                          className="w-20 bg-zinc-900 border border-zinc-700 rounded p-1 text-right text-white focus:outline-none focus:border-cyan-400"
+                          className="w-24 bg-black border border-zinc-700 rounded p-1 text-right text-white font-bold"
                         />
                       </div>
                     </div>
@@ -421,23 +337,21 @@ export function SplitBillModal({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800 flex-shrink-0">
+          <div className="pt-3 border-t border-zinc-800 flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || selectedContactIds.length === 0 || !parsedTotal}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-1.5"
               style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
             >
-              <Divide size={14} />
-              <span>{isSubmitting ? 'Creating Split...' : 'Post IOUs to Tabs'}</span>
+              {isSubmitting ? 'Posting IOUs...' : 'Create Split & Log IOUs'}
             </button>
           </div>
         </form>
