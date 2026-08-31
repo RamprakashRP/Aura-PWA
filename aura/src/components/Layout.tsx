@@ -8,12 +8,11 @@ import {
   Settings, 
   LogOut, 
   Flame, 
-  Users,
-  Compass
+  Users
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const navItems = [
   { p: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -35,14 +34,37 @@ export default function Layout() {
   const [orbOpen, setOrbOpen] = useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
-  // Mobile Dock Minimized State (User can toggle minimize whenever they want)
-  const [isDockMinimized, setIsDockMinimized] = useState(false);
+  // Smooth scroll-driven visibility for mobile nav
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/login');
     }
   }, [user, loading, navigate]);
+
+  // Smooth fluid scroll detection: glides down on downward scroll, glides up instantly on upward scroll
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+    const currentY = e.currentTarget.scrollTop;
+    const diff = currentY - lastScrollY.current;
+
+    // Only trigger if scrolled a noticeable amount
+    if (diff > 25 && currentY > 60) {
+      setIsNavVisible(false);
+    } else if (diff < -15 || currentY < 40) {
+      setIsNavVisible(true);
+    }
+    lastScrollY.current = currentY;
+  };
+
+  useEffect(() => {
+    setIsNavVisible(true);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   if (loading) {
     return (
@@ -73,7 +95,7 @@ export default function Layout() {
       initial={{ opacity: 0, scale: 0.9, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 10 }}
-      className="absolute bottom-full mb-4 left-0 md:left-4 w-64 p-4 glass rounded-2xl border z-[60] shadow-2xl backdrop-blur-3xl bg-[#080808]/95 transform origin-bottom-left"
+      className="absolute bottom-full mb-3 right-0 sm:left-0 w-60 p-4 glass rounded-2xl border z-[60] shadow-2xl backdrop-blur-3xl bg-[#080808]/95 transform origin-bottom-right"
       style={{ borderColor: auraColor, boxShadow: `0 10px 40px ${auraColor}40` }}
     >
       <div className="pb-3 border-b border-zinc-800 mb-3">
@@ -84,7 +106,7 @@ export default function Layout() {
         </div>
       </div>
 
-      <div className="space-y-1 mt-4 pt-4 border-t border-zinc-800">
+      <div className="space-y-1 mt-4 pt-3 border-t border-zinc-800">
         <button 
           onClick={() => { setOrbOpen(false); navigate('/settings'); }}
           className="w-full text-left px-2 py-1.5 text-xs font-bold text-zinc-300 hover:text-white hover:bg-slate-800 rounded transition-colors flex items-center gap-2"
@@ -109,7 +131,7 @@ export default function Layout() {
     <div className="flex h-screen bg-[#000000] overflow-hidden relative">
       <div className="absolute inset-0 z-0 bg-grid-slate-900/[0.04] bg-[size:20px_20px]"></div>
 
-      {/* Desktop Dynamic Island Sidebar */}
+      {/* Desktop Sidebar */}
       <motion.aside 
         animate={{ width: isSidebarHovered ? 240 : 80 }}
         onMouseEnter={() => setIsSidebarHovered(true)}
@@ -169,7 +191,7 @@ export default function Layout() {
            </nav>
         </div>
 
-        {/* Profile Orb at Bottom */}
+        {/* Desktop Profile Orb */}
         <div className="relative">
            <AnimatePresence>
              {orbOpen && <OrbContextMenu />}
@@ -198,15 +220,19 @@ export default function Layout() {
         </div>
       </motion.aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 h-full overflow-y-auto w-full relative z-10 p-4 md:p-8 pb-32 md:pb-8">
+      {/* Main Content Area with Scroll Listener */}
+      <main 
+        ref={mainRef}
+        onScroll={handleScroll}
+        className="flex-1 h-full overflow-y-auto w-full relative z-10 p-4 md:p-8 pb-32 md:pb-8"
+      >
          <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0, x: 15 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -15 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               className="h-full max-w-7xl mx-auto"
             >
                <Outlet />
@@ -214,101 +240,72 @@ export default function Layout() {
          </AnimatePresence>
       </main>
 
-      {/* Mobile Navigation: Sleek Island Dock with 1-Tap Minimize / Expand */}
-      <div className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[95%]">
-        <AnimatePresence mode="wait">
-          {isDockMinimized ? (
-            /* Compact Floating Orb when Minimized */
-            <motion.button
-              key="minimized-pill"
-              initial={{ opacity: 0, scale: 0.7, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.7, y: 15 }}
-              type="button"
-              onClick={() => setIsDockMinimized(false)}
-              className="px-4 py-2 rounded-full bg-[#080808]/95 border border-zinc-700 shadow-2xl backdrop-blur-2xl flex items-center gap-2 text-xs font-bold text-white cursor-pointer active:scale-95 transition-transform"
-              style={{ borderColor: auraColor, boxShadow: `0 6px 25px ${auraColor}40` }}
-            >
-              <img src="/logo.png" alt="Aura" className="w-5 h-5 object-contain animate-pulse" />
-              <span>Menu</span>
-              <Compass size={14} style={{ color: auraColor }} />
-            </motion.button>
-          ) : (
-            /* Full Floating Island Dock */
-            <motion.div
-              key="expanded-dock"
-              initial={{ opacity: 0, scale: 0.9, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-              className="glass backdrop-blur-2xl bg-[#080808]/95 border rounded-full flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 shadow-2xl relative"
-              style={{ borderColor: auraColor, boxShadow: `0 10px 35px ${auraColor}35` }}
-            >
-              {/* Context menu for profile */}
-              <AnimatePresence>
-                {orbOpen && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-64 z-[60]">
-                    <OrbContextMenu />
-                  </div>
-                )}
-              </AnimatePresence>
+      {/* Ultra-Clean, Silky-Smooth Mobile Navigation Dock */}
+      <motion.div 
+        animate={{ 
+          y: isNavVisible ? 0 : 85,
+          opacity: isNavVisible ? 1 : 0,
+        }}
+        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+        className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[94%]"
+      >
+        <div 
+          className="glass backdrop-blur-2xl bg-[#080808]/90 border border-zinc-750 rounded-full flex items-center gap-1 sm:gap-2 px-3.5 py-1.5 shadow-2xl relative"
+          style={{ borderColor: `${auraColor}60`, boxShadow: `0 10px 30px ${auraColor}25` }}
+        >
+          {/* Profile Menu Popup */}
+          <AnimatePresence>
+            {orbOpen && (
+              <div className="absolute bottom-full right-0 mb-3 w-60 z-[60]">
+                <OrbContextMenu />
+              </div>
+            )}
+          </AnimatePresence>
 
-              {/* Navigation links */}
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.p}
-                  to={item.p}
-                  className={({ isActive }) =>
-                    `relative p-2 rounded-full transition-all duration-200 ${
-                      isActive ? 'text-white' : 'text-zinc-400 hover:text-white'
-                    }`
-                  }
-                  style={({ isActive }) => isActive ? { color: auraColor } : {}}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon size={19} className={isActive ? 'drop-shadow-[0_0_8px_currentColor]' : ''} />
-                      {isActive && (
-                        <motion.div 
-                          layoutId="mobile-active-dot"
-                          className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: auraColor, boxShadow: `0 0 8px ${auraColor}` }}
-                        />
-                      )}
-                    </>
+          {/* Navigation Links */}
+          {navItems.map((item) => (
+            <NavLink
+              key={item.p}
+              to={item.p}
+              className={({ isActive }) =>
+                `relative p-2 rounded-full transition-all duration-200 ${
+                  isActive ? 'text-white' : 'text-zinc-400 hover:text-white'
+                }`
+              }
+              style={({ isActive }) => isActive ? { color: auraColor } : {}}
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon size={19} className={isActive ? 'drop-shadow-[0_0_8px_currentColor]' : ''} />
+                  {isActive && (
+                    <motion.div 
+                      layoutId="mobile-dot-indicator"
+                      className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                      style={{ backgroundColor: auraColor, boxShadow: `0 0 6px ${auraColor}` }}
+                    />
                   )}
-                </NavLink>
-              ))}
+                </>
+              )}
+            </NavLink>
+          ))}
 
-              <div className="w-px h-6 bg-zinc-800 mx-0.5"></div>
+          <div className="w-px h-5 bg-zinc-800 mx-1"></div>
 
-              {/* Mobile Profile Avatar */}
-              <button 
-                type="button"
-                onClick={() => setOrbOpen(!orbOpen)}
-                className="w-6 h-6 rounded-full border p-0.5 transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
-                style={{ borderColor: auraColor }}
-              >
-                <img 
-                  src={getAvatar()} 
-                  alt="Profile" 
-                  className="w-full h-full rounded-full object-cover"
-                />
-              </button>
-
-              {/* Subtle minimize pull tab button */}
-              <button
-                type="button"
-                onClick={() => setIsDockMinimized(true)}
-                title="Minimize Nav Bar"
-                className="w-6 h-6 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700/60 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer ml-0.5 active:scale-90 transition-all text-[11px]"
-              >
-                —
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          {/* Profile Orb */}
+          <button 
+            type="button"
+            onClick={() => setOrbOpen(!orbOpen)}
+            className="w-6 h-6 rounded-full border p-0.5 active:scale-90 transition-transform flex-shrink-0 cursor-pointer"
+            style={{ borderColor: auraColor }}
+          >
+            <img 
+              src={getAvatar()} 
+              alt="Profile" 
+              className="w-full h-full rounded-full object-cover"
+            />
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
