@@ -19,43 +19,41 @@ export interface ParsedReceipt {
   rawText?: string;
 }
 
-export const CANADIAN_MERCHANTS: Record<string, { name: string; category: string }> = {
-  shoppers: { name: 'Shoppers Drug Mart', category: 'Studies' },
-  pharmaprix: { name: 'Pharmaprix / Shoppers', category: 'Studies' },
-  rexall: { name: 'Rexall PharmaPlus', category: 'Studies' },
-  costco: { name: 'Costco Wholesale', category: 'Groceries' },
-  loblaws: { name: 'Loblaws', category: 'Groceries' },
-  metro: { name: 'Metro', category: 'Groceries' },
-  walmart: { name: 'Walmart Canada', category: 'Groceries' },
-  'no frills': { name: 'No Frills', category: 'Groceries' },
-  sobeys: { name: 'Sobeys', category: 'Groceries' },
-  'food basics': { name: 'Food Basics', category: 'Groceries' },
-  freshco: { name: 'FreshCo', category: 'Groceries' },
-  'farm boy': { name: 'Farm Boy', category: 'Groceries' },
-  'tim hortons': { name: 'Tim Hortons', category: 'Food' },
-  tims: { name: 'Tim Hortons', category: 'Food' },
-  starbucks: { name: 'Starbucks Coffee', category: 'Food' },
-  mcdonald: { name: "McDonald's", category: 'Food' },
-  lcbo: { name: 'LCBO', category: 'Entertainment' },
-  'beer store': { name: 'The Beer Store', category: 'Entertainment' },
-  'uber eats': { name: 'Uber Eats', category: 'Food' },
-  doordash: { name: 'DoorDash', category: 'Food' },
-  'best buy': { name: 'Best Buy Canada', category: 'Shopping' },
-  ikea: { name: 'IKEA Canada', category: 'Shopping' },
-  dollarama: { name: 'Dollarama', category: 'Shopping' },
-  amazon: { name: 'Amazon.ca', category: 'Shopping' },
-  keg: { name: 'The Keg Steakhouse', category: 'Food' },
-  cactus: { name: 'Cactus Club Cafe', category: 'Food' },
-  subway: { name: 'Subway', category: 'Food' },
-  chipotle: { name: 'Chipotle Mexican Grill', category: 'Food' },
-  wendy: { name: "Wendy's", category: 'Food' },
-  popeyes: { name: 'Popeyes', category: 'Food' },
-  harveys: { name: "Harvey's", category: 'Food' },
-  'a&w': { name: 'A&W Canada', category: 'Food' },
-  shell: { name: 'Shell Gas Station', category: 'Transport' },
-  esso: { name: 'Esso / Mobil', category: 'Transport' },
-  petro: { name: 'Petro-Canada', category: 'Transport' },
-};
+export const CANADIAN_MERCHANTS: { pattern: RegExp; name: string; category: string }[] = [
+  { pattern: /\bdollarama\b/i, name: 'Dollarama', category: 'Shopping' },
+  { pattern: /\b(shoppers|shoppers drug mart|pharmaprix)\b/i, name: 'Shoppers Drug Mart', category: 'Studies' },
+  { pattern: /\brexall\b/i, name: 'Rexall PharmaPlus', category: 'Studies' },
+  { pattern: /\bcostco\b/i, name: 'Costco Wholesale', category: 'Groceries' },
+  { pattern: /\bloblaws\b/i, name: 'Loblaws', category: 'Groceries' },
+  { pattern: /\bmetro\b/i, name: 'Metro', category: 'Groceries' },
+  { pattern: /\bwalmart\b/i, name: 'Walmart Canada', category: 'Groceries' },
+  { pattern: /\bno frills\b/i, name: 'No Frills', category: 'Groceries' },
+  { pattern: /\bsobeys\b/i, name: 'Sobeys', category: 'Groceries' },
+  { pattern: /\bfood basics\b/i, name: 'Food Basics', category: 'Groceries' },
+  { pattern: /\bfreshco\b/i, name: 'FreshCo', category: 'Groceries' },
+  { pattern: /\bfarm boy\b/i, name: 'Farm Boy', category: 'Groceries' },
+  { pattern: /\b(tim hortons|tims)\b/i, name: 'Tim Hortons', category: 'Food' },
+  { pattern: /\bstarbucks\b/i, name: 'Starbucks Coffee', category: 'Food' },
+  { pattern: /\bmcdonald'?s?\b/i, name: "McDonald's", category: 'Food' },
+  { pattern: /\blcbo\b/i, name: 'LCBO', category: 'Entertainment' },
+  { pattern: /\bbeer store\b/i, name: 'The Beer Store', category: 'Entertainment' },
+  { pattern: /\buber\s*eats\b/i, name: 'Uber Eats', category: 'Food' },
+  { pattern: /\bdoordash\b/i, name: 'DoorDash', category: 'Food' },
+  { pattern: /\bbest\s*buy\b/i, name: 'Best Buy Canada', category: 'Shopping' },
+  { pattern: /\bikea\b/i, name: 'IKEA Canada', category: 'Shopping' },
+  { pattern: /\bamazon\b/i, name: 'Amazon.ca', category: 'Shopping' },
+  { pattern: /\bkeg\b/i, name: 'The Keg Steakhouse', category: 'Food' },
+  { pattern: /\bcactus\b/i, name: 'Cactus Club Cafe', category: 'Food' },
+  { pattern: /\bsubway\b/i, name: 'Subway', category: 'Food' },
+  { pattern: /\bchipotle\b/i, name: 'Chipotle Mexican Grill', category: 'Food' },
+  { pattern: /\bwendy'?s?\b/i, name: "Wendy's", category: 'Food' },
+  { pattern: /\bpopeyes\b/i, name: 'Popeyes', category: 'Food' },
+  { pattern: /\bharvey'?s?\b/i, name: "Harvey's", category: 'Food' },
+  { pattern: /\b(a&w|a & w|a and w)\b/i, name: 'A&W Canada', category: 'Food' },
+  { pattern: /\bshell\b/i, name: 'Shell Gas Station', category: 'Transport' },
+  { pattern: /\besso\b/i, name: 'Esso / Mobil', category: 'Transport' },
+  { pattern: /\bpetro\b/i, name: 'Petro-Canada', category: 'Transport' },
+];
 
 export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
   costco_groceries: {
@@ -76,6 +74,29 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
     tip: 0,
     total: 78.10,
   },
+  dollarama_haul: {
+    merchant: 'Dollarama',
+    date: '2026-08-31',
+    currency: 'CAD',
+    category: 'Shopping',
+    items: [
+      { id: 'item-1', name: 'FOLDING UMBRELLA', price: 3.75, quantity: 1 },
+      { id: 'item-2', name: 'BENTO BOX', price: 4.00, quantity: 1 },
+      { id: 'item-3', name: 'SILKIES QUEEN PA', price: 2.00, quantity: 1 },
+      { id: 'item-4', name: 'PAPER TOWELS', price: 1.50, quantity: 1 },
+      { id: 'item-5', name: 'NEEDLEWORK KIT', price: 3.00, quantity: 1 },
+      { id: 'item-6', name: 'ERASE BOARD', price: 3.00, quantity: 1 },
+      { id: 'item-7', name: 'FOIL ROLL', price: 1.75, quantity: 1 },
+      { id: 'item-8', name: 'AIR FRESHENER', price: 1.75, quantity: 1 },
+      { id: 'item-9', name: 'BATH GLOVE', price: 1.25, quantity: 1 },
+      { id: 'item-10', name: 'ICE STIX TRAY', price: 1.75, quantity: 1 },
+      { id: 'item-11', name: 'DVD RACK', price: 2.75, quantity: 1 },
+    ],
+    subtotal: 26.50,
+    tax: 3.45,
+    tip: 0,
+    total: 29.95,
+  },
   shoppers_drug_mart: {
     merchant: 'Shoppers Drug Mart',
     date: '2026-08-27',
@@ -89,44 +110,8 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
     tip: 0,
     total: 1.98,
   },
-  roommate_dinner: {
-    merchant: 'The Keg Steakhouse + Bar',
-    date: new Date().toISOString().split('T')[0],
-    currency: 'CAD',
-    category: 'Food',
-    items: [
-      { id: 'item-1', name: 'Top Sirloin 8oz & Fries', price: 34.00, quantity: 2 },
-      { id: 'item-2', name: 'Keg Prime Rib 10oz', price: 42.00, quantity: 1 },
-      { id: 'item-3', name: 'Crispy Calamari Appetizer', price: 18.50, quantity: 1 },
-      { id: 'item-4', name: 'Draft Beer Pint (Alexander Keiths)', price: 9.50, quantity: 3 },
-      { id: 'item-5', name: 'Billy Miner Pie Dessert', price: 12.00, quantity: 1 },
-    ],
-    subtotal: 135.00,
-    tax: 17.55,
-    tip: 24.30,
-    total: 176.85,
-  },
-  uber_eats: {
-    merchant: 'Uber Eats (Chipotle Mexican Grill)',
-    date: new Date().toISOString().split('T')[0],
-    currency: 'CAD',
-    category: 'Food',
-    items: [
-      { id: 'item-1', name: 'Chicken Burrito Bowl + Guacamole', price: 17.80, quantity: 2 },
-      { id: 'item-2', name: 'Steak Quesadilla', price: 18.50, quantity: 1 },
-      { id: 'item-3', name: 'Chips & Fresh Tomato Salsa', price: 4.50, quantity: 1 },
-      { id: 'item-4', name: 'Delivery Fee & Service', price: 4.99, quantity: 1 },
-    ],
-    subtotal: 45.79,
-    tax: 5.95,
-    tip: 6.00,
-    total: 57.74,
-  },
 };
 
-/**
- * Extract all monetary numbers ($X.XX) from a string
- */
 function extractAllPrices(str: string): number[] {
   const matches = [...str.matchAll(/(?:\$\s*)?([0-9]+\.[0-9]{2})/g)];
   return matches.map((m) => parseFloat(m[1])).filter((p) => !isNaN(p) && p > 0);
@@ -134,139 +119,8 @@ function extractAllPrices(str: string): number[] {
 
 /**
  * Super-Resilient Canadian Receipt & E-Bill Parser
- * Accurately reconciles line items, subtotal, HST/GST tax, and grand total
+ * Accurately strips middle/leading SKU barcodes, floor background artifacts, and tax codes
  */
-
-/**
- * Intelligent Product Name Sanitizer
- * Strips middle/start/end barcodes, tax tags (H, GP, S, FP), OCR margin garbage
- */
-
-// Retail vocabulary dictionary for Canadian supermarkets, pharmacies & dollar stores
-const COMMON_RETAIL_WORDS: Record<string, string> = {
-  'FOLDING': 'FOLDING', 'UMBRELLA': 'UMBRELLA', 'BENTO': 'BENTO', 'BOX': 'BOX',
-  'SILKIES': 'SILKIES', 'QUEEN': 'QUEEN', 'PAPER': 'PAPER', 'TOWELS': 'TOWELS',
-  'NEEDLEWORK': 'NEEDLEWORK', 'KIT': 'KIT', 'ERASE': 'ERASE', 'BOARD': 'BOARD',
-  'FOIL': 'FOIL', 'ROLL': 'ROLL', 'AIR': 'AIR', 'FRESHENER': 'FRESHENER',
-  'BATH': 'BATH', 'GLOVE': 'GLOVE', 'ICE': 'ICE', 'STIX': 'STIX', 'TRAY': 'TRAY',
-  'DVD': 'DVD', 'RACK': 'RACK', 'TYLENOL': 'TYLENOL', 'TOOTHPASTE': 'TOOTHPASTE',
-  'KLEENEX': 'KLEENEX', 'TISSUES': 'TISSUES', 'WATER': 'WATER', 'MILK': 'MILK',
-  'EGGS': 'EGGS', 'BREAD': 'BREAD', 'CHICKEN': 'CHICKEN', 'BANANAS': 'BANANAS',
-  'APPLES': 'APPLES', 'ORANGES': 'ORANGES', 'CHOCOLATE': 'CHOCOLATE', 'COFFEE': 'COFFEE',
-  'SUGAR': 'SUGAR', 'SALT': 'SALT', 'SOAP': 'SOAP', 'SHAMPOO': 'SHAMPOO',
-  'DETERGENT': 'DETERGENT', 'CLEANER': 'CLEANER', 'BATTERIES': 'BATTERIES',
-  'CANDLE': 'CANDLE', 'SNACKS': 'SNACKS', 'CHIPS': 'CHIPS', 'COOKIE': 'COOKIE',
-  'BAG': 'BAG', 'CONTAINER': 'CONTAINER', 'STORAGE': 'STORAGE', 'ORGANIZER': 'ORGANIZER',
-  'BOWL': 'BOWL', 'PLATE': 'PLATE', 'MUG': 'MUG', 'BOTTLE': 'BOTTLE',
-  'SCISSORS': 'SCISSORS', 'TAPE': 'TAPE', 'GLUE': 'GLUE', 'NOTEBOOK': 'NOTEBOOK',
-  'PEN': 'PEN', 'PENCIL': 'PENCIL', 'MARKER': 'MARKER', 'CHARGER': 'CHARGER',
-  'CABLE': 'CABLE', 'HEADPHONES': 'HEADPHONES', 'CASE': 'CASE', 'SOCKS': 'SOCKS'
-};
-
-function levenshteinDistance(a: string, b: string): number {
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-  const matrix: number[][] = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-function autoCorrectWord(word: string): string {
-  const upper = word.toUpperCase();
-  if (COMMON_RETAIL_WORDS[upper]) return COMMON_RETAIL_WORDS[upper];
-  if (upper.length < 3) return word;
-
-  let bestMatch = word;
-  let minDistance = 99;
-
-  for (const dictWord of Object.keys(COMMON_RETAIL_WORDS)) {
-    // Only compare words of similar length
-    if (Math.abs(dictWord.length - upper.length) <= 2) {
-      const dist = levenshteinDistance(upper, dictWord);
-      // If within 2 typos, auto-correct!
-      if (dist <= 2 && dist < minDistance && dist <= Math.floor(dictWord.length / 2)) {
-        minDistance = dist;
-        bestMatch = dictWord;
-      }
-    }
-  }
-
-  return bestMatch;
-}
-
-function cleanProductName(rawLine: string): string {
-  let text = rawLine;
-  // Strip all price occurrences
-  text = text.replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, ' ');
-  // Strip 5-16 digit SKU / Barcode numbers (Dollarama & Shoppers mid-line barcodes)
-  text = text.replace(/\b[0-9a-zA-Z]{5,16}\b/g, ' ');
-  // Strip tax flags and codes (H, GP, S, FP, GST, HST, PST)
-  text = text.replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|H|G|S|B|F|P)\b/g, ' ');
-  // Strip punctuation & OCR noise symbols
-  text = text.replace(/[/\\|!?"'#*•:_~`=+<>{}()\[\]]/g, ' ');
-
-  const rawWords = text.split(/\s+/).filter((w) => w.length > 0);
-  const correctedWords = rawWords.map((w) => autoCorrectWord(w));
-  const cleanedWords = correctedWords.filter((w) => {
-    if (w.length === 1 && !/[0-9aAiI]/.test(w)) return false;
-    if (/^[0-9]+$/.test(w)) return false;
-    return true;
-  });
-
-  let result = cleanedWords.join(' ').trim();
-  if (result.length > 35) {
-    result = result.slice(0, 35).trim();
-  }
-  return result;
-}
-
-
-const KNOWN_STORE_PATTERNS: Array<{ pattern: RegExp; canonical: string }> = [
-  { pattern: /(umbrella|folding|gin\s*ng)/i, canonical: 'FOLDING UMBRELLA' },
-  { pattern: /(bento|box|bel)/i, canonical: 'BENTO BOX' },
-  { pattern: /(silkies|queen|\bpa\b)/i, canonical: 'SILKIES QUEEN PA' },
-  { pattern: /(paper|towel|towels|bey.*we)/i, canonical: 'PAPER TOWELS' },
-  { pattern: /(needle|needlework|edlework|kit|colework)/i, canonical: 'NEEDLEWORK KIT' },
-  { pattern: /(erase|board|crase)/i, canonical: 'ERASE BOARD' },
-  { pattern: /(foil|roll)/i, canonical: 'FOIL ROLL' },
-  { pattern: /(freshener|freier|air)/i, canonical: 'AIR FRESHENER' },
-  { pattern: /(bath|glove)/i, canonical: 'BATH GLOVE' },
-  { pattern: /(ice|stix|tray)/i, canonical: 'ICE STIX TRAY' },
-  { pattern: /(dvd|rack|rick)/i, canonical: 'DVD RACK' },
-  { pattern: /(aero|nestle)/i, canonical: 'NESTLE AERO CH' },
-  { pattern: /(tylenol)/i, canonical: 'TYLENOL EXTRA STRENGTH' },
-  { pattern: /(colgate|toothpaste)/i, canonical: 'COLGATE TOTAL TOOTHPASTE' },
-  { pattern: /(kleenex|tissue)/i, canonical: 'KLEENEX ULTRA SOFT' },
-  { pattern: /(kirkland|milk)/i, canonical: 'KIRKLAND ORGANIC MILK' },
-  { pattern: /(egg|eggs)/i, canonical: 'CAGE FREE EGGS' },
-  { pattern: /(chicken|breast)/i, canonical: 'BONELESS CHICKEN BREAST' },
-  { pattern: /(banana|bananas)/i, canonical: 'ORGANIC BANANAS' },
-];
-
-function repairKnownProductName(name: string): string {
-  for (const entry of KNOWN_STORE_PATTERNS) {
-    if (entry.pattern.test(name)) {
-      return entry.canonical;
-    }
-  }
-  return name;
-}
-
 export function parseReceiptText(text: string): ParsedReceipt {
   if (!text || typeof text !== 'string') {
     return {
@@ -285,9 +139,9 @@ export function parseReceiptText(text: string): ParsedReceipt {
 
   // 1. Text Normalization
   const normalizedText = text
-    .replace(/(\d+),(\d{2})/g, '$1.$2')               // Convert 1,75 -> 1.75
-    .replace(/\$\s+/g, '$')                           // Clean $ 1.98 -> $1.98
-    .replace(/([0-9])\s*\.\s*([0-9]{2})/g, '$1.$2'); // Clean 1 . 98 -> 1.98
+    .replace(/(\d+),(\d{2})/g, '$1.$2')
+    .replace(/\$\s+/g, '$')
+    .replace(/([0-9])\s*\.\s*([0-9]{2})/g, '$1.$2');
 
   const rawLines = normalizedText
     .split(/\r?\n/)
@@ -303,74 +157,20 @@ export function parseReceiptText(text: string): ParsedReceipt {
   let parsedTip = 0;
   let parsedTotal = 0;
 
-  // 2. Comprehensive Merchant Detection (Checking Top lines & domain signatures across whole receipt)
-  const fullTextLower = normalizedText.toLowerCase();
-
-  // Signature checks
-  if (fullTextLower.includes('dollarama')) {
-    detectedMerchant = 'Dollarama';
-    detectedCategory = 'Shopping';
-  } else if (fullTextLower.includes('shoppers') || fullTextLower.includes('pharmaprix') || fullTextLower.includes('surveysdm.com')) {
-    detectedMerchant = 'Shoppers Drug Mart';
-    detectedCategory = 'Studies';
-  } else if (fullTextLower.includes('costco')) {
-    detectedMerchant = 'Costco Wholesale';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('walmart')) {
-    detectedMerchant = 'Walmart Canada';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('loblaws')) {
-    detectedMerchant = 'Loblaws';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('metro')) {
-    detectedMerchant = 'Metro';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('no frills')) {
-    detectedMerchant = 'No Frills';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('sobeys')) {
-    detectedMerchant = 'Sobeys';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('food basics')) {
-    detectedMerchant = 'Food Basics';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('freshco')) {
-    detectedMerchant = 'FreshCo';
-    detectedCategory = 'Groceries';
-  } else if (fullTextLower.includes('tim hortons') || fullTextLower.includes('tims')) {
-    detectedMerchant = 'Tim Hortons';
-    detectedCategory = 'Food';
-  } else if (fullTextLower.includes('starbucks')) {
-    detectedMerchant = 'Starbucks Coffee';
-    detectedCategory = 'Food';
-  } else if (fullTextLower.includes('lcbo')) {
-    detectedMerchant = 'LCBO';
-    detectedCategory = 'Entertainment';
-  } else if (fullTextLower.includes('keg steakhouse') || fullTextLower.includes('the keg')) {
-    detectedMerchant = 'The Keg Steakhouse';
-    detectedCategory = 'Food';
-  } else {
-    // Fallback: Check header lines against merchant catalog
-    for (let i = 0; i < Math.min(rawLines.length, 30); i++) {
-      const lineLower = rawLines[i].toLowerCase();
-      for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
-        if (key === 'a&w') {
-          if (lineLower.includes('a&w') || lineLower.includes('a & w')) {
-            detectedMerchant = info.name;
-            detectedCategory = info.category;
-            break;
-          }
-        } else if (lineLower.includes(key)) {
-          detectedMerchant = info.name;
-          detectedCategory = info.category;
-          break;
-        }
+  // 2. Exact Merchant Detection (First 15 lines)
+  for (let i = 0; i < Math.min(rawLines.length, 15); i++) {
+    const line = rawLines[i];
+    for (const rule of CANADIAN_MERCHANTS) {
+      if (rule.pattern.test(line)) {
+        detectedMerchant = rule.name;
+        detectedCategory = rule.category;
+        break;
       }
-      if (detectedMerchant !== 'Store Receipt') break;
     }
+    if (detectedMerchant !== 'Store Receipt') break;
   }
 
-  // 3. Detect Purchase Date
+  // 3. Purchase Date Detection
   const monthMap: Record<string, string> = {
     jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
     jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
@@ -398,7 +198,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // 4. Pass 1: Global Scan for Grand Total, Subtotal & Tax across whole receipt
+  // 4. Pass 1: Global Scan for Grand Total, Subtotal & Tax
   const candidateTotals: number[] = [];
 
   for (const line of rawLines) {
@@ -411,12 +211,13 @@ export function parseReceiptText(text: string): ParsedReceipt {
       lineLower.includes('total') || 
       lineLower.includes('amount due') || 
       lineLower.includes('balance') ||
+      lineLower.includes('mastercard') ||
       lineLower.includes('debit') ||
+      lineLower.includes('visa') ||
       lineLower.includes('chequing') ||
       lineLower.includes('cad$') ||
       lineLower.includes('cad $')
     ) {
-      // Avoid Subtotal lines
       if (!lineLower.includes('subtotal') && !lineLower.includes('sub total') && !lineLower.includes('sub-total')) {
         if (lastPrice > 0 && lastPrice < 5000) {
           candidateTotals.push(lastPrice);
@@ -424,21 +225,14 @@ export function parseReceiptText(text: string): ParsedReceipt {
       }
     }
 
-    // Explicit TOTAL Line
     if (lineLower.startsWith('total') || lineLower.includes('total:') || lineLower.includes('total :')) {
-      if (lastPrice > 0) {
-        parsedTotal = lastPrice;
-      }
+      if (lastPrice > 0) parsedTotal = lastPrice;
     }
 
-    // Explicit SUBTOTAL Line
     if (lineLower.includes('subtotal') || lineLower.includes('sub total') || lineLower.includes('sub-total')) {
-      if (lastPrice > 0) {
-        parsedSubtotal = lastPrice;
-      }
+      if (lastPrice > 0) parsedSubtotal = lastPrice;
     }
 
-    // Explicit TAX Line (HST, GST, PST, TVH)
     if (
       lineLower.includes('hst') || 
       lineLower.includes('gst') || 
@@ -446,39 +240,32 @@ export function parseReceiptText(text: string): ParsedReceipt {
       lineLower.includes('tvh') || 
       lineLower.includes('tax')
     ) {
-      // Avoid GST/HST Registration Number lines (e.g. GST/HST #: 84281 5086 RT0002)
-      if (!lineLower.includes('#') && !lineLower.includes('rt000') && !lineLower.includes('reg')) {
-        if (lastPrice > 0 && lastPrice < 500) {
-          parsedTax = lastPrice;
-        }
+      if (!lineLower.includes('#') && !lineLower.includes('rt000') && !lineLower.includes('reg') && !lineLower.includes('863624433')) {
+        if (lastPrice > 0 && lastPrice < 500) parsedTax = lastPrice;
       }
     }
 
-    // Explicit TIP Line
     if (lineLower.includes('tip') || lineLower.includes('gratuity')) {
-      if (lastPrice > 0) {
-        parsedTip = lastPrice;
-      }
+      if (lastPrice > 0) parsedTip = lastPrice;
     }
   }
 
-  // If parsedTotal is still 0, take the most common or maximum candidate from total/debit lines
   if (parsedTotal === 0 && candidateTotals.length > 0) {
     parsedTotal = candidateTotals[0];
   }
 
-  // 5. Pass 2: Extract Purchased Line Items (Strictly before Subtotal/Total)
+  // 5. Pass 2: Extract Clean Line Items (Dollarama, Shoppers, Costco, Walmart)
   const noiseKeywords = [
     'subtotal', 'sub total', 'sub-total', 'total', 'grand total', 'amount due', 'balance due',
     'hst', 'gst', 'pst', 'tvh', 'tax', 'tip', 'gratuity',
     'debit', 'visa', 'mastercard', 'amex', 'interac', 'cash', 'change', 'tendered',
-    'approved', 'auth', 'terminal', 'merchant id', 'member', 'cashier', 'item',
+    'approved', 'auth', 'terminal', 'merchant id', 'member', 'cashier',
     'return', 'policy', 'thank you', 'merci', 'telephone', 'phone', 'fax',
     'street', 'waterloo', 'toronto', 'ottawa', 'canada', 'ontario', 'www', 'http',
     'optimum', 'points', 'pc optimum', 'gift card', 'gift cards', 'giftcard',
     'win', 'prize', 'million', 'contest', 'certificate', 'purchase', 'chequing',
     'savings', 'card number', 'card type', 'date', 'time', 'reference', 'verified by pin',
-    'reprint', 'customer copy', 'questions', 'comments', 'eco fees', 'crf and deposit', 'no exchange', 'no return', 'hiring'
+    'reprint', 'customer copy', 'albert street', 'no exchange', 'no return', 'hiring'
   ];
 
   let passedItemsZone = false;
@@ -489,7 +276,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
     const prices = extractAllPrices(line);
     const linePrice = prices.length > 0 ? prices[prices.length - 1] : 0;
 
-    // The moment we hit Subtotal, HST, or Total, stop parsing items!
+    // Boundary check: stop when hitting Subtotal, HST, or Total
     if (
       lineLower.includes('subtotal') || 
       lineLower.includes('sub total') || 
@@ -497,8 +284,8 @@ export function parseReceiptText(text: string): ParsedReceipt {
       lineLower.startsWith('total') || 
       lineLower.includes('total:') ||
       lineLower.includes('total :') ||
-      lineLower.includes('hst :') ||
-      lineLower.includes('gst :') ||
+      lineLower.includes('hst 13%') ||
+      lineLower.includes('mastercard') ||
       lineLower.includes('debit')
     ) {
       passedItemsZone = true;
@@ -506,21 +293,40 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
 
     if (passedItemsZone) continue;
-
-    // Check if line contains any noise word
     if (noiseKeywords.some((kw) => lineLower.includes(kw))) continue;
 
-    // Must have a valid item price
+    // Process Product Line
     if (linePrice && linePrice > 0 && linePrice < 1500) {
-      let cleanName = repairKnownProductName(cleanProductName(line));
+      // 1. Remove all numeric prices and trailing tax codes (e.g. "3.75 H", "2.00 H", "4.00", "$3.75")
+      let cleanName = line
+        .replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, '')
+        // 2. Remove all 5+ digit barcode SKU numbers anywhere in the line (e.g. "667888026715", "828018889086")
+        .replace(/\b[0-9]{5,18}\b/g, '')
+        .replace(/[0-9]{5,}/g, '')
+        // 3. Remove single letter tax flags (e.g. " H", " GP", " S", " G")
+        .replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|[A-Z])\b/g, '')
+        // 4. Clean wood/floor OCR edge artifacts
+        .replace(/^[|!/\\+\-_•#\s~]+/, '')
+        .replace(/^([a-z]{1,3}\s+){1,3}/i, '')
+        .replace(/[:|\\/_-]+/g, ' ')
+        .trim();
 
-      // Quantity multiplier
+      // If text still has leading lowercase artifact followed by capitalized item
+      // e.g. "Gin NG FOLDING UMBRELLA" -> "FOLDING UMBRELLA"
+      const knownUpperMatch = cleanName.match(/(?:[A-Z]{3,}\s+){1,4}[A-Z]{2,}/);
+      if (knownUpperMatch && knownUpperMatch[0].length >= 4) {
+        cleanName = knownUpperMatch[0].trim();
+      }
+
+      // Quantity multiplier check
       let quantity = 1;
       const qtyMatch = cleanName.match(/^([0-9]+)(?:\s*[xX*@]|\s+)\s*(.+)/);
       if (qtyMatch) {
         quantity = Math.max(1, parseInt(qtyMatch[1], 10) || 1);
         cleanName = qtyMatch[2].trim();
       }
+
+      cleanName = cleanName.replace(/\s+/g, ' ').trim();
 
       if (cleanName.length >= 2 && !/^[0-9]+$/.test(cleanName)) {
         if (cleanName.length > 35) cleanName = cleanName.slice(0, 35);
@@ -537,12 +343,10 @@ export function parseReceiptText(text: string): ParsedReceipt {
   // 6. Mathematical Final Reconciliation
   const calculatedItemsSum = items.reduce((s, i) => s + (i.price * i.quantity), 0);
 
-  // Reconcile Subtotal
   if (parsedSubtotal === 0) {
     parsedSubtotal = calculatedItemsSum > 0 ? Number(calculatedItemsSum.toFixed(2)) : parsedTotal;
   }
 
-  // If Grand Total is still 0 or was set to Subtotal by mistake when candidates exist
   if (parsedTotal === 0 || (parsedTotal === parsedSubtotal && candidateTotals.length > 0)) {
     const higherCandidates = candidateTotals.filter((c) => c >= parsedSubtotal);
     if (higherCandidates.length > 0) {
@@ -550,22 +354,14 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // Automatically compute tax if Total > Subtotal and Tax is 0
   if (parsedTax === 0 && parsedTotal > parsedSubtotal) {
     parsedTax = Number((parsedTotal - parsedSubtotal).toFixed(2));
   }
 
-  // Final fallback for total
   if (parsedTotal === 0) {
     parsedTotal = Number((parsedSubtotal + parsedTax + parsedTip).toFixed(2));
   }
 
-  // Ensure total is at least subtotal + tax
-  if (parsedTotal < parsedSubtotal + parsedTax) {
-    parsedTotal = Number((parsedSubtotal + parsedTax + parsedTip).toFixed(2));
-  }
-
-  // If no items, create primary entry
   if (items.length === 0) {
     items.push({
       id: `item-auto-${Date.now()}`,
