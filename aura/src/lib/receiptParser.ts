@@ -19,63 +19,46 @@ export interface ParsedReceipt {
   rawText?: string;
 }
 
-export const CANADIAN_MERCHANTS: { pattern: RegExp; name: string; category: string }[] = [
-  { pattern: /\bdollarama\b/i, name: 'Dollarama', category: 'Shopping' },
-  { pattern: /\b(shoppers|shoppers drug mart|pharmaprix)\b/i, name: 'Shoppers Drug Mart', category: 'Studies' },
-  { pattern: /\brexall\b/i, name: 'Rexall PharmaPlus', category: 'Studies' },
-  { pattern: /\bcostco\b/i, name: 'Costco Wholesale', category: 'Groceries' },
-  { pattern: /\bloblaws\b/i, name: 'Loblaws', category: 'Groceries' },
-  { pattern: /\bmetro\b/i, name: 'Metro', category: 'Groceries' },
-  { pattern: /\bwalmart\b/i, name: 'Walmart Canada', category: 'Groceries' },
-  { pattern: /\bno frills\b/i, name: 'No Frills', category: 'Groceries' },
-  { pattern: /\bsobeys\b/i, name: 'Sobeys', category: 'Groceries' },
-  { pattern: /\bfood basics\b/i, name: 'Food Basics', category: 'Groceries' },
-  { pattern: /\bfreshco\b/i, name: 'FreshCo', category: 'Groceries' },
-  { pattern: /\bfarm boy\b/i, name: 'Farm Boy', category: 'Groceries' },
-  { pattern: /\b(tim hortons|tims)\b/i, name: 'Tim Hortons', category: 'Food' },
-  { pattern: /\bstarbucks\b/i, name: 'Starbucks Coffee', category: 'Food' },
-  { pattern: /\bmcdonald'?s?\b/i, name: "McDonald's", category: 'Food' },
-  { pattern: /\blcbo\b/i, name: 'LCBO', category: 'Entertainment' },
-  { pattern: /\bbeer store\b/i, name: 'The Beer Store', category: 'Entertainment' },
-  { pattern: /\buber\s*eats\b/i, name: 'Uber Eats', category: 'Food' },
-  { pattern: /\bdoordash\b/i, name: 'DoorDash', category: 'Food' },
-  { pattern: /\bbest\s*buy\b/i, name: 'Best Buy Canada', category: 'Shopping' },
-  { pattern: /\bikea\b/i, name: 'IKEA Canada', category: 'Shopping' },
-  { pattern: /\bamazon\b/i, name: 'Amazon.ca', category: 'Shopping' },
-  { pattern: /\bkeg\b/i, name: 'The Keg Steakhouse', category: 'Food' },
-  { pattern: /\bcactus\b/i, name: 'Cactus Club Cafe', category: 'Food' },
-  { pattern: /\bsubway\b/i, name: 'Subway', category: 'Food' },
-  { pattern: /\bchipotle\b/i, name: 'Chipotle Mexican Grill', category: 'Food' },
-  { pattern: /\bwendy'?s?\b/i, name: "Wendy's", category: 'Food' },
-  { pattern: /\bpopeyes\b/i, name: 'Popeyes', category: 'Food' },
-  { pattern: /\bharvey'?s?\b/i, name: "Harvey's", category: 'Food' },
-  { pattern: /\b(a&w|a & w|a and w)\b/i, name: 'A&W Canada', category: 'Food' },
-  { pattern: /\bshell\b/i, name: 'Shell Gas Station', category: 'Transport' },
-  { pattern: /\besso\b/i, name: 'Esso / Mobil', category: 'Transport' },
-  { pattern: /\bpetro\b/i, name: 'Petro-Canada', category: 'Transport' },
-];
+export const CANADIAN_MERCHANTS: Record<string, { match: RegExp; name: string; category: string }> = {
+  dollarama: { match: /\bdollarama\b/i, name: 'Dollarama Canada', category: 'Shopping' },
+  shoppers: { match: /\bshoppers\b|\bshoppers drug mart\b/i, name: 'Shoppers Drug Mart', category: 'Studies' },
+  pharmaprix: { match: /\bpharmaprix\b/i, name: 'Pharmaprix', category: 'Studies' },
+  rexall: { match: /\brexall\b/i, name: 'Rexall PharmaPlus', category: 'Studies' },
+  costco: { match: /\bcostco\b/i, name: 'Costco Wholesale', category: 'Groceries' },
+  loblaws: { match: /\bloblaws\b/i, name: 'Loblaws', category: 'Groceries' },
+  metro: { match: /\bmetro\b/i, name: 'Metro', category: 'Groceries' },
+  walmart: { match: /\bwalmart\b/i, name: 'Walmart Canada', category: 'Groceries' },
+  'no frills': { match: /\bno frills\b|\bnofrills\b/i, name: 'No Frills', category: 'Groceries' },
+  sobeys: { match: /\bsobeys\b/i, name: 'Sobeys', category: 'Groceries' },
+  'food basics': { match: /\bfood basics\b/i, name: 'Food Basics', category: 'Groceries' },
+  freshco: { match: /\bfreshco\b|\bfresh co\b/i, name: 'FreshCo', category: 'Groceries' },
+  'farm boy': { match: /\bfarm boy\b/i, name: 'Farm Boy', category: 'Groceries' },
+  'tim hortons': { match: /\btim hortons\b|\btimhortons\b|\btims\b/i, name: 'Tim Hortons', category: 'Food' },
+  starbucks: { match: /\bstarbucks\b/i, name: 'Starbucks Coffee', category: 'Food' },
+  mcdonald: { match: /\bmcdonald'?s\b/i, name: "McDonald's", category: 'Food' },
+  lcbo: { match: /\blcbo\b/i, name: 'LCBO', category: 'Entertainment' },
+  'beer store': { match: /\bbeer store\b/i, name: 'The Beer Store', category: 'Entertainment' },
+  'uber eats': { match: /\buber eats\b/i, name: 'Uber Eats', category: 'Food' },
+  doordash: { match: /\bdoordash\b/i, name: 'DoorDash', category: 'Food' },
+  'best buy': { match: /\bbest buy\b/i, name: 'Best Buy Canada', category: 'Shopping' },
+  ikea: { match: /\bikea\b/i, name: 'IKEA Canada', category: 'Shopping' },
+  amazon: { match: /\bamazon\b/i, name: 'Amazon.ca', category: 'Shopping' },
+  keg: { match: /\bkeg\b/i, name: 'The Keg Steakhouse', category: 'Food' },
+  cactus: { match: /\bcactus\b/i, name: 'Cactus Club Cafe', category: 'Food' },
+  subway: { match: /\bsubway\b/i, name: 'Subway', category: 'Food' },
+  chipotle: { match: /\bchipotle\b/i, name: 'Chipotle Mexican Grill', category: 'Food' },
+  wendy: { match: /\bwendy'?s\b/i, name: "Wendy's", category: 'Food' },
+  popeyes: { match: /\bpopeyes\b/i, name: 'Popeyes', category: 'Food' },
+  harveys: { match: /\bharvey'?s\b/i, name: "Harvey's", category: 'Food' },
+  aw: { match: /\ba&w\b|\ba & w\b/i, name: 'A&W Canada', category: 'Food' },
+  shell: { match: /\bshell\b/i, name: 'Shell Gas Station', category: 'Transport' },
+  esso: { match: /\besso\b/i, name: 'Esso / Mobil', category: 'Transport' },
+  petro: { match: /\bpetro-canada\b|\bpetro canada\b/i, name: 'Petro-Canada', category: 'Transport' },
+};
 
 export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
-  costco_groceries: {
-    merchant: 'Costco Wholesale',
-    date: new Date().toISOString().split('T')[0],
-    currency: 'CAD',
-    category: 'Groceries',
-    items: [
-      { id: 'item-1', name: 'Kirkland Organic Milk 3x2L', price: 10.99, quantity: 1 },
-      { id: 'item-2', name: 'Kirkland Cage-Free Eggs 30pk', price: 8.49, quantity: 1 },
-      { id: 'item-3', name: 'Fresh Boneless Chicken Breast 2kg', price: 24.50, quantity: 1 },
-      { id: 'item-4', name: 'Organic Bananas 1.5kg', price: 2.89, quantity: 1 },
-      { id: 'item-5', name: 'Kirkland Paper Towels 12pk', price: 21.99, quantity: 1 },
-      { id: 'item-6', name: 'Avocados Bag 5pk', price: 5.99, quantity: 1 },
-    ],
-    subtotal: 74.85,
-    tax: 3.25,
-    tip: 0,
-    total: 78.10,
-  },
   dollarama_haul: {
-    merchant: 'Dollarama',
+    merchant: 'Dollarama Canada',
     date: '2026-08-31',
     currency: 'CAD',
     category: 'Shopping',
@@ -97,6 +80,24 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
     tip: 0,
     total: 29.95,
   },
+  costco_groceries: {
+    merchant: 'Costco Wholesale',
+    date: new Date().toISOString().split('T')[0],
+    currency: 'CAD',
+    category: 'Groceries',
+    items: [
+      { id: 'item-1', name: 'Kirkland Organic Milk 3x2L', price: 10.99, quantity: 1 },
+      { id: 'item-2', name: 'Kirkland Cage-Free Eggs 30pk', price: 8.49, quantity: 1 },
+      { id: 'item-3', name: 'Fresh Boneless Chicken Breast 2kg', price: 24.50, quantity: 1 },
+      { id: 'item-4', name: 'Organic Bananas 1.5kg', price: 2.89, quantity: 1 },
+      { id: 'item-5', name: 'Kirkland Paper Towels 12pk', price: 21.99, quantity: 1 },
+      { id: 'item-6', name: 'Avocados Bag 5pk', price: 5.99, quantity: 1 },
+    ],
+    subtotal: 74.85,
+    tax: 3.25,
+    tip: 0,
+    total: 78.10,
+  },
   shoppers_drug_mart: {
     merchant: 'Shoppers Drug Mart',
     date: '2026-08-27',
@@ -117,10 +118,41 @@ function extractAllPrices(str: string): number[] {
   return matches.map((m) => parseFloat(m[1])).filter((p) => !isNaN(p) && p > 0);
 }
 
-/**
- * Super-Resilient Canadian Receipt & E-Bill Parser
- * Accurately strips middle/leading SKU barcodes, floor background artifacts, and tax codes
- */
+function cleanProductDescription(rawLine: string): string {
+  let clean = rawLine
+    // 1. Remove all monetary prices ($3.75, 4.00, 1.50)
+    .replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, '')
+    // 2. Remove all 6-16 digit SKU / barcode numbers anywhere in the string (e.g. Dollarama 667888026715)
+    .replace(/\b[0-9]{6,16}\b/g, '')
+    // 3. Remove trailing tax tags (H, G, GP, FP, S, GST, HST)
+    .replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|[A-Z])\b/g, '')
+    // 4. Remove leading/trailing symbols, slashes, pipes, OCR edge artifacts
+    .replace(/[^A-Za-z0-9\s&'.-]/g, ' ')
+    .trim();
+
+  // 5. Clean leading wood-grain / shadow OCR fragments (e.g. "Gin NG , FOLDING UMBRELLA" -> "FOLDING UMBRELLA")
+  const validWords = clean.split(/\s+/).filter((w) => w.length > 0);
+
+  // Filter out tiny single/double letter noise at the beginning if followed by clean uppercase words
+  while (
+    validWords.length > 1 &&
+    validWords[0].length <= 3 &&
+    !/^(BOX|KIT|TRAY|RACK|ROLL|TOWELS|FOIL|BAG|ICE|TEA|EGG|MILK|BAR|OIL|CUP|PAN)$/i.test(validWords[0])
+  ) {
+    if (/^[a-z]{1,3}$/i.test(validWords[0]) && validWords.length > 2) {
+      validWords.shift();
+    } else {
+      break;
+    }
+  }
+
+  clean = validWords.join(' ').trim();
+  clean = clean.replace(/^[-.\d\s]+/, '').trim();
+
+  if (clean.length > 35) clean = clean.slice(0, 35).trim();
+  return clean;
+}
+
 export function parseReceiptText(text: string): ParsedReceipt {
   if (!text || typeof text !== 'string') {
     return {
@@ -137,7 +169,6 @@ export function parseReceiptText(text: string): ParsedReceipt {
     };
   }
 
-  // 1. Text Normalization
   const normalizedText = text
     .replace(/(\d+),(\d{2})/g, '$1.$2')
     .replace(/\$\s+/g, '$')
@@ -157,20 +188,18 @@ export function parseReceiptText(text: string): ParsedReceipt {
   let parsedTip = 0;
   let parsedTotal = 0;
 
-  // 2. Exact Merchant Detection (First 15 lines)
   for (let i = 0; i < Math.min(rawLines.length, 15); i++) {
     const line = rawLines[i];
-    for (const rule of CANADIAN_MERCHANTS) {
-      if (rule.pattern.test(line)) {
-        detectedMerchant = rule.name;
-        detectedCategory = rule.category;
+    for (const [, info] of Object.entries(CANADIAN_MERCHANTS)) {
+      if (info.match.test(line)) {
+        detectedMerchant = info.name;
+        detectedCategory = info.category;
         break;
       }
     }
     if (detectedMerchant !== 'Store Receipt') break;
   }
 
-  // 3. Purchase Date Detection
   const monthMap: Record<string, string> = {
     jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
     jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
@@ -198,7 +227,6 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // 4. Pass 1: Global Scan for Grand Total, Subtotal & Tax
   const candidateTotals: number[] = [];
 
   for (const line of rawLines) {
@@ -206,14 +234,13 @@ export function parseReceiptText(text: string): ParsedReceipt {
     const prices = extractAllPrices(line);
     const lastPrice = prices.length > 0 ? prices[prices.length - 1] : 0;
 
-    // TOTAL matches
     if (
       lineLower.includes('total') || 
       lineLower.includes('amount due') || 
       lineLower.includes('balance') ||
       lineLower.includes('mastercard') ||
-      lineLower.includes('debit') ||
       lineLower.includes('visa') ||
+      lineLower.includes('debit') ||
       lineLower.includes('chequing') ||
       lineLower.includes('cad$') ||
       lineLower.includes('cad $')
@@ -225,12 +252,16 @@ export function parseReceiptText(text: string): ParsedReceipt {
       }
     }
 
-    if (lineLower.startsWith('total') || lineLower.includes('total:') || lineLower.includes('total :')) {
-      if (lastPrice > 0) parsedTotal = lastPrice;
+    if (lineLower.startsWith('total') || lineLower.includes('total:') || lineLower.includes('total :') || lineLower === 'total') {
+      if (lastPrice > 0) {
+        parsedTotal = lastPrice;
+      }
     }
 
     if (lineLower.includes('subtotal') || lineLower.includes('sub total') || lineLower.includes('sub-total')) {
-      if (lastPrice > 0) parsedSubtotal = lastPrice;
+      if (lastPrice > 0) {
+        parsedSubtotal = lastPrice;
+      }
     }
 
     if (
@@ -240,13 +271,17 @@ export function parseReceiptText(text: string): ParsedReceipt {
       lineLower.includes('tvh') || 
       lineLower.includes('tax')
     ) {
-      if (!lineLower.includes('#') && !lineLower.includes('rt000') && !lineLower.includes('reg') && !lineLower.includes('863624433')) {
-        if (lastPrice > 0 && lastPrice < 500) parsedTax = lastPrice;
+      if (!lineLower.includes('#') && !lineLower.includes('rt000') && !lineLower.includes('reg')) {
+        if (lastPrice > 0 && lastPrice < 500) {
+          parsedTax = lastPrice;
+        }
       }
     }
 
     if (lineLower.includes('tip') || lineLower.includes('gratuity')) {
-      if (lastPrice > 0) parsedTip = lastPrice;
+      if (lastPrice > 0) {
+        parsedTip = lastPrice;
+      }
     }
   }
 
@@ -254,18 +289,18 @@ export function parseReceiptText(text: string): ParsedReceipt {
     parsedTotal = candidateTotals[0];
   }
 
-  // 5. Pass 2: Extract Clean Line Items (Dollarama, Shoppers, Costco, Walmart)
   const noiseKeywords = [
     'subtotal', 'sub total', 'sub-total', 'total', 'grand total', 'amount due', 'balance due',
     'hst', 'gst', 'pst', 'tvh', 'tax', 'tip', 'gratuity',
     'debit', 'visa', 'mastercard', 'amex', 'interac', 'cash', 'change', 'tendered',
-    'approved', 'auth', 'terminal', 'merchant id', 'member', 'cashier',
+    'approved', 'auth', 'terminal', 'merchant id', 'member', 'cashier', 'item',
     'return', 'policy', 'thank you', 'merci', 'telephone', 'phone', 'fax',
     'street', 'waterloo', 'toronto', 'ottawa', 'canada', 'ontario', 'www', 'http',
     'optimum', 'points', 'pc optimum', 'gift card', 'gift cards', 'giftcard',
     'win', 'prize', 'million', 'contest', 'certificate', 'purchase', 'chequing',
     'savings', 'card number', 'card type', 'date', 'time', 'reference', 'verified by pin',
-    'reprint', 'customer copy', 'albert street', 'no exchange', 'no return', 'hiring'
+    'reprint', 'customer copy', 'questions', 'comments', 'eco fees', 'crf', 'deposit',
+    'no exchange', 'no return', 'we\'re hiring', 'hiring'
   ];
 
   let passedItemsZone = false;
@@ -276,7 +311,6 @@ export function parseReceiptText(text: string): ParsedReceipt {
     const prices = extractAllPrices(line);
     const linePrice = prices.length > 0 ? prices[prices.length - 1] : 0;
 
-    // Boundary check: stop when hitting Subtotal, HST, or Total
     if (
       lineLower.includes('subtotal') || 
       lineLower.includes('sub total') || 
@@ -284,7 +318,9 @@ export function parseReceiptText(text: string): ParsedReceipt {
       lineLower.startsWith('total') || 
       lineLower.includes('total:') ||
       lineLower.includes('total :') ||
+      lineLower.includes('hst :') ||
       lineLower.includes('hst 13%') ||
+      lineLower.includes('gst :') ||
       lineLower.includes('mastercard') ||
       lineLower.includes('debit')
     ) {
@@ -293,54 +329,23 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
 
     if (passedItemsZone) continue;
+
     if (noiseKeywords.some((kw) => lineLower.includes(kw))) continue;
 
-    // Process Product Line
     if (linePrice && linePrice > 0 && linePrice < 1500) {
-      // 1. Remove all numeric prices and trailing tax codes (e.g. "3.75 H", "2.00 H", "4.00", "$3.75")
-      let cleanName = line
-        .replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?/g, '')
-        // 2. Remove all 5+ digit barcode SKU numbers anywhere in the line (e.g. "667888026715", "828018889086")
-        .replace(/\b[0-9]{5,18}\b/g, '')
-        .replace(/[0-9]{5,}/g, '')
-        // 3. Remove single letter tax flags (e.g. " H", " GP", " S", " G")
-        .replace(/\b(GP|FP|GST|HST|PST|TVH|TAX|[A-Z])\b/g, '')
-        // 4. Clean wood/floor OCR edge artifacts
-        .replace(/^[|!/\\+\-_•#\s~]+/, '')
-        .replace(/^([a-z]{1,3}\s+){1,3}/i, '')
-        .replace(/[:|\\/_-]+/g, ' ')
-        .trim();
-
-      // If text still has leading lowercase artifact followed by capitalized item
-      // e.g. "Gin NG FOLDING UMBRELLA" -> "FOLDING UMBRELLA"
-      const knownUpperMatch = cleanName.match(/(?:[A-Z]{3,}\s+){1,4}[A-Z]{2,}/);
-      if (knownUpperMatch && knownUpperMatch[0].length >= 4) {
-        cleanName = knownUpperMatch[0].trim();
-      }
-
-      // Quantity multiplier check
-      let quantity = 1;
-      const qtyMatch = cleanName.match(/^([0-9]+)(?:\s*[xX*@]|\s+)\s*(.+)/);
-      if (qtyMatch) {
-        quantity = Math.max(1, parseInt(qtyMatch[1], 10) || 1);
-        cleanName = qtyMatch[2].trim();
-      }
-
-      cleanName = cleanName.replace(/\s+/g, ' ').trim();
+      const cleanName = cleanProductDescription(line);
 
       if (cleanName.length >= 2 && !/^[0-9]+$/.test(cleanName)) {
-        if (cleanName.length > 35) cleanName = cleanName.slice(0, 35);
         items.push({
           id: `item-${idx}-${Date.now()}`,
           name: cleanName,
           price: linePrice,
-          quantity,
+          quantity: 1,
         });
       }
     }
   }
 
-  // 6. Mathematical Final Reconciliation
   const calculatedItemsSum = items.reduce((s, i) => s + (i.price * i.quantity), 0);
 
   if (parsedSubtotal === 0) {
@@ -359,6 +364,10 @@ export function parseReceiptText(text: string): ParsedReceipt {
   }
 
   if (parsedTotal === 0) {
+    parsedTotal = Number((parsedSubtotal + parsedTax + parsedTip).toFixed(2));
+  }
+
+  if (parsedTotal < parsedSubtotal + parsedTax) {
     parsedTotal = Number((parsedSubtotal + parsedTax + parsedTip).toFixed(2));
   }
 
