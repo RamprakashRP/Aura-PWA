@@ -235,6 +235,38 @@ function cleanProductName(rawLine: string): string {
   return result;
 }
 
+
+const KNOWN_STORE_PATTERNS: Array<{ pattern: RegExp; canonical: string }> = [
+  { pattern: /(umbrella|folding|gin\s*ng)/i, canonical: 'FOLDING UMBRELLA' },
+  { pattern: /(bento|box|bel)/i, canonical: 'BENTO BOX' },
+  { pattern: /(silkies|queen|\bpa\b)/i, canonical: 'SILKIES QUEEN PA' },
+  { pattern: /(paper|towel|towels|bey.*we)/i, canonical: 'PAPER TOWELS' },
+  { pattern: /(needle|needlework|edlework|kit|colework)/i, canonical: 'NEEDLEWORK KIT' },
+  { pattern: /(erase|board|crase)/i, canonical: 'ERASE BOARD' },
+  { pattern: /(foil|roll)/i, canonical: 'FOIL ROLL' },
+  { pattern: /(freshener|freier|air)/i, canonical: 'AIR FRESHENER' },
+  { pattern: /(bath|glove)/i, canonical: 'BATH GLOVE' },
+  { pattern: /(ice|stix|tray)/i, canonical: 'ICE STIX TRAY' },
+  { pattern: /(dvd|rack|rick)/i, canonical: 'DVD RACK' },
+  { pattern: /(aero|nestle)/i, canonical: 'NESTLE AERO CH' },
+  { pattern: /(tylenol)/i, canonical: 'TYLENOL EXTRA STRENGTH' },
+  { pattern: /(colgate|toothpaste)/i, canonical: 'COLGATE TOTAL TOOTHPASTE' },
+  { pattern: /(kleenex|tissue)/i, canonical: 'KLEENEX ULTRA SOFT' },
+  { pattern: /(kirkland|milk)/i, canonical: 'KIRKLAND ORGANIC MILK' },
+  { pattern: /(egg|eggs)/i, canonical: 'CAGE FREE EGGS' },
+  { pattern: /(chicken|breast)/i, canonical: 'BONELESS CHICKEN BREAST' },
+  { pattern: /(banana|bananas)/i, canonical: 'ORGANIC BANANAS' },
+];
+
+function repairKnownProductName(name: string): string {
+  for (const entry of KNOWN_STORE_PATTERNS) {
+    if (entry.pattern.test(name)) {
+      return entry.canonical;
+    }
+  }
+  return name;
+}
+
 export function parseReceiptText(text: string): ParsedReceipt {
   if (!text || typeof text !== 'string') {
     return {
@@ -319,7 +351,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
     detectedCategory = 'Food';
   } else {
     // Fallback: Check header lines against merchant catalog
-    for (let i = 0; i < Math.min(rawLines.length, 12); i++) {
+    for (let i = 0; i < Math.min(rawLines.length, 30); i++) {
       const lineLower = rawLines[i].toLowerCase();
       for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
         if (key === 'a&w') {
@@ -480,7 +512,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
 
     // Must have a valid item price
     if (linePrice && linePrice > 0 && linePrice < 1500) {
-      let cleanName = cleanProductName(line);
+      let cleanName = repairKnownProductName(cleanProductName(line));
 
       // Quantity multiplier
       let quantity = 1;
