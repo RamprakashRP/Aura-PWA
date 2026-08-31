@@ -9,31 +9,49 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Register Offline Service Worker core on load
+// Dynamic Service Worker with Instant Auto-Refresh on Deployment
 if ('serviceWorker' in navigator) {
   if (import.meta.env.DEV) {
-    // Programmatically unregister any active service worker in development
-    // to prevent caching/HMR loops from serving stale assets.
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (const registration of registrations) {
         registration.unregister().then((success) => {
           if (success) {
-            console.log('Unregistered active service worker in development mode to prevent caching loops.');
-            // Clear caches to be fully pristine
             caches.keys().then((keys) => {
               keys.forEach((key) => caches.delete(key));
             });
-            // Force a single clean reload to get fresh network files
-            window.location.reload();
           }
         });
       }
     });
   } else {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then((reg) => console.log('Aura Service Worker registered successfully:', reg.scope))
-        .catch((err) => console.error('Aura Service Worker registration failed:', err));
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Explicitly check for newer build on every load
+        reg.update();
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // Instantly activate new version and reload
+                if (newWorker.postMessage) {
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                }
+                window.location.reload();
+              }
+            });
+          }
+        });
+      }).catch((err) => console.error('Service worker registration failed:', err));
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     });
   }
 }
