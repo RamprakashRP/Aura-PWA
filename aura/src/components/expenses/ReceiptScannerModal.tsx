@@ -11,11 +11,12 @@ import {
   Percent, 
   FileText, 
   Sparkles, 
-  Receipt,
-  AlertCircle,
+  Receipt, 
   Divide,
   Eye,
-  FileCode
+  FileCode,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +28,7 @@ import {
   SAMPLE_RECEIPTS, 
   parseReceiptText 
 } from '../../lib/receiptParser';
+import { preprocessImageForOcr } from '../../lib/imagePreprocessor';
 import Tesseract from 'tesseract.js';
 
 interface ReceiptScannerModalProps {
@@ -40,7 +42,12 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const { user } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  // Camera & Viewfinder State
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
 
   // Parsing & Receipt State
   const [isScanning, setIsScanning] = useState(false);
@@ -63,68 +70,133 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
 
-  // Load Contacts for Bill Splitting
+  // Load Contacts
   useEffect(() => {
     tabsApi.getContacts().then((data) => {
       setContacts(data);
     });
+    return () => {
+      stopCameraStream();
+    };
   }, []);
 
-  // Real OCR Processing on Image / Camera Snap
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Stop Camera Stream Helper
+  const stopCameraStream = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  // Start Live Back Camera Viewfinder
+  const startLiveCamera = async (facing: 'environment' | 'user' = 'environment') => {
+    stopCameraStream();
+    try {
+      setIsCameraActive(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.warn('Direct back-camera stream failed, falling back to native file capture:', err);
+      setIsCameraActive(false);
+      fileInputRef.current?.click();
+    }
+  };
+
+  const toggleCameraFacing = () => {
+    const nextFacing = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    setCameraFacingMode(nextFacing);
+    startLiveCamera(nextFacing);
+  };
+
+  // Shutter Snapshot from Viewfinder
+  const captureFrameFromCamera = async () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      stopCameraStream();
+      await processImageWithOcr(dataUrl);
+    }
+  };
+
+  // Process any image dataURL with Contrast Enhancement + Tesseract OCR
+  const processImageWithOcr = async (rawImageUrl: string) => {
+    setIsScanning(true);
+    setScanProgress(10);
+    setScanStatusMessage('Enhancing image contrast & text clarity...');
+    setReceiptImage(rawImageUrl);
+
+    try {
+      // 1. Image Preprocessing (Grayscale + Adaptive Contrast Boost)
+      const preprocessed = await preprocessImageForOcr(rawImageUrl);
+
+      setScanProgress(25);
+      setScanStatusMessage('Reading store name, line items & prices...');
+
+      // 2. Execute Tesseract OCR
+      const { data: { text } } = await Tesseract.recognize(
+        preprocessed,
+        'eng',
+        {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.round((m.progress || 0) * 100);
+              setScanProgress(Math.max(25, pct));
+              setScanStatusMessage(`Scanning items & totals (${pct}%)...`);
+            }
+          }
+        }
+      );
+
+      setRawOcrText(text);
+
+      // 3. Parse with enhanced Canadian regex engine
+      const parsed = parseReceiptText(text);
+      parsed.imageUrl = rawImageUrl;
+
+      setScannedReceipt(parsed);
+      setIsScanning(false);
+      setStep('review');
+    } catch (err: any) {
+      console.error('OCR scan error:', err);
+      const fallbackParsed = parseReceiptText('Store Receipt');
+      fallbackParsed.imageUrl = rawImageUrl;
+      setScannedReceipt(fallbackParsed);
+      setIsScanning(false);
+      setStep('review');
+    }
+  };
+
+  // Handle Gallery / File Upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsScanning(true);
-    setScanProgress(5);
-    setScanStatusMessage('Loading receipt image into OCR neural worker...');
-
     const reader = new FileReader();
-
     reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
-      setReceiptImage(dataUrl);
-
-      try {
-        setScanStatusMessage('Recognizing text & Canadian store line items...');
-        
-        // Execute Real Client-Side OCR with Tesseract
-        const { data: { text } } = await Tesseract.recognize(
-          dataUrl,
-          'eng',
-          {
-            logger: (m) => {
-              if (m.status === 'recognizing text') {
-                const pct = Math.round((m.progress || 0) * 100);
-                setScanProgress(Math.max(10, pct));
-                setScanStatusMessage(`Scanning line items & prices (${pct}%)...`);
-              }
-            }
-          }
-        );
-
-        setRawOcrText(text);
-
-        // Parse extracted text into items, tax, total
-        const parsed = parseReceiptText(text);
-        parsed.imageUrl = dataUrl;
-
-        setScannedReceipt(parsed);
-        setIsScanning(false);
-        setStep('review');
-      } catch (err: any) {
-        console.error('Tesseract OCR error:', err);
-        setScanStatusMessage('OCR scan encountered an issue. Falling back to quick analysis...');
-        
-        // Graceful fallback to parsed heuristics
-        const parsed = parseReceiptText(file.name);
-        parsed.imageUrl = dataUrl;
-        setScannedReceipt(parsed);
-        setIsScanning(false);
-        setStep('review');
-      }
+      await processImageWithOcr(dataUrl);
     };
-
     reader.readAsDataURL(file);
   };
 
@@ -194,7 +266,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     });
   };
 
-  // Friend Selection for Splitting
+  // Friend Selection
   const toggleFriend = (id: string) => {
     if (selectedFriendIds.includes(id)) {
       setSelectedFriendIds(selectedFriendIds.filter(fId => fId !== id));
@@ -205,23 +277,21 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
   // Split Calculations
   const totalAmount = scannedReceipt?.total || 0;
-  const totalParticipants = selectedFriendIds.length + 1; // Friends + You
+  const totalParticipants = selectedFriendIds.length + 1;
 
   const equalSplitAmount = totalParticipants > 0 ? Number((totalAmount / totalParticipants).toFixed(2)) : 0;
-
   const sumOfPercentages = Object.values(customPercentages).reduce((s, p) => s + (Number(p) || 0), 0);
   const myPercentage = Math.max(0, 100 - sumOfPercentages);
 
   const sumOfCustomAmounts = Object.values(customAmounts).reduce((s, a) => s + (Number(a) || 0), 0);
   const remainingUnallocated = Number((totalAmount - sumOfCustomAmounts).toFixed(2));
 
-  // Final Submission (Ledger & Tabs)
+  // Save to Ledger & Tabs
   const handleSaveAndSplit = async () => {
     if (!scannedReceipt || !user?.id) return;
     setIsSubmitting(true);
 
     try {
-      // 1. Save Transaction to Ledger
       const txPayload = {
         user_id: user.id,
         description: `${scannedReceipt.merchant} (Receipt Scan)`,
@@ -236,7 +306,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
       await supabase.from('transactions').insert(txPayload);
 
-      // 2. If bill split is enabled with friends, post to Tabs & Debt Entries
       if (enableSplit && selectedFriendIds.length > 0) {
         const participantPayloads = selectedFriendIds.map((contactId) => {
           const friend = contacts.find(c => c.id === contactId);
@@ -276,9 +345,9 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   };
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-3xl bg-[#080808] border border-zinc-800 shadow-2xl relative overflow-hidden text-slate-100"
+        className="w-full max-w-3xl max-h-[94vh] flex flex-col rounded-3xl bg-[#080808] border border-zinc-800 shadow-2xl relative overflow-hidden text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         <div 
@@ -286,7 +355,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
           style={{ background: `linear-gradient(90deg, ${auraColor}, #00f2fe)` }}
         />
 
-        {/* Modal Header */}
+        {/* Header */}
         <div className="p-4 sm:p-5 border-b border-zinc-800 flex justify-between items-center flex-shrink-0 bg-[#080808]">
           <div className="flex items-center gap-3">
             <div 
@@ -297,28 +366,31 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">Smart Receipt & E-Bill Scanner</h2>
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">Receipt Scanner & Splitter</h2>
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                  Real Tesseract OCR
+                  Enhanced OCR
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-zinc-400">
-                Snap real receipts or upload e-bills for OCR itemization and 3-way roommate splitting
+                Auto-detects Shoppers, Walmart, Costco, grocery items, taxes, and totals
               </p>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              stopCameraStream();
+              onClose();
+            }}
             className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer transition-colors"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Modal Body (Scrollable) */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-6 flex-1">
+        {/* Body */}
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
           {successToast ? (
             <div className="py-16 text-center space-y-3 animate-in zoom-in-95">
               <div className="w-16 h-16 rounded-2xl bg-emerald-950 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto shadow-2xl">
@@ -330,71 +402,110 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
               </p>
             </div>
           ) : step === 'upload' ? (
-            /* STEP 1: UPLOAD OR CAMERA CAPTURE */
-            <div className="space-y-6">
-              {/* Capture Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Camera Snap */}
-                <div 
-                  onClick={() => !isScanning && cameraInputRef.current?.click()}
-                  className={`p-6 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-cyan-500/80 hover:bg-cyan-950/20 transition-all text-center space-y-3 group ${
-                    isScanning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                  }`}
-                >
-                  <input 
-                    ref={cameraInputRef}
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment" 
-                    onChange={handleFileUpload}
-                    className="hidden" 
-                    disabled={isScanning}
+            <div className="space-y-5">
+              {/* LIVE REAR CAMERA VIEWFINDER */}
+              {isCameraActive ? (
+                <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-cyan-500 shadow-2xl animate-in zoom-in-95">
+                  <video 
+                    ref={videoRef} 
+                    playsInline 
+                    autoPlay 
+                    muted 
+                    className="w-full h-[320px] sm:h-[380px] object-cover"
                   />
-                  <div className="w-14 h-14 rounded-2xl bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <Camera size={26} />
+
+                  {/* Alignment Reticle Overlay */}
+                  <div className="absolute inset-4 border-2 border-dashed border-cyan-400/70 rounded-xl pointer-events-none flex flex-col justify-between p-3">
+                    <span className="text-[10px] uppercase font-bold text-cyan-300 bg-black/60 px-2 py-0.5 rounded self-start">
+                      Align Receipt Within Box
+                    </span>
+                    <span className="text-[10px] font-mono text-cyan-300 bg-black/60 px-2 py-0.5 rounded self-end">
+                      Rear Camera Active (HD)
+                    </span>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
-                      📸 Snap Real Photo with Camera
-                    </h4>
-                    <p className="text-xs text-zinc-400 mt-1">Take a live photo of your physical paper receipt</p>
+
+                  {/* Camera Controls Bar */}
+                  <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 px-4">
+                    <button
+                      type="button"
+                      onClick={toggleCameraFacing}
+                      className="p-3 rounded-full bg-black/70 hover:bg-black text-white border border-zinc-700 shadow-lg cursor-pointer"
+                      title="Flip Camera"
+                    >
+                      <RefreshCw size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={captureFrameFromCamera}
+                      className="px-6 py-3 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm shadow-2xl flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+                    >
+                      <Camera size={18} />
+                      <span>Capture & Scan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={stopCameraStream}
+                      className="p-3 rounded-full bg-black/70 hover:bg-black text-rose-400 border border-zinc-700 shadow-lg cursor-pointer"
+                      title="Close Camera"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
                 </div>
-
-                {/* Upload File / Image / PDF */}
-                <div 
-                  onClick={() => !isScanning && fileInputRef.current?.click()}
-                  className={`p-6 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-purple-500/80 hover:bg-purple-950/20 transition-all text-center space-y-3 group ${
-                    isScanning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                  }`}
-                >
-                  <input 
-                    ref={fileInputRef}
-                    type="file" 
-                    accept="image/*,application/pdf" 
-                    onChange={handleFileUpload}
-                    className="hidden" 
-                    disabled={isScanning}
-                  />
-                  <div className="w-14 h-14 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <UploadCloud size={26} />
+              ) : (
+                /* Capture Option Cards */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Live Back Camera Launcher */}
+                  <div 
+                    onClick={() => startLiveCamera('environment')}
+                    className="p-5 rounded-2xl bg-[#000000] border-2 border-dashed border-cyan-500/50 hover:border-cyan-400 hover:bg-cyan-950/20 transition-all cursor-pointer text-center space-y-2.5 group"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                      <Camera size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
+                        📸 Open Back Camera Viewfinder
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Launches rear camera with auto-focus & capture guide</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
-                      📁 Upload Photo or PDF E-Bill
-                    </h4>
-                    <p className="text-xs text-zinc-400 mt-1">Supports PNG, JPG, HEIC, and digital PDF invoices</p>
+
+                  {/* Photo / PDF File Picker */}
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-5 rounded-2xl bg-[#000000] border-2 border-dashed border-zinc-800 hover:border-purple-500/80 hover:bg-purple-950/20 transition-all cursor-pointer text-center space-y-2.5 group"
+                  >
+                    <input 
+                      ref={fileInputRef}
+                      type="file" 
+                      accept="image/*,application/pdf" 
+                      capture="environment"
+                      onChange={handleFileUpload}
+                      className="hidden" 
+                    />
+                    <div className="w-12 h-12 rounded-2xl bg-purple-950/80 border border-purple-500/40 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                      <UploadCloud size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
+                        📁 Upload Photo or PDF Receipt
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Pick existing picture from gallery or files</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Live OCR Progress Bar */}
+              {/* Progress Indicator */}
               {isScanning && (
-                <div className="p-6 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-center space-y-3 animate-in fade-in">
-                  <div className="w-10 h-10 rounded-full border-3 border-cyan-400 border-t-transparent animate-spin mx-auto" />
+                <div className="p-5 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-center space-y-3 animate-in fade-in">
+                  <div className="w-9 h-9 rounded-full border-3 border-cyan-400 border-t-transparent animate-spin mx-auto" />
                   <div>
                     <b className="text-sm text-cyan-300 block">{scanStatusMessage}</b>
-                    <span className="text-xs font-mono text-zinc-400">Tesseract OCR Processing ({scanProgress}%)</span>
+                    <span className="text-[11px] font-mono text-zinc-400">High-Contrast Neural OCR ({scanProgress}%)</span>
                   </div>
                   <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-700 max-w-md mx-auto">
                     <div 
@@ -405,164 +516,132 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 </div>
               )}
 
-              {/* Paste Raw Receipt Text Option */}
-              <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileCode size={13} className="text-cyan-400" />
-                    <span>Or Paste Email / Digital Receipt Text</span>
-                  </span>
-                </div>
+              {/* Raw Text Manual Input */}
+              <div className="p-3.5 rounded-2xl bg-[#000000] border border-zinc-800 space-y-2">
+                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileCode size={13} className="text-cyan-400" />
+                  <span>Or Paste E-Bill / Receipt Text Directly</span>
+                </span>
                 <div className="flex gap-2">
                   <textarea
                     rows={2}
-                    placeholder="e.g. Costco Wholesale\nMilk $5.49\nEggs $8.49\nTotal $13.98"
+                    placeholder="Shoppers Drug Mart\nTylenol $12.99\nToothpaste $4.49\nTotal $17.48"
                     value={manualTextToParse}
                     onChange={(e) => setManualTextToParse(e.target.value)}
-                    className="flex-1 bg-[#080808] border border-zinc-800 rounded-xl p-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 font-mono"
+                    className="flex-1 bg-[#080808] border border-zinc-800 rounded-xl p-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 font-mono"
                   />
                   <button
                     type="button"
                     onClick={handleParseManualText}
                     disabled={!manualTextToParse.trim()}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-cyan-300 cursor-pointer disabled:opacity-40 transition-colors self-end"
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-cyan-300 cursor-pointer disabled:opacity-40 self-end"
                   >
-                    Parse Text
+                    Parse
                   </button>
                 </div>
               </div>
 
               {/* 1-Click Demo Presets */}
-              <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                  <Sparkles size={14} className="text-cyan-400" />
-                  <span>Or Test with 1-Click Canadian Demo Receipts</span>
+              <div className="p-3.5 rounded-2xl bg-[#000000] border border-zinc-800 space-y-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                  <Sparkles size={13} className="text-cyan-400" />
+                  <span>Instant Canadian Test Receipts</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSample('shoppers_drug_mart')}
+                    className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-emerald-500/60 text-left text-xs cursor-pointer transition-all"
+                  >
+                    <b className="text-white block">💊 Shoppers Drug Mart</b>
+                    <span className="text-[10px] text-zinc-400">4 Items • $33.85 CAD</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleSelectSample('costco_groceries')}
-                    className="p-3 rounded-xl bg-[#080808] border border-zinc-800 hover:border-cyan-500/60 text-left text-xs cursor-pointer transition-all hover:scale-[1.02]"
+                    className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-cyan-500/60 text-left text-xs cursor-pointer transition-all"
                   >
                     <b className="text-white block">🛒 Costco Wholesale</b>
-                    <span className="text-[11px] text-zinc-400">6 Items • $78.10 CAD</span>
+                    <span className="text-[10px] text-zinc-400">6 Items • $78.10 CAD</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleSelectSample('roommate_dinner')}
-                    className="p-3 rounded-xl bg-[#080808] border border-zinc-800 hover:border-rose-500/60 text-left text-xs cursor-pointer transition-all hover:scale-[1.02]"
+                    className="p-2.5 rounded-xl bg-[#080808] border border-zinc-800 hover:border-rose-500/60 text-left text-xs cursor-pointer transition-all"
                   >
                     <b className="text-white block">🥩 The Keg Dinner</b>
-                    <span className="text-[11px] text-zinc-400">5 Items + Tip • $176.85</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectSample('uber_eats')}
-                    className="p-3 rounded-xl bg-[#080808] border border-zinc-800 hover:border-amber-500/60 text-left text-xs cursor-pointer transition-all hover:scale-[1.02]"
-                  >
-                    <b className="text-white block">🌯 Uber Eats (Chipotle)</b>
-                    <span className="text-[11px] text-zinc-400">4 Items • $57.74 CAD</span>
+                    <span className="text-[10px] text-zinc-400">5 Items • $176.85</span>
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            /* STEP 2: REVIEW ITEMS & BILL SPLIT CONFIGURATION */
+            /* STEP 2: REVIEW ITEMS & BILL SPLIT */
             scannedReceipt && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                {/* Top Info Bar: Merchant, Date, Category */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-[#000000] border border-zinc-800">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                      Merchant / Store
-                    </label>
-                    <input
-                      type="text"
-                      value={scannedReceipt.merchant}
-                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, merchant: e.target.value })}
-                      className="w-full bg-[#080808] border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-cyan-500"
-                    />
+              <div className="space-y-5 animate-in fade-in duration-200">
+                {/* Image Thumbnail & Merchant Bar */}
+                <div className="p-3.5 rounded-2xl bg-[#000000] border border-zinc-800 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {receiptImage && (
+                      <img 
+                        src={receiptImage} 
+                        alt="Receipt" 
+                        className="w-12 h-12 rounded-xl object-cover border border-zinc-700 flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <input
+                        type="text"
+                        value={scannedReceipt.merchant}
+                        onChange={(e) => setScannedReceipt({ ...scannedReceipt, merchant: e.target.value })}
+                        className="bg-transparent text-sm font-black text-white focus:outline-none focus:border-b border-cyan-400 truncate w-full"
+                      />
+                      <span className="text-[10px] text-cyan-400 font-mono">Recognized Canadian Store</span>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                      Purchase Date
-                    </label>
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <input
                       type="date"
                       value={scannedReceipt.date}
                       onChange={(e) => setScannedReceipt({ ...scannedReceipt, date: e.target.value })}
-                      className="w-full bg-[#080808] border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
+                      className="bg-[#080808] border border-zinc-800 rounded-lg px-2 py-1 text-xs text-white font-mono"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                      Category
-                    </label>
-                    <select
-                      value={scannedReceipt.category}
-                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, category: e.target.value })}
-                      className="w-full bg-[#080808] border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
-                    >
-                      <option value="Groceries">Groceries</option>
-                      <option value="Food">Dining & Food</option>
-                      <option value="Shopping">Shopping</option>
-                      <option value="Transport">Transport</option>
-                      <option value="Entertainment">Entertainment</option>
-                      <option value="Studies">Studies / Pharmacy</option>
-                    </select>
                   </div>
                 </div>
 
-                {/* Optional Raw OCR Drawer Button */}
+                {/* Raw OCR Text Drawer */}
                 {rawOcrText && (
                   <div>
                     <button
                       type="button"
                       onClick={() => setShowRawTextDrawer(!showRawTextDrawer)}
-                      className="text-[11px] text-zinc-400 hover:text-cyan-300 flex items-center gap-1 font-mono cursor-pointer"
+                      className="text-[10px] text-zinc-400 hover:text-cyan-300 flex items-center gap-1 font-mono cursor-pointer"
                     >
-                      <Eye size={13} />
+                      <Eye size={12} />
                       <span>{showRawTextDrawer ? 'Hide Raw OCR Text' : 'Inspect Raw OCR Extracted Text'}</span>
                     </button>
                     {showRawTextDrawer && (
-                      <pre className="mt-2 p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-[10px] font-mono text-zinc-300 max-h-36 overflow-y-auto whitespace-pre-wrap">
+                      <pre className="mt-1.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-[10px] font-mono text-zinc-300 max-h-32 overflow-y-auto whitespace-pre-wrap">
                         {rawOcrText}
                       </pre>
                     )}
                   </div>
                 )}
 
-                
-                {/* Receipt Image Preview Thumbnail */}
-                {receiptImage && (
-                  <div className="p-3 rounded-2xl bg-[#000000] border border-zinc-800 flex items-center gap-3">
-                    <img 
-                      src={receiptImage} 
-                      alt="Scanned Receipt" 
-                      className="w-12 h-12 rounded-xl object-cover border border-zinc-700 flex-shrink-0"
-                    />
-                    <div className="truncate">
-                      <b className="text-xs text-white block truncate">{scannedReceipt.merchant}</b>
-                      <span className="text-[10px] text-cyan-400 font-mono">Real Optical Character Recognition (Tesseract OCR)</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Itemized Breakdown Table */}
-                <div className="space-y-3">
+                {/* Items Table */}
+                <div className="space-y-2.5">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                      <FileText size={14} className="text-cyan-400" />
-                      <span>Extracted Line Items ({scannedReceipt.items.length})</span>
+                      <FileText size={13} className="text-cyan-400" />
+                      <span>Recognized Items ({scannedReceipt.items.length})</span>
                     </h3>
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[11px] text-cyan-300 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[11px] text-cyan-300 font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <Plus size={12} />
                       <span>Add Item</span>
@@ -570,37 +649,37 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
 
                   <div className="rounded-2xl border border-zinc-800 overflow-hidden bg-[#000000]">
-                    <div className="grid grid-cols-12 gap-2 px-3.5 py-2 bg-zinc-900/60 border-b border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                    <div className="grid grid-cols-12 gap-2 px-3 py-1.5 bg-zinc-900/60 border-b border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-400">
                       <span className="col-span-6">Item Description</span>
                       <span className="col-span-2 text-center">Qty</span>
                       <span className="col-span-3 text-right">Price</span>
                       <span className="col-span-1 text-center"></span>
                     </div>
 
-                    <div className="divide-y divide-zinc-800/60 max-h-56 overflow-y-auto">
+                    <div className="divide-y divide-zinc-800/60 max-h-48 overflow-y-auto">
                       {scannedReceipt.items.map((item) => (
-                        <div key={item.id} className="grid grid-cols-12 gap-2 px-3.5 py-2 items-center text-xs">
+                        <div key={item.id} className="grid grid-cols-12 gap-2 px-3 py-1.5 items-center text-xs">
                           <input
                             type="text"
                             value={item.name}
                             onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                            className="col-span-6 bg-transparent border-0 text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded px-1"
+                            className="col-span-6 bg-transparent border-0 text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded px-1 text-xs"
                           />
                           <input
                             type="number"
                             min="1"
                             value={item.quantity}
                             onChange={(e) => handleItemChange(item.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                            className="col-span-2 bg-[#080808] border border-zinc-800 rounded text-center py-0.5 text-zinc-300 focus:outline-none focus:border-cyan-500 font-mono"
+                            className="col-span-2 bg-[#080808] border border-zinc-800 rounded text-center py-0.5 text-zinc-300 font-mono text-xs"
                           />
-                          <div className="col-span-3 text-right font-mono flex items-center justify-end gap-1">
+                          <div className="col-span-3 text-right font-mono flex items-center justify-end gap-1 text-xs">
                             <span className="text-zinc-500">$</span>
                             <input
                               type="number"
                               step="0.01"
                               value={item.price}
                               onChange={(e) => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)}
-                              className="w-20 bg-[#080808] border border-zinc-800 rounded text-right px-1.5 py-0.5 text-white font-bold focus:outline-none focus:border-cyan-500"
+                              className="w-16 bg-[#080808] border border-zinc-800 rounded text-right px-1 py-0.5 text-white font-bold"
                             />
                           </div>
                           <div className="col-span-1 text-center">
@@ -609,15 +688,15 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                               onClick={() => handleDeleteItem(item.id)}
                               className="text-zinc-600 hover:text-rose-400 p-1 cursor-pointer"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Totals Summary Footer */}
-                    <div className="p-3.5 bg-zinc-950 border-t border-zinc-800 space-y-1.5 text-xs">
+                    {/* Financial Summary */}
+                    <div className="p-3 bg-zinc-950 border-t border-zinc-800 space-y-1 text-xs">
                       <div className="flex justify-between text-zinc-400">
                         <span>Items Subtotal:</span>
                         <span className="font-mono text-white">${scannedReceipt.subtotal.toFixed(2)}</span>
@@ -638,32 +717,12 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                 total: Number((scannedReceipt.subtotal + taxVal + scannedReceipt.tip).toFixed(2)),
                               });
                             }}
-                            className="w-16 bg-[#000000] border border-zinc-800 rounded text-right px-1 text-white"
+                            className="w-14 bg-[#000000] border border-zinc-800 rounded text-right px-1 text-white text-xs"
                           />
                         </div>
                       </div>
-                      <div className="flex justify-between items-center text-zinc-400">
-                        <span>Tip / Gratuity:</span>
-                        <div className="flex items-center gap-1 font-mono">
-                          <span>$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={scannedReceipt.tip}
-                            onChange={(e) => {
-                              const tipVal = parseFloat(e.target.value) || 0;
-                              setScannedReceipt({
-                                ...scannedReceipt,
-                                tip: tipVal,
-                                total: Number((scannedReceipt.subtotal + scannedReceipt.tax + tipVal).toFixed(2)),
-                              });
-                            }}
-                            className="w-16 bg-[#000000] border border-zinc-800 rounded text-right px-1 text-white"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-zinc-800">
-                        <span className="text-cyan-400">Grand Total:</span>
+                      <div className="flex justify-between text-sm font-bold text-white pt-1.5 border-t border-zinc-800">
+                        <span className="text-cyan-400">Total Bill:</span>
                         <span className="font-mono text-base font-black text-cyan-400">
                           ${scannedReceipt.total.toFixed(2)} <span className="text-xs text-zinc-400">{scannedReceipt.currency}</span>
                         </span>
@@ -672,12 +731,12 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
                 </div>
 
-                {/* Bill Split Engine with Roommates */}
-                <div className="p-5 rounded-2xl bg-[#000000] border border-zinc-800 space-y-4">
+                {/* 3-Mode Roommate Split Module */}
+                <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3.5">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <Users size={16} className="text-cyan-400" />
-                      <h3 className="text-sm font-bold text-white">Split This Bill With Roommates / Friends?</h3>
+                      <Users size={15} className="text-cyan-400" />
+                      <h3 className="text-xs sm:text-sm font-bold text-white">Split This Bill With Roommates?</h3>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
@@ -686,22 +745,22 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                         onChange={(e) => setEnableSplit(e.target.checked)} 
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                      <div className="w-10 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
                     </label>
                   </div>
 
                   {enableSplit && (
-                    <div className="space-y-4 pt-2 animate-in fade-in">
+                    <div className="space-y-3 pt-1 animate-in fade-in">
                       <div>
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-2">
-                          1. Select Friends To Share Bill:
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
+                          Select Friends:
                         </span>
                         {contacts.length === 0 ? (
-                          <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400">
-                            No friends added yet. You can add friends on the <b>Tabs</b> page.
+                          <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400">
+                            No friends added yet. Add friends on the Tabs page.
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             {contacts.map((c) => {
                               const isSelected = selectedFriendIds.includes(c.id);
                               return (
@@ -709,16 +768,16 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                   key={c.id}
                                   type="button"
                                   onClick={() => toggleFriend(c.id)}
-                                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                                  className={`px-2.5 py-1 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
                                     isSelected
-                                      ? 'bg-cyan-950/80 border-cyan-400 text-cyan-300 ring-1 ring-cyan-400'
-                                      : 'bg-[#080808] border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                                      ? 'bg-cyan-950 border-cyan-400 text-cyan-300 ring-1 ring-cyan-400'
+                                      : 'bg-[#080808] border-zinc-800 text-zinc-400'
                                   }`}
                                 >
                                   <img
                                     src={c.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.name)}`}
                                     alt={c.name}
-                                    className="w-5 h-5 rounded-full"
+                                    className="w-4 h-4 rounded-full"
                                   />
                                   <span>{c.name}</span>
                                 </button>
@@ -729,79 +788,64 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                       </div>
 
                       {selectedFriendIds.length > 0 && (
-                        <div className="space-y-3 pt-2">
-                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                            2. Choose Split Distribution Mode:
-                          </span>
-
-                          <div className="grid grid-cols-3 gap-2 p-1 bg-zinc-900 rounded-xl">
+                        <div className="space-y-2.5 pt-1">
+                          <div className="grid grid-cols-3 gap-1.5 p-1 bg-zinc-900 rounded-xl">
                             <button
                               type="button"
                               onClick={() => setSplitMode('equal')}
-                              className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                splitMode === 'equal' ? 'bg-cyan-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                              className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
+                                splitMode === 'equal' ? 'bg-cyan-600 text-white' : 'text-zinc-400'
                               }`}
                             >
-                              <Divide size={14} />
+                              <Divide size={12} />
                               <span>Equal (1/N)</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => setSplitMode('percentage')}
-                              className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                splitMode === 'percentage' ? 'bg-cyan-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                              className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
+                                splitMode === 'percentage' ? 'bg-cyan-600 text-white' : 'text-zinc-400'
                               }`}
                             >
-                              <Percent size={14} />
-                              <span>Percentage (%)</span>
+                              <Percent size={12} />
+                              <span>Percent (%)</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => setSplitMode('custom')}
-                              className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                splitMode === 'custom' ? 'bg-cyan-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                              className={`py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
+                                splitMode === 'custom' ? 'bg-cyan-600 text-white' : 'text-zinc-400'
                               }`}
                             >
-                              <DollarSign size={14} />
-                              <span>Exact Amount ($)</span>
+                              <DollarSign size={12} />
+                              <span>Exact ($)</span>
                             </button>
                           </div>
 
                           {splitMode === 'equal' && (
-                            <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 text-xs flex justify-between items-center">
-                              <div>
-                                <b className="text-white block">Divided evenly across {totalParticipants} people</b>
-                                <span className="text-zinc-400 text-[11px]">(You + {selectedFriendIds.length} roommates)</span>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-base font-black font-mono text-cyan-300">
-                                  ${equalSplitAmount.toFixed(2)}
-                                </span>
-                                <span className="text-[10px] text-zinc-400 block">/ person</span>
-                              </div>
+                            <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs flex justify-between items-center">
+                              <span className="text-zinc-300">Divided by {totalParticipants} people</span>
+                              <span className="text-sm font-black font-mono text-cyan-300">
+                                ${equalSplitAmount.toFixed(2)} / person
+                              </span>
                             </div>
                           )}
 
                           {splitMode === 'percentage' && (
-                            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 text-xs">
-                              <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
-                                <span className="font-bold text-white">Your Share (You Paid Total):</span>
-                                <span className="font-mono font-bold text-cyan-400">
-                                  {myPercentage}% (${((totalAmount * myPercentage) / 100).toFixed(2)})
-                                </span>
+                            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+                              <div className="flex justify-between font-bold text-white pb-1.5 border-b border-zinc-800">
+                                <span>Your Share:</span>
+                                <span className="font-mono text-cyan-400">{myPercentage}% (${((totalAmount * myPercentage) / 100).toFixed(2)})</span>
                               </div>
-
                               {selectedFriendIds.map((cId) => {
                                 const friend = contacts.find(c => c.id === cId);
                                 const pct = customPercentages[cId] || Number((100 / totalParticipants).toFixed(0));
-                                const friendShare = ((totalAmount * pct) / 100).toFixed(2);
-
                                 return (
-                                  <div key={cId} className="flex justify-between items-center gap-3">
-                                    <span className="text-zinc-300 font-medium truncate">{friend?.name}:</span>
-                                    <div className="flex items-center gap-2">
+                                  <div key={cId} className="flex justify-between items-center">
+                                    <span className="text-zinc-300">{friend?.name}:</span>
+                                    <div className="flex items-center gap-1 font-mono">
                                       <input
                                         type="number"
                                         min="0"
@@ -811,45 +855,32 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                           const val = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                                           setCustomPercentages({ ...customPercentages, [cId]: val });
                                         }}
-                                        className="w-16 bg-[#000000] border border-zinc-700 rounded p-1 text-center font-mono text-white"
+                                        className="w-12 bg-black border border-zinc-700 rounded p-0.5 text-center text-white"
                                       />
-                                      <span className="text-zinc-500 font-mono">%</span>
-                                      <span className="font-mono text-zinc-400 text-[11px] w-16 text-right">${friendShare}</span>
+                                      <span className="text-zinc-500">%</span>
+                                      <span className="text-zinc-400 text-[10px] w-14 text-right">${((totalAmount * pct) / 100).toFixed(2)}</span>
                                     </div>
                                   </div>
                                 );
                               })}
-
-                              {sumOfPercentages > 100 && (
-                                <div className="text-rose-400 text-[11px] flex items-center gap-1 font-bold">
-                                  <AlertCircle size={13} />
-                                  <span>Total percentages exceed 100%!</span>
-                                </div>
-                              )}
                             </div>
                           )}
 
                           {splitMode === 'custom' && (
-                            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 text-xs">
-                              <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
-                                <div>
-                                  <span className="font-bold text-white block">Allocation Balance:</span>
-                                  <span className="text-[10px] text-zinc-400">Total bill: ${totalAmount.toFixed(2)}</span>
-                                </div>
-                                <span className={`font-mono font-bold px-2 py-0.5 rounded ${
-                                  remainingUnallocated === 0
-                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                                    : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+                              <div className="flex justify-between items-center pb-1.5 border-b border-zinc-800">
+                                <span className="font-bold text-white">Status:</span>
+                                <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+                                  remainingUnallocated === 0 ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'
                                 }`}>
                                   {remainingUnallocated === 0 ? 'Fully Allocated ✅' : `Remaining: $${remainingUnallocated.toFixed(2)}`}
                                 </span>
                               </div>
-
                               {selectedFriendIds.map((cId) => {
                                 const friend = contacts.find(c => c.id === cId);
                                 return (
-                                  <div key={cId} className="flex justify-between items-center gap-3">
-                                    <span className="text-zinc-300 font-medium truncate">{friend?.name} owes:</span>
+                                  <div key={cId} className="flex justify-between items-center">
+                                    <span className="text-zinc-300">{friend?.name} owes:</span>
                                     <div className="flex items-center gap-1 font-mono">
                                       <span className="text-zinc-500">$</span>
                                       <input
@@ -861,7 +892,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                           const val = Math.max(0, parseFloat(e.target.value) || 0);
                                           setCustomAmounts({ ...customAmounts, [cId]: val });
                                         }}
-                                        className="w-24 bg-[#000000] border border-zinc-700 rounded p-1 text-right font-mono text-white focus:outline-none focus:border-cyan-400"
+                                        className="w-20 bg-black border border-zinc-700 rounded p-0.5 text-right text-white"
                                       />
                                     </div>
                                   </div>
@@ -875,31 +906,31 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   )}
                 </div>
 
-                {/* Modal Footer Actions */}
-                <div className="flex justify-between items-center pt-4 border-t border-zinc-800">
+                {/* Footer */}
+                <div className="flex justify-between items-center pt-3 border-t border-zinc-800">
                   <button
                     type="button"
                     onClick={() => setStep('upload')}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer"
                   >
-                    ← Rescan / Change File
+                    ← Rescan
                   </button>
 
                   <button
                     type="button"
                     onClick={handleSaveAndSplit}
                     disabled={isSubmitting}
-                    className="px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-2"
+                    className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-xl cursor-pointer transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-1.5"
                     style={{ background: `linear-gradient(135deg, ${auraColor}, #00b4d8)` }}
                   >
                     {isSubmitting ? (
                       <>
                         <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                        <span>Logging & Splitting...</span>
+                        <span>Logging...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 size={15} />
+                        <Zap size={13} />
                         <span>{enableSplit && selectedFriendIds.length > 0 ? 'Log to Ledger & Post Tabs IOUs' : 'Save Scanned Bill to Ledger'}</span>
                       </>
                     )}

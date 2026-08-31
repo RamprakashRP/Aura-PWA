@@ -19,8 +19,10 @@ export interface ParsedReceipt {
   rawText?: string;
 }
 
-// Common Canadian Retailers & Category Rules
 export const CANADIAN_MERCHANTS: Record<string, { name: string; category: string }> = {
+  shoppers: { name: 'Shoppers Drug Mart', category: 'Studies' },
+  pharmaprix: { name: 'Pharmaprix / Shoppers', category: 'Studies' },
+  rexall: { name: 'Rexall PharmaPlus', category: 'Studies' },
   costco: { name: 'Costco Wholesale', category: 'Groceries' },
   loblaws: { name: 'Loblaws', category: 'Groceries' },
   metro: { name: 'Metro', category: 'Groceries' },
@@ -34,7 +36,6 @@ export const CANADIAN_MERCHANTS: Record<string, { name: string; category: string
   tims: { name: 'Tim Hortons', category: 'Food' },
   starbucks: { name: 'Starbucks Coffee', category: 'Food' },
   mcdonald: { name: "McDonald's", category: 'Food' },
-  shoppers: { name: 'Shoppers Drug Mart', category: 'Studies' },
   lcbo: { name: 'LCBO', category: 'Entertainment' },
   'beer store': { name: 'The Beer Store', category: 'Entertainment' },
   'uber eats': { name: 'Uber Eats', category: 'Food' },
@@ -75,6 +76,22 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
     tip: 0,
     total: 78.10,
   },
+  shoppers_drug_mart: {
+    merchant: 'Shoppers Drug Mart',
+    date: new Date().toISOString().split('T')[0],
+    currency: 'CAD',
+    category: 'Studies',
+    items: [
+      { id: 'item-1', name: 'Tylenol Extra Strength 100s', price: 12.99, quantity: 1 },
+      { id: 'item-2', name: 'Colgate Total Toothpaste 120ml', price: 4.49, quantity: 1 },
+      { id: 'item-3', name: 'Kleenex Ultra Soft 6pk', price: 8.99, quantity: 1 },
+      { id: 'item-4', name: 'Life Brand Hand Sanitizer', price: 3.49, quantity: 1 },
+    ],
+    subtotal: 29.96,
+    tax: 3.89,
+    tip: 0,
+    total: 33.85,
+  },
   roommate_dinner: {
     merchant: 'The Keg Steakhouse + Bar',
     date: new Date().toISOString().split('T')[0],
@@ -111,16 +128,37 @@ export const SAMPLE_RECEIPTS: Record<string, ParsedReceipt> = {
 };
 
 /**
- * Intelligent Real OCR Receipt Parser
- * Parses raw extracted text lines into structured line items, taxes, and totals
+ * Super-Resilient Canadian & Universal Receipt Parser
+ * Handles Shoppers Drug Mart, Walmart, Costco, Loblaws, etc.
+ * Cleans UPC numbers, tax codes, Optimum points, and messy OCR text
  */
 export function parseReceiptText(text: string): ParsedReceipt {
-  const lines = text
+  if (!text || typeof text !== 'string') {
+    return {
+      merchant: 'Store Receipt',
+      date: new Date().toISOString().split('T')[0],
+      items: [{ id: 'item-default-1', name: 'Scanned Purchase', price: 0, quantity: 1 }],
+      subtotal: 0,
+      tax: 0,
+      tip: 0,
+      total: 0,
+      currency: 'CAD',
+      category: 'Groceries',
+      rawText: '',
+    };
+  }
+
+  // Normalize OCR artifacts (e.g. "12,99" -> "12.99", "$ 12.99" -> "$12.99", "O" instead of "0")
+  const normalizedText = text
+    .replace(/(\d+),(\d{2})/g, '$1.$2')
+    .replace(/\$\s+/g, '$');
+
+  const lines = normalizedText
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  let detectedMerchant = 'Scanned Store Receipt';
+  let detectedMerchant = 'Store Receipt';
   let detectedCategory = 'Groceries';
   let detectedDate = new Date().toISOString().split('T')[0];
   const items: ReceiptItem[] = [];
@@ -129,8 +167,8 @@ export function parseReceiptText(text: string): ParsedReceipt {
   let tip = 0;
   let total = 0;
 
-  // 1. Detect Merchant Name from header lines (first 10 lines)
-  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+  // 1. Detect Canadian Merchant Name (Checking first 15 lines)
+  for (let i = 0; i < Math.min(lines.length, 15); i++) {
     const lineLower = lines[i].toLowerCase();
     for (const [key, info] of Object.entries(CANADIAN_MERCHANTS)) {
       if (lineLower.includes(key)) {
@@ -139,17 +177,17 @@ export function parseReceiptText(text: string): ParsedReceipt {
         break;
       }
     }
-    if (detectedMerchant !== 'Scanned Store Receipt') break;
+    if (detectedMerchant !== 'Store Receipt') break;
   }
 
-  // If merchant still generic, look for clean brand title in top lines
-  if (detectedMerchant === 'Scanned Store Receipt') {
-    for (let i = 0; i < Math.min(lines.length, 4); i++) {
+  // If still generic, look for clean header line
+  if (detectedMerchant === 'Store Receipt') {
+    for (let i = 0; i < Math.min(lines.length, 5); i++) {
       const clean = lines[i].replace(/[^A-Za-z0-9\s&'.-]/g, '').trim();
       if (
         clean.length >= 3 && 
         clean.length <= 35 && 
-        !/(welcome|receipt|store|invoice|order|tel|phone|address|date|cashier|terminal|lane)/i.test(clean) &&
+        !/(welcome|receipt|store|invoice|order|tel|phone|address|date|cashier|terminal|lane|gst|hst)/i.test(clean) &&
         !/^[0-9]+$/.test(clean)
       ) {
         detectedMerchant = clean;
@@ -158,7 +196,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // 2. Detect Date (e.g. 2026-08-30, 08/30/2026, 30-Aug-2026)
+  // 2. Detect Date
   for (const line of lines) {
     const dateMatch = line.match(/(?:\b)(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})(?:\b)/);
     if (dateMatch) {
@@ -172,32 +210,39 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
   }
 
-  // 3. Scan Lines for Line Items & Financial Summary
-  const priceRegex = /(?:\$\s*)?([0-9]+\.[0-9]{2})/g;
+  // 3. Scan Lines for Line Items & Financial Summaries
 
-  // Ignored metadata phrases
+  // Lines to ignore
   const noisePatterns = [
     'subtotal', 'sub total', 'sub-total', 'total', 'grand total', 'amount due', 'balance due',
     'tax', 'hst', 'gst', 'pst', 'tvh', 'tps', 'tvq', 'tip', 'gratuity',
     'visa', 'mastercard', 'amex', 'debit', 'interac', 'cash', 'change', 'tendered',
     'approved', 'auth', 'terminal', 'merchant id', 'member', 'cashier', 'items sold',
-    'return', 'policy', 'thank you', 'merci', 'telephone', 'phone', 'www.', '.com', '.ca'
+    'return', 'policy', 'thank you', 'merci', 'telephone', 'phone', 'www.', '.com', '.ca',
+    'optimum', 'points', 'pc optimum', 'bonus points', 'points earned', 'closing balance',
+    'reprint', 'duplicate', 'customer copy', 'trans #', 'store #'
   ];
+
+  // Helper to extract last valid monetary amount from line
+  const extractPriceFromLine = (line: string): number | null => {
+    const matches = [...line.matchAll(/(?:\$\s*)?([0-9]+\.[0-9]{2})/g)];
+    if (matches && matches.length > 0) {
+      return parseFloat(matches[matches.length - 1][1]);
+    }
+    return null;
+  };
 
   lines.forEach((line, idx) => {
     const lineLower = line.toLowerCase();
+    const linePrice = extractPriceFromLine(line);
 
-    // Check Subtotal
+    // 1. Check Subtotal
     if (lineLower.includes('subtotal') || lineLower.includes('sub total') || lineLower.includes('sub-total')) {
-      const match = line.match(priceRegex);
-      if (match) {
-        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
-        if (lastNum > 0) subtotal = lastNum;
-      }
+      if (linePrice && linePrice > 0) subtotal = linePrice;
       return;
     }
 
-    // Check Tax (HST / GST / PST / TVH)
+    // 2. Check Tax (HST / GST / PST / TVH)
     if (
       lineLower.includes('hst') || 
       lineLower.includes('gst') || 
@@ -205,78 +250,71 @@ export function parseReceiptText(text: string): ParsedReceipt {
       lineLower.includes('tvh') || 
       lineLower.includes('tax')
     ) {
-      const match = line.match(priceRegex);
-      if (match) {
-        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
-        if (lastNum > 0 && lastNum < (total || 1000)) tax += lastNum;
+      if (linePrice && linePrice > 0 && linePrice < (total || 1000)) {
+        tax += linePrice;
       }
       return;
     }
 
-    // Check Tip / Gratuity
+    // 3. Check Tip
     if (lineLower.includes('tip') || lineLower.includes('gratuity')) {
-      const match = line.match(priceRegex);
-      if (match) {
-        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
-        if (lastNum > 0) tip = lastNum;
-      }
+      if (linePrice && linePrice > 0) tip = linePrice;
       return;
     }
 
-    // Check Grand Total / Amount Due
+    // 4. Check Grand Total / Amount Due / Card Payment
     if (
       lineLower.startsWith('total') || 
       lineLower.includes('grand total') || 
       lineLower.includes('amount due') || 
-      lineLower.includes('balance') ||
+      lineLower.includes('balance due') ||
       lineLower.includes('mastercard') ||
-      lineLower.includes('visa')
+      lineLower.includes('visa') ||
+      lineLower.includes('interac') ||
+      lineLower.includes('approved')
     ) {
-      const match = line.match(priceRegex);
-      if (match) {
-        const lastNum = parseFloat(match[match.length - 1].replace('$', ''));
-        if (lastNum > 0 && lastNum >= total) total = lastNum;
+      if (linePrice && linePrice > 0) {
+        if (linePrice > total) total = linePrice;
       }
       return;
     }
 
-    // Check if line is metadata noise
+    // Check if line is generic receipt noise
     const isNoise = noisePatterns.some((np) => lineLower.includes(np));
     if (isNoise) return;
 
-    // Line Item Matcher: Look for text followed by price at the end
-    // Patterns:
-    // "1  Organic Milk 2L    5.49"
-    // "Kirkland Eggs 30pk   $8.49"
-    // "Bananas 1.2kg         2.30 H"
-    const itemMatch = line.match(/^([A-Za-z0-9\s&'.,#/-]{3,45})\s+(?:\$\s*)?([0-9]+\.[0-9]{2})(?:\s+[A-Za-z0-9*]+)?$/);
-    if (itemMatch) {
-      let rawName = itemMatch[1].trim();
-      const rawPrice = parseFloat(itemMatch[2]);
+    // 5. Line Item Extraction (Handling Shoppers Drug Mart UPC codes, e.g. "05700000000 TYLENOL 12.99 G")
+    if (linePrice && linePrice > 0 && linePrice < 2000) {
+      // Remove the price and trailing tax code (e.g. "$12.99 G", "12.99 H", "12.99")
+      let cleanName = line.replace(/(?:\$\s*)?[0-9]+\.[0-9]{2}(?:\s+[A-Za-z0-9*]+)?$/, '').trim();
 
-      // Remove quantity prefix if present (e.g. "1x", "2 @")
+      // Strip leading UPC barcode numbers (e.g. "05700012345 ", "0682000... ")
+      cleanName = cleanName.replace(/^[0-9]{6,16}\s+/, '').trim();
+
+      // Strip quantity multipliers (e.g. "2x ", "1 @ ")
       let quantity = 1;
-      const qtyMatch = rawName.match(/^([0-9]+)(?:\s*[xX*@]|\s+)\s*(.+)/);
+      const qtyMatch = cleanName.match(/^([0-9]+)(?:\s*[xX*@]|\s+)\s*(.+)/);
       if (qtyMatch) {
         quantity = Math.max(1, parseInt(qtyMatch[1], 10) || 1);
-        rawName = qtyMatch[2].trim();
+        cleanName = qtyMatch[2].trim();
       }
 
-      // Clean up item name
-      rawName = rawName.replace(/^[-*•#\d.\s]+/, '').trim();
+      // Strip leading punctuation
+      cleanName = cleanName.replace(/^[-*•#\d.\s]+/, '').trim();
 
-      if (rawName.length >= 2 && rawPrice > 0 && rawPrice < 5000) {
+      if (cleanName.length >= 2 && !/^[0-9]+$/.test(cleanName)) {
+        if (cleanName.length > 40) cleanName = cleanName.slice(0, 40);
         items.push({
           id: `item-${idx}-${Date.now()}`,
-          name: rawName,
-          price: rawPrice,
+          name: cleanName,
+          price: linePrice,
           quantity,
         });
       }
     }
   });
 
-  // Post-processing and fallbacks
+  // Calculate totals and reconcile
   const calculatedItemsSum = items.reduce((s, i) => s + (i.price * i.quantity), 0);
 
   if (subtotal === 0) {
@@ -287,7 +325,18 @@ export function parseReceiptText(text: string): ParsedReceipt {
     total = Number((subtotal + tax + tip).toFixed(2));
   }
 
-  // If no line items were detected (e.g., blurry photo or compact slip), create single primary item
+  // Fallback: If no line items extracted, search for any prominent dollar amount in entire text
+  if (total === 0 && subtotal === 0) {
+    const allPrices = [...normalizedText.matchAll(/(?:\$\s*)?([0-9]+\.[0-9]{2})/g)]
+      .map(m => parseFloat(m[1]))
+      .filter(p => p > 0 && p < 5000);
+
+    if (allPrices.length > 0) {
+      total = Math.max(...allPrices);
+      subtotal = total;
+    }
+  }
+
   if (items.length === 0) {
     items.push({
       id: `item-auto-${Date.now()}`,
