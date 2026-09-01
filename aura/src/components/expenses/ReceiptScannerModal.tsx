@@ -18,7 +18,10 @@ import {
   Zap,
   Layers,
   Check,
-  Split
+  Split,
+  UserCheck,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -72,7 +75,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const [basicSplitMode, setBasicSplitMode] = useState<'equal' | 'custom'>('equal');
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
 
-  // Advanced Item-by-Item Assignees Map: { [itemId]: string[] (array of friend IDs or 'me') }
+  // Advanced Item-by-Item Assignees Map: { [itemId]: string[] (array of friend IDs and/or 'me') }
   const [itemAssignees, setItemAssignees] = useState<Record<string, string[]>>({});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,22 +85,35 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   useEffect(() => {
     tabsApi.getContacts().then((data) => {
       setContacts(data);
+      // If user has contacts, pre-select them for instant convenience
+      if (data.length > 0 && selectedFriendIds.length === 0) {
+        setSelectedFriendIds(data.map(c => c.id));
+      }
     });
     return () => {
       stopCameraStream();
     };
   }, []);
 
-  // Initialize Item Assignees to 'me' when receipt loads
+  // Initialize Item Assignees to ALL people (Me + Selected Friends) whenever items or friends change
   useEffect(() => {
     if (scannedReceipt?.items) {
-      const initialMap: Record<string, string[]> = {};
-      scannedReceipt.items.forEach((item) => {
-        initialMap[item.id] = ['me'];
+      const allParticipantIds = ['me', ...selectedFriendIds];
+      setItemAssignees((prev) => {
+        const next: Record<string, string[]> = {};
+        scannedReceipt.items.forEach((item) => {
+          // If already configured by user, keep valid assignees, else default to all
+          if (prev[item.id] && prev[item.id].length > 0) {
+            next[item.id] = prev[item.id].filter(id => id === 'me' || selectedFriendIds.includes(id));
+            if (next[item.id].length === 0) next[item.id] = allParticipantIds;
+          } else {
+            next[item.id] = allParticipantIds;
+          }
+        });
+        return next;
       });
-      setItemAssignees(initialMap);
     }
-  }, [scannedReceipt]);
+  }, [scannedReceipt, selectedFriendIds]);
 
   const stopCameraStream = () => {
     if (mediaStreamRef.current) {
@@ -264,7 +280,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     });
     setItemAssignees({
       ...itemAssignees,
-      [newItemId]: ['me'],
+      [newItemId]: ['me', ...selectedFriendIds],
     });
   };
 
@@ -286,27 +302,18 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const toggleFriend = (id: string) => {
     if (selectedFriendIds.includes(id)) {
       setSelectedFriendIds(selectedFriendIds.filter(fId => fId !== id));
-      // Remove from item assignees
-      const updatedAssignees = { ...itemAssignees };
-      Object.keys(updatedAssignees).forEach((itemId) => {
-        updatedAssignees[itemId] = updatedAssignees[itemId].filter(aId => aId !== id);
-        if (updatedAssignees[itemId].length === 0) updatedAssignees[itemId] = ['me'];
-      });
-      setItemAssignees(updatedAssignees);
     } else {
       setSelectedFriendIds([...selectedFriendIds, id]);
     }
   };
 
-  // Toggle Assignee on Specific Item (Me or Friend)
+  // Assignee Management for Individual Items
   const toggleItemAssignee = (itemId: string, assigneeId: string) => {
-    const currentList = itemAssignees[itemId] || ['me'];
+    const currentList = itemAssignees[itemId] || [];
     let nextList: string[];
 
     if (currentList.includes(assigneeId)) {
       nextList = currentList.filter(id => id !== assigneeId);
-      // If list becomes empty, default to 'me'
-      if (nextList.length === 0) nextList = ['me'];
     } else {
       nextList = [...currentList, assigneeId];
     }
@@ -317,7 +324,6 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     });
   };
 
-  // Set Item Assignee to "All" (Everyone Selected + Me)
   const setItemToAll = (itemId: string) => {
     setItemAssignees({
       ...itemAssignees,
@@ -325,8 +331,36 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
     });
   };
 
+  const clearItemAssignees = (itemId: string) => {
+    setItemAssignees({
+      ...itemAssignees,
+      [itemId]: [],
+    });
+  };
+
+  // Global Bulk Actions
+  const handleAssignAllItemsToEveryone = () => {
+    if (!scannedReceipt) return;
+    const allIds = ['me', ...selectedFriendIds];
+    const newMap: Record<string, string[]> = {};
+    scannedReceipt.items.forEach((item) => {
+      newMap[item.id] = allIds;
+    });
+    setItemAssignees(newMap);
+  };
+
+  const handleAssignAllItemsToMe = () => {
+    if (!scannedReceipt) return;
+    const newMap: Record<string, string[]> = {};
+    scannedReceipt.items.forEach((item) => {
+      newMap[item.id] = ['me'];
+    });
+    setItemAssignees(newMap);
+  };
+
   // Financial Calculations
   const totalAmount = scannedReceipt?.total || 0;
+  const rawSubtotal = scannedReceipt?.subtotal || totalAmount;
   const taxAmount = scannedReceipt?.tax || 0;
   const tipAmount = scannedReceipt?.tip || 0;
   const totalParticipants = selectedFriendIds.length + 1;
@@ -336,51 +370,65 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
   const sumOfCustomAmounts = Object.values(customAmounts).reduce((s, a) => s + (Number(a) || 0), 0);
   const remainingUnallocated = Number((totalAmount - sumOfCustomAmounts).toFixed(2));
 
-  // Advanced Item-by-Item Shares Calculation
+  // Itemized Shares with Accurate Item-Level Tax Rate
   const calculateItemizedShares = () => {
-    const shares: Record<string, { subtotal: number; taxTip: number; total: number; itemsCount: number }> = {
-      me: { subtotal: 0, taxTip: 0, total: 0, itemsCount: 0 },
+    const shares: Record<string, { subtotal: number; taxShare: number; tipShare: number; total: number; itemsCount: number }> = {
+      me: { subtotal: 0, taxShare: 0, tipShare: 0, total: 0, itemsCount: 0 },
     };
 
     selectedFriendIds.forEach((fId) => {
-      shares[fId] = { subtotal: 0, taxTip: 0, total: 0, itemsCount: 0 };
+      shares[fId] = { subtotal: 0, taxShare: 0, tipShare: 0, total: 0, itemsCount: 0 };
     });
 
-    if (!scannedReceipt) return shares;
+    let totalAssignedSubtotal = 0;
+    let unassignedSubtotal = 0;
 
-    // Distribute Item Prices
+    if (!scannedReceipt) return { shares, unassignedSubtotal, unassignedTotal: 0 };
+
+    // 1. Calculate Exact Item Shares Per Assignee
     scannedReceipt.items.forEach((item) => {
-      const assignees = itemAssignees[item.id] || ['me'];
+      const assignees = itemAssignees[item.id] || [];
       const validAssignees = assignees.filter(id => id === 'me' || selectedFriendIds.includes(id));
-      const activeAssignees = validAssignees.length > 0 ? validAssignees : ['me'];
-      
       const itemCost = Number(item.price) * Number(item.quantity || 1);
-      const perAssigneeCost = itemCost / activeAssignees.length;
 
-      activeAssignees.forEach((aId) => {
-        if (shares[aId]) {
-          shares[aId].subtotal += perAssigneeCost;
-          shares[aId].itemsCount += 1;
-        }
-      });
+      if (validAssignees.length === 0) {
+        unassignedSubtotal += itemCost;
+      } else {
+        const perPersonCost = itemCost / validAssignees.length;
+        validAssignees.forEach((aId) => {
+          if (shares[aId]) {
+            shares[aId].subtotal += perPersonCost;
+            shares[aId].itemsCount += 1;
+            totalAssignedSubtotal += perPersonCost;
+          }
+        });
+      }
     });
 
-    // Distribute Tax & Tip proportionally
-    const totalExtra = taxAmount + tipAmount;
-    const combinedSubtotal = Object.values(shares).reduce((s, v) => s + v.subtotal, 0) || 1;
+    // 2. Calculate Effective Tax & Tip Rate per Dollar
+    const effectiveSubtotalBase = rawSubtotal > 0 ? rawSubtotal : (totalAssignedSubtotal + unassignedSubtotal) || 1;
+    const taxRate = taxAmount / effectiveSubtotalBase;
+    const tipRate = tipAmount / effectiveSubtotalBase;
 
+    // 3. Apply Exact Item-Level Tax & Tip to Each Person
     Object.keys(shares).forEach((aId) => {
-      const proportion = shares[aId].subtotal / combinedSubtotal;
-      const taxTipShare = totalExtra * proportion;
-      shares[aId].taxTip = Number(taxTipShare.toFixed(2));
-      shares[aId].total = Number((shares[aId].subtotal + taxTipShare).toFixed(2));
-      shares[aId].subtotal = Number(shares[aId].subtotal.toFixed(2));
+      const personSubtotal = shares[aId].subtotal;
+      const personTax = Number((personSubtotal * taxRate).toFixed(2));
+      const personTip = Number((personSubtotal * tipRate).toFixed(2));
+      
+      shares[aId].taxShare = personTax;
+      shares[aId].tipShare = personTip;
+      shares[aId].total = Number((personSubtotal + personTax + personTip).toFixed(2));
+      shares[aId].subtotal = Number(personSubtotal.toFixed(2));
     });
 
-    return shares;
+    const unassignedTax = Number((unassignedSubtotal * taxRate).toFixed(2));
+    const unassignedTotal = Number((unassignedSubtotal + unassignedTax).toFixed(2));
+
+    return { shares, unassignedSubtotal, unassignedTotal };
   };
 
-  const itemizedShares = calculateItemizedShares();
+  const { shares: itemizedShares, unassignedTotal } = calculateItemizedShares();
 
   // Save to Ledger & Tabs
   const handleSaveAndSplit = async () => {
@@ -491,7 +539,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
         </div>
 
         {/* Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 pr-3 sm:pr-5">
           {successToast ? (
             <div className="py-16 text-center space-y-3 animate-in zoom-in-95">
               <div className="w-16 h-16 rounded-2xl bg-emerald-950 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto shadow-2xl">
@@ -743,21 +791,21 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                   </div>
 
                   <div className="rounded-2xl border border-zinc-800 overflow-hidden bg-[#000000]">
-                    <div className="grid grid-cols-12 gap-2 px-3 py-1.5 bg-zinc-900/60 border-b border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-400">
+                    <div className="grid grid-cols-12 gap-2 px-3.5 py-2 bg-zinc-900/60 border-b border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-400">
                       <span className="col-span-6">Item Description</span>
                       <span className="col-span-2 text-center">Qty</span>
                       <span className="col-span-3 text-right">Price</span>
                       <span className="col-span-1 text-center"></span>
                     </div>
 
-                    <div className="divide-y divide-zinc-800/60 max-h-48 overflow-y-auto">
+                    <div className="divide-y divide-zinc-800/60 max-h-48 overflow-y-auto pr-1">
                       {scannedReceipt.items.map((item) => (
-                        <div key={item.id} className="grid grid-cols-12 gap-2 px-3 py-1.5 items-center text-xs">
+                        <div key={item.id} className="grid grid-cols-12 gap-2 px-3.5 py-1.5 items-center text-xs">
                           <input
                             type="text"
                             value={item.name}
                             onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                            className="col-span-6 bg-transparent border-0 text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded px-1 text-xs"
+                            className="col-span-6 bg-transparent border-0 text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded px-1 text-xs truncate"
                           />
                           <input
                             type="number"
@@ -790,7 +838,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                     </div>
 
                     {/* Financial Summary */}
-                    <div className="p-3 bg-zinc-950 border-t border-zinc-800 space-y-1 text-xs">
+                    <div className="p-3.5 bg-zinc-950 border-t border-zinc-800 space-y-1.5 text-xs">
                       <div className="flex justify-between text-zinc-400">
                         <span>Items Subtotal:</span>
                         <span className="font-mono text-white">${scannedReceipt.subtotal.toFixed(2)}</span>
@@ -826,7 +874,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                 </div>
 
                 {/* ADVANCED / BASIC BILL SPLIT MODULE */}
-                <div className="p-4 rounded-2xl bg-[#000000] border border-zinc-800 space-y-3.5">
+                <div className="p-4 sm:p-5 rounded-2xl bg-[#000000] border border-zinc-800 space-y-4">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Users size={16} className="text-cyan-400" />
@@ -884,7 +932,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                       </div>
 
                       {selectedFriendIds.length > 0 && (
-                        <div className="space-y-3">
+                        <div className="space-y-3.5">
                           {/* Split Engine Selector: Basic vs Advanced Itemized */}
                           <div className="flex items-center justify-between p-1 bg-zinc-900 rounded-xl">
                             <button
@@ -912,7 +960,7 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
                           {/* OPTION A: BASIC SPLITTING */}
                           {splitEngine === 'basic' && (
-                            <div className="space-y-3 p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+                            <div className="space-y-3 p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800">
                               <div className="grid grid-cols-2 gap-2 p-1 bg-[#000000] rounded-xl">
                                 <button
                                   type="button"
@@ -985,48 +1033,82 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
 
                           {/* OPTION B: ADVANCED ITEM-BY-ITEM SPLIT (WHO BOUGHT WHAT) */}
                           {splitEngine === 'advanced' && (
-                            <div className="space-y-3 p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/40">
-                              <div className="flex justify-between items-center">
+                            <div className="space-y-4 p-4 rounded-2xl bg-purple-950/20 border border-purple-500/40">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-purple-500/20">
                                 <div>
-                                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                                    <Split size={13} className="text-purple-400" />
-                                    <span>Who Bought What? (Tap names per item)</span>
+                                  <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                                    <Split size={14} className="text-purple-400" />
+                                    <span>Who Bought What? (Item-by-Item Assignee Matrix)</span>
                                   </h4>
                                   <p className="text-[10px] text-zinc-400 mt-0.5">
-                                    Select who shared each item. Multiple people share 50/50. Taxes & tips are split proportionally.
+                                    All participants selected by default. Tap to toggle individuals, or use Select All / Remove All.
                                   </p>
+                                </div>
+
+                                {/* Global Bulk Actions */}
+                                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                  <button
+                                    type="button"
+                                    onClick={handleAssignAllItemsToEveryone}
+                                    className="px-2.5 py-1 rounded-lg bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/40 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                    title="Assign all items to everyone"
+                                  >
+                                    <UserCheck size={11} />
+                                    <span>All to Everyone</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={handleAssignAllItemsToMe}
+                                    className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                    title="Assign all items to me only"
+                                  >
+                                    <RotateCcw size={11} />
+                                    <span>All to Me</span>
+                                  </button>
                                 </div>
                               </div>
 
-                              {/* Item Assignees List */}
-                              <div className="divide-y divide-zinc-800/80 max-h-56 overflow-y-auto pr-1 space-y-2">
+                              {/* Item Assignees List with Custom Alignment & Spacing */}
+                              <div className="divide-y divide-zinc-800/80 max-h-64 overflow-y-auto pr-2 space-y-2.5">
                                 {scannedReceipt.items.map((item) => {
-                                  const assignees = itemAssignees[item.id] || ['me'];
-                                  const isAllSelected = assignees.includes('me') && selectedFriendIds.every(id => assignees.includes(id));
+                                  const assignees = itemAssignees[item.id] || [];
+                                  const allIds = ['me', ...selectedFriendIds];
+                                  const isAllSelected = allIds.every(id => assignees.includes(id));
+                                  const hasNoAssignees = assignees.length === 0;
 
                                   return (
-                                    <div key={item.id} className="pt-2 first:pt-0 space-y-1.5">
+                                    <div key={item.id} className="pt-2.5 first:pt-0 space-y-2">
                                       <div className="flex justify-between items-center text-xs">
-                                        <span className="font-semibold text-zinc-200 truncate max-w-[200px]">{item.name}</span>
-                                        <span className="font-mono font-bold text-white">${(Number(item.price) * Number(item.quantity || 1)).toFixed(2)}</span>
+                                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                                          <span className="font-bold text-zinc-100 truncate">{item.name}</span>
+                                          {hasNoAssignees && (
+                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-950 text-amber-300 border border-amber-500/40 flex-shrink-0">
+                                              Unassigned
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className="font-mono font-bold text-white flex-shrink-0">
+                                          ${(Number(item.price) * Number(item.quantity || 1)).toFixed(2)}
+                                        </span>
                                       </div>
 
-                                      {/* Assignee Chips */}
-                                      <div className="flex flex-wrap items-center gap-1">
+                                      {/* Assignee Badges with Select All / Clear All */}
+                                      <div className="flex flex-wrap items-center gap-1.5">
                                         {/* You */}
                                         <button
                                           type="button"
                                           onClick={() => toggleItemAssignee(item.id, 'me')}
-                                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
                                             assignees.includes('me')
-                                              ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
-                                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                                              ? 'bg-purple-600 text-white border-purple-400 shadow-md ring-1 ring-purple-400/50'
+                                              : 'bg-[#000000] text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
                                           }`}
                                         >
-                                          You
+                                          You {assignees.includes('me') && '✓'}
                                         </button>
 
-                                        {/* Selected Friends */}
+                                        {/* Friends */}
                                         {selectedFriendIds.map((fId) => {
                                           const friend = contacts.find(c => c.id === fId);
                                           const isAssigned = assignees.includes(fId);
@@ -1035,28 +1117,40 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                               key={fId}
                                               type="button"
                                               onClick={() => toggleItemAssignee(item.id, fId)}
-                                              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
                                                 isAssigned
-                                                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
-                                                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                                                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-md ring-1 ring-cyan-400/50'
+                                                  : 'bg-[#000000] text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
                                               }`}
                                             >
-                                              {friend?.name || 'Friend'}
+                                              {friend?.name || 'Friend'} {isAssigned && '✓'}
                                             </button>
                                           );
                                         })}
 
-                                        {/* Everyone button */}
+                                        <div className="w-px h-4 bg-zinc-800 mx-0.5"></div>
+
+                                        {/* Select All Button */}
                                         <button
                                           type="button"
                                           onClick={() => setItemToAll(item.id)}
                                           className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                                             isAllSelected
                                               ? 'bg-emerald-600 text-white border-emerald-400'
-                                              : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'
+                                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-emerald-300'
                                           }`}
                                         >
-                                          Shared All
+                                          {isAllSelected ? 'All Selected ✓' : 'Select All'}
+                                        </button>
+
+                                        {/* Remove / Clear All Button */}
+                                        <button
+                                          type="button"
+                                          onClick={() => clearItemAssignees(item.id)}
+                                          className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-zinc-900 text-zinc-500 hover:text-rose-400 border-zinc-800 hover:border-rose-500/40 transition-all cursor-pointer"
+                                          title="Unassign all from this item"
+                                        >
+                                          Remove All
                                         </button>
                                       </div>
                                     </div>
@@ -1065,20 +1159,29 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                               </div>
 
                               {/* Calculated Summary Breakdown per Person */}
-                              <div className="pt-3 border-t border-purple-500/30 space-y-2">
-                                <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
-                                  Live Itemized Breakdown (Items + HST):
-                                </span>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div className="pt-3.5 border-t border-purple-500/30 space-y-2.5">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
+                                    Live Itemized Breakdown (Items + HST):
+                                  </span>
+                                  {unassignedTotal > 0 && (
+                                    <span className="text-[10px] text-amber-400 font-mono flex items-center gap-1">
+                                      <AlertCircle size={11} />
+                                      Unassigned: ${unassignedTotal.toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                                   {/* Your Share */}
-                                  <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex justify-between items-center">
+                                  <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex justify-between items-center shadow-lg">
                                     <div>
-                                      <b className="text-white block">Your Share</b>
+                                      <b className="text-white block text-xs">Your Share</b>
                                       <span className="text-[10px] text-zinc-400">
-                                        {itemizedShares.me.itemsCount} items + ${itemizedShares.me.taxTip.toFixed(2)} tax
+                                        {itemizedShares.me.itemsCount} items (${itemizedShares.me.subtotal.toFixed(2)}) + ${itemizedShares.me.taxShare.toFixed(2)} HST
                                       </span>
                                     </div>
-                                    <span className="font-mono font-black text-sm text-purple-300">
+                                    <span className="font-mono font-black text-sm sm:text-base text-purple-300">
                                       ${itemizedShares.me.total.toFixed(2)}
                                     </span>
                                   </div>
@@ -1086,16 +1189,16 @@ export function ReceiptScannerModal({ onClose, onReceiptProcessed }: ReceiptScan
                                   {/* Friends Shares */}
                                   {selectedFriendIds.map((fId) => {
                                     const friend = contacts.find(c => c.id === fId);
-                                    const share = itemizedShares[fId] || { total: 0, itemsCount: 0, taxTip: 0 };
+                                    const share = itemizedShares[fId] || { total: 0, itemsCount: 0, subtotal: 0, taxShare: 0, tipShare: 0 };
                                     return (
-                                      <div key={fId} className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex justify-between items-center">
+                                      <div key={fId} className="p-3 rounded-2xl bg-[#000000] border border-zinc-800 flex justify-between items-center shadow-lg">
                                         <div>
-                                          <b className="text-white block">{friend?.name}</b>
+                                          <b className="text-white block text-xs">{friend?.name}</b>
                                           <span className="text-[10px] text-zinc-400">
-                                            {share.itemsCount} items + ${share.taxTip.toFixed(2)} tax
+                                            {share.itemsCount} items (${share.subtotal.toFixed(2)}) + ${share.taxShare.toFixed(2)} HST
                                           </span>
                                         </div>
-                                        <span className="font-mono font-black text-sm text-cyan-300">
+                                        <span className="font-mono font-black text-sm sm:text-base text-cyan-300">
                                           ${share.total.toFixed(2)}
                                         </span>
                                       </div>
