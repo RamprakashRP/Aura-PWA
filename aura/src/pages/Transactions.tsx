@@ -2,7 +2,19 @@ import { SmartTransactionAnnotator } from '../components/expenses/SmartTransacti
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Eye, EyeOff, Search, Edit2, Check, X, Share2, ChevronUp, ChevronDown, Filter, Calendar, Trash2 } from 'lucide-react';
+import { 
+  Eye, 
+  EyeOff, 
+  Search, 
+  Edit2, 
+  Check, 
+  X, 
+  ChevronUp, 
+  ChevronDown, 
+  Calendar, 
+  Trash2, 
+  Landmark
+} from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,33 +31,26 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS);
 
-const CANADIAN_BANKS = [
-  { id: 'cibc', label: 'CIBC' },
-  { id: 'td', label: 'TD Canada Trust' },
-  { id: 'rbc', label: 'RBC Royal Bank' },
-  { id: 'scotiabank', label: 'Scotiabank' },
-  { id: 'bmo', label: 'BMO' },
-  { id: 'tangerine', label: 'Tangerine' },
-  { id: 'mastercard', label: 'Mastercard' },
-  { id: 'visa', label: 'Visa' },
-  { id: 'other', label: 'Other / Wallet' },
-];
-
+export interface ConnectedAccount {
+  id: string;
+  bank_id?: string;
+  account_name: string;
+  account_type?: string;
+  last_4_digits?: string;
+  balance?: number;
+  currency?: string;
+}
 
 const categorize = (desc: string) => {
   const d = desc.toLowerCase();
-  if (["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton"].some(k => d.includes(k))) return "Groceries";
+  if (["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton", "dollarama", "costco", "walmart", "loblaws", "metro", "sobeys", "no frills", "freshco"].some(k => d.includes(k))) return "Groceries";
   const foodKeywords = [
-     "food", "zomato", "swiggy", "starbucks", "tim hortons", "tims", "restaurant", "kozhi",
-     "dosa", "idli", "vada", "sambar", "chutney", "biryani", "meals", "parotta", "chapati", "poori", "pongal", "upma", "bisi bele bath", "payasam", "chicken 65", "thali", "uttapam", "appam", "paniyaram", "bonda", "bajji", "kebab", "shawarma", "mandi", "tandoori", "naan", "kulcha", "pulao", "fried rice", "noodles", "momo", "gobi", "paneer", "manchurian", "soup", "filter coffee", "chai",
-     "poutine", "pizza", "burger", "fries", "subway", "mcdonalds", "kfc", "wendys", "taco", "burrito", "sushi", "ramen", "pho", "wings", "bagel", "croissant", "donut", "pastry", "cake", "bacon", "steak", "bbq", "wrap", "salad", "smoothie", "boba", "bubble tea", "cafe", "bakery", "kitchen"
+     "food", "starbucks", "tim hortons", "tims", "restaurant", "mcdonald", "subway", "chipotle", "cafe", "coffee", "pizza", "burger", "sushi", "dining", "bakery", "kebab", "shawarma"
   ];
   if (foodKeywords.some(k => d.includes(k))) return "Food";
-  if (["uber", "ola", "metro", "oc transpo", "petrol", "shell", "transit", "presto", "cab"].some(k => d.includes(k))) return "Transport";
-  if (["srm", "university", "coursera", "books", "ielts"].some(k => d.includes(k))) return "Studies";
-  if (["amazon", "flipkart", "walmart", "myntra"].some(k => d.includes(k))) return "Shopping";
-  if (["dress", "belt", "shirt", "pant", "shoe", "clothing", "apparel", "wear", "zara", "h&m", "uniqlo"].some(k => d.includes(k))) return "Wearables";
-  if (["netflix", "valorant", "steam", "cinema"].some(k => d.includes(k))) return "Entertainment";
+  if (["uber", "lyft", "metro", "transit", "presto", "ttc", "gas", "esso", "petro", "shell"].some(k => d.includes(k))) return "Transport";
+  if (["amazon", "shoppers", "winners", "best buy", "apple", "mall", "clothing", "zara", "h&m", "uniqlo"].some(k => d.includes(k))) return "Shopping";
+  if (["netflix", "spotify", "cinema", "cineplex", "lcbo", "pub", "bar"].some(k => d.includes(k))) return "Entertainment";
   return "Miscellaneous";
 };
 
@@ -55,6 +60,7 @@ const Transactions = () => {
   
   // Data State
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
   
   // Spreadsheet Controls
   type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL' | 'CUSTOM';
@@ -68,14 +74,14 @@ const Transactions = () => {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   
+  // Connected Accounts Filter State
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+  
   // Custom Right-Click Filter Menu State
   const [activeFilterMenu, setActiveFilterMenu] = useState<{ column: string; x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Bank Filter State
-  const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
-  const [showBankDropdown, setShowBankDropdown] = useState(false);
-  const bankDropdownRef = useRef<HTMLDivElement>(null);
   
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,6 +89,7 @@ const Transactions = () => {
 
   useEffect(() => {
     fetchTransactions();
+    fetchConnectedAccounts();
     
     // Click outside
     const handleClickOutside = (e: MouseEvent) => {
@@ -92,21 +99,130 @@ const Transactions = () => {
       if (timeDropdownRef.current && !timeDropdownRef.current.contains(e.target as Node)) {
         setShowTimeDropdown(false);
       }
-      if (bankDropdownRef.current && !bankDropdownRef.current.contains(e.target as Node)) {
-        setShowBankDropdown(false);
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target as Node)) {
+        setShowAccountDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [user]);
+
+  // Fetch Connected Accounts from Supabase + Local Storage + Transactions discovery
+  const fetchConnectedAccounts = async () => {
+    if (!user) return;
+    const accountsMap = new Map<string, ConnectedAccount>();
+
+    // 1. Fetch from Supabase bank_accounts
+    try {
+      const { data: dbAccounts } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (dbAccounts) {
+        dbAccounts.forEach((acc: any) => {
+          accountsMap.set(acc.id, {
+            id: acc.id,
+            bank_id: acc.bank_id || 'cibc',
+            account_name: acc.account_name || 'Bank Account',
+            account_type: acc.account_type || 'Checking Account',
+            last_4_digits: acc.last_4_digits || '',
+            balance: acc.balance || 0,
+            currency: acc.currency || 'CAD',
+          });
+        });
+      }
+    } catch (err) {
+      console.warn('Could not query Supabase bank_accounts:', err);
+    }
+
+    // 2. Fetch from LocalStorage fallback
+    try {
+      const localKey = `aura_bank_accounts_${user.id}`;
+      const localRaw = localStorage.getItem(localKey);
+      if (localRaw) {
+        const parsed = JSON.parse(localRaw);
+        parsed.forEach((acc: any) => {
+          if (!accountsMap.has(acc.id)) {
+            accountsMap.set(acc.id, {
+              id: acc.id,
+              bank_id: acc.bankId || acc.bank_id || 'cibc',
+              account_name: acc.accountName || acc.account_name || 'Bank Account',
+              account_type: acc.accountType || acc.account_type || 'Chequing',
+              last_4_digits: acc.last4Digits || acc.last_4_digits || '',
+              balance: acc.balance || 0,
+              currency: acc.currency || 'CAD',
+            });
+          }
+        });
+      }
+    } catch (e) {}
+
+    // 3. Fallback: Auto-add user's connected CIBC account if not explicitly logged yet
+    if (accountsMap.size === 0) {
+      accountsMap.set('acc_cibc_chequing', {
+        id: 'acc_cibc_chequing',
+        bank_id: 'cibc',
+        account_name: 'CIBC Chequing Account',
+        account_type: 'Chequing',
+        last_4_digits: '8840',
+        balance: 0,
+        currency: 'CAD',
+      });
+    }
+
+    setConnectedAccounts(Array.from(accountsMap.values()));
+  };
 
   const fetchTransactions = async () => {
     if (!user) return;
-    const { data } = await supabase.from('transactions').select('*').eq('user_id', user.id);
-    if (data) {
-       const sorted = data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-       setTransactions(sorted);
+    
+    // 1. Fetch from Supabase
+    const { data: dbData } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id);
+
+    let allTxs = dbData ? [...dbData] : [];
+
+    // 2. Fallback check for any real-time webhook transactions in the server queue
+    try {
+      const res = await fetch(`/api/transactions/realtime?user_id=${user.id}`);
+      if (res.ok) {
+        const { transactions: queueTxs } = await res.json();
+        if (queueTxs && queueTxs.length > 0) {
+          for (const qTx of queueTxs) {
+            const exists = allTxs.some(
+              t => Math.abs(Number(t.amount) - Number(qTx.amount)) < 0.001 &&
+                   t.date === qTx.date &&
+                   t.description === qTx.description
+            );
+            if (!exists) {
+              const cleanInsert = {
+                user_id: user.id,
+                amount: Number(qTx.amount),
+                date: qTx.date || new Date().toISOString().split('T')[0],
+                description: qTx.description,
+                category: qTx.category || 'Miscellaneous',
+                visibility: 'Private',
+                currency: qTx.currency || 'CAD',
+              };
+              const { data: inserted } = await supabase.from('transactions').insert(cleanInsert).select().single();
+              if (inserted) {
+                allTxs.unshift(inserted);
+              } else {
+                allTxs.unshift({ ...cleanInsert, id: 'temp_' + Date.now() });
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback realtime sync check skipped:', e);
     }
+
+    const sorted = allTxs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setTransactions(sorted);
   };
 
   const handleSort = (key: string) => {
@@ -115,10 +231,6 @@ const Transactions = () => {
     setSortConfig({ key, direction });
   };
 
-  const handleContextMenu = (e: React.MouseEvent, column: string) => {
-    e.preventDefault();
-    setActiveFilterMenu({ column, x: e.clientX, y: e.clientY });
-  };
 
   const toggleFilter = (column: string, value: string) => {
     setFilters(prev => {
@@ -143,6 +255,22 @@ const Transactions = () => {
     setActiveFilterMenu(null);
   };
 
+  // Helper to match transaction with a connected account
+  const matchTxToAccount = (tx: any, acc: ConnectedAccount) => {
+    const desc = (tx.description || '').toLowerCase();
+    const bank = (tx.bank || '').toLowerCase();
+    const last4 = acc.last_4_digits || '';
+    const accName = acc.account_name.toLowerCase();
+    const bankId = (acc.bank_id || '').toLowerCase();
+
+    if (tx.account_id && tx.account_id === acc.id) return true;
+    if (last4 && desc.includes(last4)) return true;
+    if (bankId && (desc.includes(bankId) || bank.includes(bankId))) return true;
+    if (accName && desc.includes(accName)) return true;
+
+    return false;
+  };
+
   const processedData = useMemo(() => {
     let result = [...transactions];
 
@@ -165,9 +293,9 @@ const Transactions = () => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(t => 
-        t.description.toLowerCase().includes(q) || 
-        t.category.toLowerCase().includes(q) ||
-        t.transaction_id.toLowerCase().includes(q)
+        (t.description || '').toLowerCase().includes(q) || 
+        (t.category || '').toLowerCase().includes(q) ||
+        (t.transaction_id || '').toLowerCase().includes(q)
       );
     }
 
@@ -177,8 +305,12 @@ const Transactions = () => {
       }
     });
 
-    if (selectedBanks.length > 0) {
-       result = result.filter(t => selectedBanks.includes(t.bank?.toLowerCase() || ''));
+    // Connected Accounts Filter
+    if (selectedAccountIds.length > 0) {
+      const targetAccounts = connectedAccounts.filter(a => selectedAccountIds.includes(a.id));
+      result = result.filter(t => {
+        return targetAccounts.some(acc => matchTxToAccount(t, acc));
+      });
     }
 
     if (sortConfig !== null) {
@@ -196,7 +328,7 @@ const Transactions = () => {
     }
 
     return result;
-  }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, filters, sortConfig, selectedBanks]);
+  }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, filters, sortConfig, selectedAccountIds, connectedAccounts]);
 
   // Grouped Mobile Sticky Segments
   const groupedData = useMemo(() => {
@@ -215,24 +347,24 @@ const Transactions = () => {
   }, [processedData]);
 
   const getUniqueValues = (column: string) => {
-    const rawSet = new Set(transactions.map(t => String(t[column])));
-    return Array.from(rawSet).sort();
+    return Array.from(new Set(transactions.map(t => String(t[column] || '')))).filter(Boolean);
   };
 
   const handleEditClick = (tx: any) => {
-    setEditingId(tx.transaction_id);
-    const instantCategory = categorize(tx.description);
+    setEditingId(tx.id || tx.transaction_id);
+    const instantCategory = tx.category || categorize(tx.description);
     setEditForm({ description: tx.description, category: instantCategory });
   };
 
   const handleSaveEdit = async (tx: any) => {
+    const txId = tx.id || tx.transaction_id;
     setTransactions(transactions.map(t => 
-       t.transaction_id === tx.transaction_id ? { ...t, description: editForm.description, category: editForm.category } : t
+       (t.id === txId || t.transaction_id === txId) ? { ...t, description: editForm.description, category: editForm.category } : t
     ));
     setEditingId(null);
     await supabase.from('transactions')
       .update({ description: editForm.description, category: editForm.category })
-      .eq('transaction_id', tx.transaction_id)
+      .eq('id', txId)
       .eq('user_id', user?.id);
   };
 
@@ -241,22 +373,31 @@ const Transactions = () => {
     const newVis = currentVisibility === 'Private' ? 'Shared' : 'Private';
     const { error } = await supabase.from('transactions')
       .update({ visibility: newVis })
-      .eq('transaction_id', id)
+      .eq('id', id)
       .eq('user_id', user.id);
-    if (!error) setTransactions(transactions.map(t => t.transaction_id === id ? { ...t, visibility: newVis } : t));
+    if (!error) setTransactions(transactions.map(t => (t.id === id || t.transaction_id === id) ? { ...t, visibility: newVis } : t));
   };
   
   const handleDeleteTx = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to completely erase this record?")) {
-       setTransactions(transactions.filter(t => t.transaction_id !== id));
+       setTransactions(transactions.filter(t => t.id !== id && t.transaction_id !== id));
        await supabase.from('transactions')
          .delete()
-         .eq('transaction_id', id)
+         .eq('id', id)
          .eq('user_id', user?.id);
        setEditingId(null);
     }
   };
+
+  const selectedAccountLabels = useMemo(() => {
+    if (selectedAccountIds.length === 0) return 'All Accounts';
+    if (selectedAccountIds.length === 1) {
+      const found = connectedAccounts.find(a => a.id === selectedAccountIds[0]);
+      return found ? `${found.account_name} ${found.last_4_digits ? `(${found.last_4_digits})` : ''}` : '1 Account';
+    }
+    return `${selectedAccountIds.length} Accounts`;
+  }, [selectedAccountIds, connectedAccounts]);
 
   return (
     <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -289,7 +430,7 @@ const Transactions = () => {
                          className="rounded border-slate-600 bg-transparent text-blue-500 focus:ring-blue-500/20"
                          style={{ accentColor: getAuraColor() }}
                       />
-                      <span className="text-xs text-zinc-300 font-medium group-hover:text-white truncate" title={val}>{val}</span>
+                      <span className="text-xs font-mono text-zinc-300 group-hover:text-white transition-colors">{val}</span>
                    </label>
                 ))}
              </div>
@@ -297,23 +438,23 @@ const Transactions = () => {
         )}
       </AnimatePresence>
 
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2 md:mb-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white uppercase flex items-center gap-2 md:gap-3">
-             Ledger <span style={{ color: getAuraColor() }}>Archive</span>
+      {/* SPREADSHEET TOOLBAR */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#000000] border border-zinc-800 p-3 md:p-4 rounded-xl shadow-2xl">
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+          <h1 className="text-lg md:text-xl font-black text-white tracking-tight uppercase flex items-center gap-2">
+            <span>Unified Ledger</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-zinc-400">
+               {processedData.length} records
+            </span>
           </h1>
-          <p className="text-[8px] md:text-[10px] text-zinc-500 uppercase tracking-widest mt-1 font-bold">
-            Viewing {processedData.length} records • Context-click headers to filter
-          </p>
         </div>
-        
-        {/* ADVANCED SPREADSHEET UI CONTROLS */}
+
         <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
-          
+          {/* TIME RANGE SELECTOR */}
           <div className="relative flex-1 md:flex-none" ref={timeDropdownRef}>
              <button 
                 onClick={() => setShowTimeDropdown(!showTimeDropdown)}
-                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#080808] border border-zinc-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
+                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#080808] border border-zinc-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg cursor-pointer"
              >
                 <div className="flex items-center gap-2">
                    <Calendar size={12} style={{ color: getAuraColor() }} /> 
@@ -334,7 +475,7 @@ const Transactions = () => {
                        <button
                           key={opt}
                           onClick={() => { setTimeRange(opt as TimeRange); setShowTimeDropdown(false); }}
-                          className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest uppercase hover:bg-slate-800 transition-colors ${timeRange === opt ? 'bg-slate-800/80 text-white' : 'text-zinc-400'}`}
+                          className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest uppercase hover:bg-slate-800 transition-colors cursor-pointer ${timeRange === opt ? 'bg-slate-800/80 text-white' : 'text-zinc-400'}`}
                           style={timeRange === opt ? { color: getAuraColor() } : {}}
                        >
                           {opt === 'CUSTOM' ? 'Custom Range' : opt === 'ALL' ? 'All Time' : opt}
@@ -370,6 +511,7 @@ const Transactions = () => {
              </motion.div>
           )}
 
+          {/* SEARCH INPUT */}
           <div className="relative w-full md:w-auto mt-2 md:mt-0">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input 
@@ -378,54 +520,86 @@ const Transactions = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-[#080808] border border-zinc-800 rounded-lg text-xs text-white focus:outline-none transition-all md:w-48 hover:border-slate-600"
-              style={{ '--tw-ring-color': getAuraColor() } as any}
             />
           </div>
 
-          {/* BANK MATRIX FILTER */}
-          <div className="relative flex-1 md:flex-none" ref={bankDropdownRef}>
+          {/* DYNAMIC USER CONNECTED ACCOUNTS FILTER */}
+          <div className="relative flex-1 md:flex-none" ref={accountDropdownRef}>
              <button 
-                onClick={() => setShowBankDropdown(!showBankDropdown)}
-                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#080808] border border-zinc-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg"
+                type="button"
+                onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+                className="w-full flex justify-between md:justify-start items-center gap-2 px-3 py-2 rounded-lg bg-[#080808] border border-zinc-800 text-[10px] font-black tracking-widest uppercase hover:border-slate-600 transition-all text-white shadow-lg cursor-pointer max-w-[220px]"
              >
-                <div className="flex items-center gap-2">
-                   <Filter size={12} style={{ color: getAuraColor() }} /> 
-                   {selectedBanks.length > 0 ? `${selectedBanks.length} Banks` : 'All Banks'}
+                <div className="flex items-center gap-1.5 truncate">
+                   <Landmark size={12} style={{ color: getAuraColor() }} className="flex-shrink-0" /> 
+                   <span className="truncate">{selectedAccountLabels}</span>
                 </div>
-                <ChevronDown size={12} className="opacity-50" />
+                <ChevronDown size={12} className="opacity-50 flex-shrink-0" />
              </button>
              
              <AnimatePresence>
-               {showBankDropdown && (
+               {showAccountDropdown && (
                  <motion.div 
                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                   className="absolute top-full right-0 mt-2 w-48 glass bg-[#000000] border border-zinc-700 rounded-lg shadow-2xl z-40 overflow-hidden p-2"
+                   className="absolute top-full right-0 mt-2 w-64 glass bg-[#000000] border border-zinc-700 rounded-xl shadow-2xl z-40 overflow-hidden p-2.5 space-y-1.5"
                  >
-                    {CANADIAN_BANKS.map(bank => (
-                         <label key={bank.id} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800/80 rounded cursor-pointer transition-colors group">
-                            <input 
-                               type="checkbox"
-                               checked={selectedBanks.includes(bank.id)}
-                               onChange={() => {
-                                  setSelectedBanks(prev => prev.includes(bank.id) ? prev.filter(b => b !== bank.id) : [...prev, bank.id]);
-                               }}
-                               className="rounded border-slate-600 bg-transparent text-cyan-500 focus:ring-cyan-500/20"
-                               style={{ accentColor: getAuraColor() }}
-                            />
-                            <span className="text-[10px] font-bold uppercase group-hover:text-white transition-colors" style={selectedBanks.includes(bank.id) ? { color: getAuraColor() } : { color: '#94a3b8' }}>
-                               {bank.label}
-                            </span>
-                         </label>
-                      ))}
-                    {selectedBanks.length > 0 && (
-                       <button 
-                          onClick={() => setSelectedBanks([])}
-                          className="w-full mt-2 pt-2 border-t border-zinc-800 text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-white py-1"
-                       >
-                          Reset Filters
-                       </button>
+                    <div className="flex justify-between items-center pb-1.5 border-b border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-400 px-1">
+                      <span>Your Linked Accounts</span>
+                      {selectedAccountIds.length > 0 && (
+                        <button 
+                          onClick={() => setSelectedAccountIds([])}
+                          className="text-cyan-400 hover:text-white cursor-pointer"
+                        >
+                          Show All
+                        </button>
+                      )}
+                    </div>
+
+                    {connectedAccounts.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-zinc-400 space-y-1">
+                        <p>No accounts connected yet.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+                        {connectedAccounts.map((acc) => {
+                          const isSelected = selectedAccountIds.includes(acc.id);
+                          return (
+                            <label 
+                              key={acc.id} 
+                              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border ${
+                                isSelected 
+                                  ? 'bg-cyan-950/60 border-cyan-500/50 text-white' 
+                                  : 'bg-[#080808] border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <input 
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedAccountIds(prev => 
+                                      prev.includes(acc.id) ? prev.filter(id => id !== acc.id) : [...prev, acc.id]
+                                    );
+                                  }}
+                                  className="rounded border-zinc-600 bg-transparent text-cyan-500"
+                                  style={{ accentColor: getAuraColor() }}
+                                />
+                                <div className="truncate">
+                                  <b className="text-xs text-white block truncate">{acc.account_name}</b>
+                                  <span className="text-[10px] text-zinc-400 font-mono">
+                                    {acc.last_4_digits ? `••••${acc.last_4_digits}` : acc.account_type || 'Active'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-300 ml-1.5 flex-shrink-0">
+                                {acc.bank_id?.toUpperCase() || 'BANK'}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     )}
                  </motion.div>
                )}
@@ -435,95 +609,88 @@ const Transactions = () => {
         </div>
       </header>
 
-      {/* MOBILE TRASACTION CARDS (Visible only < 768px) */}
+      {/* MOBILE TRANSACTION CARDS (Visible only < 768px) */}
       <div className="md:hidden space-y-4 pb-20">
          {processedData.length === 0 ? (
-            <div className="text-center py-10 text-zinc-500 font-mono text-xs">No records match the current filter matrix.</div>
+            <div className="text-center py-12 text-zinc-500 font-mono text-xs">
+               NO TRANSACTIONS FOUND
+            </div>
          ) : (
             groupedData.map(group => (
-               <div key={group.month} className="space-y-3">
-                  <div className="sticky top-0 z-10 bg-[#000000]/90 backdrop-blur-md py-2 border-b border-zinc-800">
-                     <h3 className="text-[10px] font-black uppercase tracking-widest px-2" style={{ color: getAuraColor() }}>{group.month}</h3>
+               <div key={group.month} className="space-y-2">
+                  <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md py-1.5 px-3 border-y border-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
+                     <span>{group.month}</span>
+                     <span>{group.txs.length} TXs</span>
                   </div>
-                  <div className="space-y-3 px-1">
+                  <div className="space-y-2 px-1">
                      {group.txs.map(tx => {
-                        const isEditing = editingId === tx.transaction_id;
-                        const isDeposit = tx.amount > 0;
-                        const amountColor = isDeposit ? "#00FF41" : "#FF4D4D";
-                        const prefix = isDeposit ? "+" : "-";
-                        const absAmount = Math.abs(tx.amount).toFixed(2);
-                        const categoryDisplayColor = CATEGORY_COLORS[tx.category] || CATEGORY_COLORS["Miscellaneous"];
-                        
+                        const isEditing = editingId === (tx.id || tx.transaction_id);
+                        const matchedAccount = connectedAccounts.find(a => matchTxToAccount(tx, a));
+
                         return (
-                           <div 
-                              key={tx.transaction_id}
-                              onClick={() => { if (!isEditing) handleEditClick(tx); }}
-                              className={`p-4 rounded-xl transition-all ${isEditing ? 'bg-[#0a0a0a] border border-slate-600 shadow-2xl scale-[1.02]' : 'bg-[#080808] border border-zinc-800/80 active:scale-[0.98]'}`}
-                           >
-                              {/* Top Row: Reason and Amount */}
-                              <div className="flex justify-between items-start mb-3 gap-4">
-                                 {isEditing ? (
-                                    <input 
-                                      type="text"
-                                      value={editForm.description}
-                                      onChange={(e) => {
-                                         const newDesc = e.target.value;
-                                         setEditForm({...editForm, description: newDesc, category: categorize(newDesc)});
-                                      }}
-                                      className="flex-1 w-full min-w-0 bg-[#000000] border border-zinc-700 text-white font-bold py-1.5 px-2 rounded focus:outline-none text-sm"
-                                      style={{ borderColor: getAuraColor() }}
-                                      onClick={e => e.stopPropagation()}
-                                      placeholder="Entity Description"
-                                    />
-                                 ) : (
-                                    <span className="font-bold text-sm text-white truncate flex-1 leading-tight">{tx.description}</span>
-                                 )}
-                                 <span className="font-mono text-base font-black flex-shrink-0" style={{ color: amountColor }}>
-                                    {prefix}{absAmount} <span className="text-[10px] opacity-60 ml-0.5">{tx.currency}</span>
-                                 </span>
+                           <div key={tx.id || tx.transaction_id} className="bg-[#000000] border border-zinc-800 p-3 rounded-xl space-y-2 relative overflow-hidden shadow-lg">
+                              <div className="flex justify-between items-start">
+                                 <div className="space-y-0.5 max-w-[70%]">
+                                    {isEditing ? (
+                                       <input 
+                                          type="text" 
+                                          value={editForm.description} 
+                                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                          className="bg-slate-900 text-xs font-bold text-white border border-slate-700 rounded px-1.5 py-0.5 w-full outline-none"
+                                       />
+                                    ) : (
+                                       <p className="text-xs font-bold text-white tracking-wide truncate">{tx.description || 'Transaction'}</p>
+                                    )}
+                                    <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono">
+                                       <span>{tx.date}</span>
+                                       {matchedAccount && (
+                                         <span className="px-1.5 py-0.2 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-sans text-[9px] font-bold">
+                                           {matchedAccount.account_name}
+                                         </span>
+                                       )}
+                                    </div>
+                                 </div>
+                                 <div className="text-right">
+                                    <span className="text-sm font-black font-mono text-white tracking-tight">
+                                       ${Number(tx.amount).toFixed(2)}
+                                    </span>
+                                 </div>
                               </div>
                               
-                              {/* Middle Row: Category and ID */}
-                              <div className="flex justify-between items-center mb-3">
+                              <div className="flex justify-between items-center pt-2 border-t border-zinc-850">
                                  {isEditing ? (
                                     <select 
                                        value={editForm.category}
-                                       onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                                       className="text-[10px] font-bold uppercase tracking-widest py-1.5 px-2 rounded appearance-none bg-[#000000] focus:outline-none border border-zinc-700"
-                                       style={{ color: CATEGORY_COLORS[editForm.category] || CATEGORY_COLORS["Miscellaneous"] }}
-                                       onClick={e => e.stopPropagation()}
+                                       onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                                       className="bg-slate-900 border border-slate-700 text-white rounded text-[10px] px-1 py-0.5 outline-none font-bold"
                                     >
-                                       {CATEGORY_OPTIONS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                       {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                  ) : (
-                                    <div 
-                                       className="px-2 py-0.5 rounded-sm text-[9px] font-black tracking-widest uppercase border"
-                                       style={{ 
-                                          color: categoryDisplayColor,
-                                          backgroundColor: `${categoryDisplayColor}15`,
-                                          borderColor: `${categoryDisplayColor}30`
-                                       }}
+                                    <span 
+                                       className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-slate-800"
+                                       style={{ color: CATEGORY_COLORS[tx.category] || '#94a3b8' }}
                                     >
-                                       {tx.category || 'Miscellaneous'}
-                                    </div>
+                                       {tx.category || 'General'}
+                                    </span>
                                  )}
-                                 <span className="text-[9px] text-zinc-500 font-mono truncate max-w-[120px]">{tx.transaction_id.split('-')[0]}•••</span>
-                              </div>
-                              
-                              {/* Bottom Row / Floating Action Deck */}
-                              <div className="flex justify-between items-end mt-1">
-                                 <span className="text-[10px] text-zinc-400 font-mono">{tx.date}</span>
-                                 
-                                 {isEditing && (
-                                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                       <button onClick={(e) => handleDeleteTx(e, tx.transaction_id)} className="p-2 rounded-lg bg-[#FF0000] text-black font-black active:scale-95 transition-transform"><Trash2 size={14}/></button>
-                                       <button onClick={(e) => { e.stopPropagation(); toggleVisibility(tx.transaction_id, tx.visibility); }} className="p-2 rounded-lg border border-zinc-700 active:scale-95 transition-transform bg-[#000000]" style={{ color: tx.visibility === 'Shared' ? getAuraColor() : '#4A4A4A' }}>
-                                          {tx.visibility === 'Private' ? <EyeOff size={14}/> : <Eye size={14}/>}
-                                       </button>
-                                       <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-2 rounded-lg border border-zinc-700 text-zinc-400 active:scale-95 transition-transform bg-[#000000]"><X size={14}/></button>
-                                       <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(tx); }} className="px-4 py-2 rounded-lg bg-[#00FF41] text-black font-black uppercase text-[10px] active:scale-95 transition-transform flex items-center gap-1"><Check size={14}/> Save</button>
-                                    </div>
-                                 )}
+
+                                 <div className="flex items-center gap-2">
+                                    {isEditing ? (
+                                       <>
+                                          <button onClick={() => handleSaveEdit(tx)} className="text-emerald-400 p-1 cursor-pointer"><Check size={14} /></button>
+                                          <button onClick={() => setEditingId(null)} className="text-rose-400 p-1 cursor-pointer"><X size={14} /></button>
+                                       </>
+                                    ) : (
+                                       <>
+                                          <button onClick={() => handleEditClick(tx)} className="text-zinc-500 hover:text-white p-1 cursor-pointer"><Edit2 size={12} /></button>
+                                          <button onClick={() => toggleVisibility(tx.id || tx.transaction_id, tx.visibility || 'Private')} className="text-zinc-500 hover:text-white p-1 cursor-pointer">
+                                             {tx.visibility === 'Shared' ? <Eye size={12} className="text-cyan-400" /> : <EyeOff size={12} />}
+                                          </button>
+                                          <button onClick={(e) => handleDeleteTx(e, tx.id || tx.transaction_id)} className="text-zinc-600 hover:text-rose-500 p-1 cursor-pointer"><Trash2 size={12} /></button>
+                                       </>
+                                    )}
+                                 </div>
                               </div>
                            </div>
                         );
@@ -534,162 +701,129 @@ const Transactions = () => {
          )}
       </div>
 
-      {/* DESKTOP SPREADSHEET (Visible only >= 768px) */}
-      <div className="hidden md:block glass rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto min-h-[60vh]">
-          <table className="w-full text-left whitespace-nowrap table-auto border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-800 bg-[#000000] bg-opacity-80 select-none">
-                
-                {[
-                  { key: 'date', label: 'Date / Ref', align: 'left', width: 'w-48' },
-                  { key: 'description', label: 'Entity', align: 'left', width: 'w-1/3' },
-                  { key: 'category', label: 'Category', align: 'center', width: 'w-40' },
-                  { key: 'amount', label: 'Amount', align: 'right', width: 'w-32' },
-                  { key: 'visibility', label: 'Privacy', align: 'center', width: 'w-32' }
-                ].map(col => (
-                  <th 
-                    key={col.key}
-                    onClick={() => handleSort(col.key)}
-                    onContextMenu={(e) => handleContextMenu(e, col.key)}
-                    className={`px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest cursor-pointer hover:bg-slate-800/50 transition-colors text-${col.align} ${col.width} group`}
-                  >
-                    <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : 'justify-start'}`}>
-                      {filters[col.key] && filters[col.key].length > 0 && <Filter size={10} className="text-blue-400 mr-1" />}
-                      <span className="group-hover:text-white transition-colors">{col.label}</span>
-                      {sortConfig?.key === col.key ? (
-                         sortConfig.direction === 'asc' ? <ChevronUp size={12} className="text-white" /> : <ChevronDown size={12} className="text-white" />
-                      ) : (
-                         <ChevronUp size={12} className="opacity-0 group-hover:opacity-30 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                ))}
-                
-                <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-center w-24">Actions</th>
-              </tr>
-            </thead>
-            
-            <tbody className="divide-y divide-slate-800/50">
-              {processedData.length === 0 ? (
-                 <tr>
-                    <td colSpan={6} className="text-center py-24 text-zinc-500 font-mono text-sm">
-                       No records match the current filter matrix.
-                    </td>
-                 </tr>
-              ) : (
-                processedData.map((tx) => {
-                  const isVoid = tx.visibility === 'Private';
-                  const isEditing = editingId === tx.transaction_id;
-                  const rowStyles = isVoid ? { backgroundColor: '#080808' } : {};
-                  
-                  const isDeposit = tx.amount > 0;
-                  const amountColor = isDeposit ? "#00FF41" : "#FF4D4D";
-                  const prefix = isDeposit ? "+" : "-";
-                  const absAmount = Math.abs(tx.amount).toFixed(2);
-                  const categoryDisplayColor = CATEGORY_COLORS[tx.category] || CATEGORY_COLORS["Miscellaneous"];
+      {/* DESKTOP SPREADSHEET (Visible >= 768px) */}
+      <div className="hidden md:block bg-[#000000] border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
+         <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300 font-mono">
+               <thead className="bg-[#080808] border-b border-zinc-800 text-[10px] text-zinc-400 tracking-widest uppercase select-none">
+                  <tr>
+                     <th className="py-3 px-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('date')}>
+                        <div className="flex items-center gap-1">
+                           <span>Date</span>
+                           {sortConfig?.key === 'date' && (sortConfig.direction === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                        </div>
+                     </th>
+                     <th className="py-3 px-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('description')}>
+                        <div className="flex items-center gap-1">
+                           <span>Description / Merchant</span>
+                           {sortConfig?.key === 'description' && (sortConfig.direction === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                        </div>
+                     </th>
+                     <th className="py-3 px-4">Connected Account</th>
+                     <th className="py-3 px-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('category')}>
+                        <div className="flex items-center gap-1">
+                           <span>Category</span>
+                           {sortConfig?.key === 'category' && (sortConfig.direction === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                        </div>
+                     </th>
+                     <th className="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('amount')}>
+                        <div className="flex items-center justify-end gap-1">
+                           <span>Amount</span>
+                           {sortConfig?.key === 'amount' && (sortConfig.direction === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                        </div>
+                     </th>
+                     <th className="py-3 px-4 text-center">Privacy</th>
+                     <th className="py-3 px-4 text-center">Actions</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-zinc-800/80">
+                  {processedData.length === 0 ? (
+                     <tr>
+                        <td colSpan={7} className="text-center py-12 text-zinc-500 font-mono text-xs">
+                           NO TRANSACTIONS FOUND
+                        </td>
+                     </tr>
+                  ) : (
+                     processedData.map((tx) => {
+                        const isEditing = editingId === (tx.id || tx.transaction_id);
+                        const matchedAccount = connectedAccounts.find(a => matchTxToAccount(tx, a));
 
-                  return (
-                    <tr key={tx.transaction_id} className="hover:bg-slate-800/30 transition-colors group" style={rowStyles}>
-                      <td className="px-6 py-4 w-48 align-top">
-                         <div className="text-sm tracking-wide font-mono text-slate-200">{tx.date}</div>
-                         <div className="text-[10px] text-zinc-500 font-mono mt-1 opacity-60 uppercase">{tx.transaction_id}</div>
-                      </td>
-                      
-                      <td className="px-6 py-4 align-top w-1/3 min-w-[250px]">
-                        {isEditing ? (
-                          <input 
-                            type="text"
-                            value={editForm.description}
-                            onChange={(e) => {
-                               const newDesc = e.target.value;
-                               setEditForm({...editForm, description: newDesc, category: categorize(newDesc)});
-                            }}
-                            className="w-full bg-[#000000] border border-zinc-700 text-white font-bold py-1.5 px-3 rounded focus:outline-none transition-all"
-                            style={{ borderColor: getAuraColor() }}
-                            autoFocus
-                          />
-                        ) : (
-                          <div className="font-medium whitespace-normal break-words text-white">
-                             {tx.description}
-                          </div>
-                        )}
-                      </td>
-                      
-                      <td className="px-6 py-4 align-top text-center w-40">
-                         {isEditing ? (
-                            <select 
-                               value={editForm.category}
-                               onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                               className="w-full text-xs font-bold uppercase tracking-widest py-1.5 px-2 rounded cursor-pointer appearance-none text-center bg-[#000000] focus:outline-none transition-all border border-zinc-700 hover:border-current inline-block"
-                               style={{ borderColor: getAuraColor(), color: CATEGORY_COLORS[editForm.category] || CATEGORY_COLORS["Miscellaneous"] }}
-                            >
-                               {CATEGORY_OPTIONS.map(cat => (
-                                  <option key={cat} value={cat} className="bg-[#000000] font-bold text-white text-left tracking-widest uppercase text-[10px]">
-                                      {cat}
-                                  </option>
-                               ))}
-                            </select>
-                         ) : (
-                            <div 
-                               className="inline-block px-3 py-1 rounded text-[10px] font-black tracking-widest uppercase border border-transparent shadow-lg"
-                               style={{ 
-                                  color: categoryDisplayColor,
-                                  backgroundColor: `${categoryDisplayColor}15`,
-                                  borderColor: `${categoryDisplayColor}30`
-                               }}
-                            >
-                               {tx.category || 'Miscellaneous'}
-                            </div>
-                         )}
-                      </td>
-                      
-                      <td className="px-6 py-4 font-mono font-black text-right text-base align-top w-32" style={{ color: amountColor }}>
-                        {prefix}{absAmount} <span className="text-[10px] font-normal opacity-50 ml-1">{tx.currency}</span>
-                      </td>
-                      
-                      <td className="px-6 py-4 flex justify-center align-top w-32">
-                        <button 
-                          onClick={() => toggleVisibility(tx.transaction_id, tx.visibility)}
-                          className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase transition-all"
-                          style={tx.visibility === 'Shared' ? {
-                            backgroundColor: `${getAuraColor()}10`,
-                            borderColor: `${getAuraColor()}40`,
-                            borderWidth: '1px', color: getAuraColor()
-                          } : {
-                            backgroundColor: '#050505', 
-                            borderColor: `${getAuraColor()}40`, 
-                            borderWidth: '1px', 
-                            color: '#64748b',
-                            boxShadow: `inset 0 0 15px ${getAuraColor()}15`
-                          }}
-                        >
-                          {tx.visibility === 'Private' ? <EyeOff size={12} className="opacity-50" /> : <Eye size={12} />}
-                          {tx.visibility}
-                        </button>
-                      </td>
-                      
-                      <td className="px-6 py-4 text-center align-top w-24">
-                         {isEditing ? (
-                            <div className="flex items-center justify-center gap-2">
-                               <button onClick={(e) => handleDeleteTx(e, tx.transaction_id)} className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors" title="Delete"><Trash2 size={16} /></button>
-                               <button onClick={() => handleSaveEdit(tx)} className="p-1.5 rounded bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors" title="Save Changes"><Check size={16} /></button>
-                               <button onClick={() => setEditingId(null)} className="p-1.5 rounded bg-slate-500/10 hover:bg-slate-500/20 text-zinc-500 transition-colors" title="Cancel"><X size={16} /></button>
-                            </div>
-                         ) : (
-                            <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditClick(tx)} className="p-1.5 rounded text-zinc-500 hover:text-white transition-colors" title="Edit Record"><Edit2 size={16} /></button>
-                                <button onClick={() => alert(`Share settings (View/Edit) for ${tx.description} will be integrated soon!`)} className="p-1.5 rounded text-blue-500 hover:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors" title="Share Record"><Share2 size={16} /></button>
-                            </div>
-                         )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        return (
+                           <tr key={tx.id || tx.transaction_id} className="hover:bg-slate-900/40 transition-colors group">
+                              <td className="py-3 px-4 text-zinc-400 whitespace-nowrap">{tx.date}</td>
+                              <td className="py-3 px-4 text-white font-bold font-sans">
+                                 {isEditing ? (
+                                    <input 
+                                       type="text" 
+                                       value={editForm.description} 
+                                       onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                       className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-full text-white outline-none"
+                                    />
+                                 ) : (
+                                    tx.description || 'Transaction'
+                                 )}
+                              </td>
+                              <td className="py-3 px-4">
+                                {matchedAccount ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 font-sans text-[10px] font-bold inline-flex items-center gap-1">
+                                    <Landmark size={10} />
+                                    <span>{matchedAccount.account_name}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-zinc-600 text-[10px] font-mono">Unlinked</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                 {isEditing ? (
+                                    <select 
+                                       value={editForm.category}
+                                       onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                                       className="bg-slate-900 border border-slate-700 text-white rounded text-xs px-2 py-1 outline-none"
+                                    >
+                                       {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                 ) : (
+                                    <span 
+                                       className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-slate-800 inline-block"
+                                       style={{ color: CATEGORY_COLORS[tx.category] || '#94a3b8' }}
+                                    >
+                                       {tx.category || 'General'}
+                                    </span>
+                                 )}
+                              </td>
+                              <td className="py-3 px-4 text-right font-bold text-white whitespace-nowrap">
+                                 ${Number(tx.amount).toFixed(2)}
+                              </td>
+                              <td className="py-3 px-4 text-center whitespace-nowrap">
+                                 <button 
+                                    onClick={() => toggleVisibility(tx.id || tx.transaction_id, tx.visibility || 'Private')}
+                                    className="p-1.5 rounded-lg hover:bg-slate-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                 >
+                                    {tx.visibility === 'Shared' ? <Eye size={14} className="text-cyan-400" /> : <EyeOff size={14} />}
+                                 </button>
+                              </td>
+                              <td className="py-3 px-4 text-center whitespace-nowrap">
+                                 <div className="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    {isEditing ? (
+                                       <>
+                                          <button onClick={() => handleSaveEdit(tx)} className="text-emerald-400 p-1 hover:bg-emerald-950/50 rounded cursor-pointer"><Check size={14} /></button>
+                                          <button onClick={() => setEditingId(null)} className="text-rose-400 p-1 hover:bg-rose-950/50 rounded cursor-pointer"><X size={14} /></button>
+                                       </>
+                                    ) : (
+                                       <>
+                                          <button onClick={() => handleEditClick(tx)} className="text-zinc-500 hover:text-white p-1 hover:bg-slate-800 rounded cursor-pointer"><Edit2 size={13} /></button>
+                                          <button onClick={(e) => handleDeleteTx(e, tx.id || tx.transaction_id)} className="text-zinc-600 hover:text-rose-500 p-1 hover:bg-rose-950/30 rounded cursor-pointer"><Trash2 size={13} /></button>
+                                       </>
+                                    )}
+                                 </div>
+                              </td>
+                           </tr>
+                        );
+                     })
+                  )}
+               </tbody>
+            </table>
+         </div>
       </div>
     </div>
   );
