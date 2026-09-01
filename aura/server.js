@@ -281,6 +281,19 @@ function recordWebhookLog(entry) {
   if (recentWebhookLogs.length > 30) recentWebhookLogs.pop();
 }
 
+
+// Endpoint to retrieve fallback/recent webhook transactions
+app.get('/api/transactions/realtime', (req, res) => {
+  const userId = req.query.user_id;
+  const queuePath = path.join(os.tmpdir(), 'aura_realtime_transactions.json');
+  let queue = [];
+  if (fs.existsSync(queuePath)) {
+    try { queue = JSON.parse(fs.readFileSync(queuePath, 'utf8') || '[]'); } catch (e) { queue = []; }
+  }
+  const filtered = userId ? queue.filter(t => !t.user_id || t.user_id === userId) : queue;
+  res.json({ transactions: filtered });
+});
+
 app.get('/api/webhook/logs', (req, res) => {
   const userId = req.query.user_id;
   const filtered = userId 

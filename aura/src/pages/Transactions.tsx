@@ -19,6 +19,19 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS);
 
+const CANADIAN_BANKS = [
+  { id: 'cibc', label: 'CIBC' },
+  { id: 'td', label: 'TD Canada Trust' },
+  { id: 'rbc', label: 'RBC Royal Bank' },
+  { id: 'scotiabank', label: 'Scotiabank' },
+  { id: 'bmo', label: 'BMO' },
+  { id: 'tangerine', label: 'Tangerine' },
+  { id: 'mastercard', label: 'Mastercard' },
+  { id: 'visa', label: 'Visa' },
+  { id: 'other', label: 'Other / Wallet' },
+];
+
+
 const categorize = (desc: string) => {
   const d = desc.toLowerCase();
   if (["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton"].some(k => d.includes(k))) return "Groceries";
@@ -390,22 +403,22 @@ const Transactions = () => {
                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
                    className="absolute top-full right-0 mt-2 w-48 glass bg-[#000000] border border-zinc-700 rounded-lg shadow-2xl z-40 overflow-hidden p-2"
                  >
-                    {['kotak', 'hdfc', 'jio', 'union'].map(bank => (
-                       <label key={bank} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800/80 rounded cursor-pointer transition-colors group">
-                          <input 
-                             type="checkbox"
-                             checked={selectedBanks.includes(bank)}
-                             onChange={() => {
-                                setSelectedBanks(prev => prev.includes(bank) ? prev.filter(b => b !== bank) : [...prev, bank]);
-                             }}
-                             className="rounded border-slate-600 bg-transparent text-blue-500 focus:ring-blue-500/20"
-                             style={{ accentColor: getAuraColor() }}
-                          />
-                          <span className="text-[10px] font-black tracking-widest uppercase group-hover:text-white transition-colors" style={selectedBanks.includes(bank) ? { color: getAuraColor() } : { color: '#64748b' }}>
-                             {bank}
-                          </span>
-                       </label>
-                    ))}
+                    {CANADIAN_BANKS.map(bank => (
+                         <label key={bank.id} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800/80 rounded cursor-pointer transition-colors group">
+                            <input 
+                               type="checkbox"
+                               checked={selectedBanks.includes(bank.id)}
+                               onChange={() => {
+                                  setSelectedBanks(prev => prev.includes(bank.id) ? prev.filter(b => b !== bank.id) : [...prev, bank.id]);
+                               }}
+                               className="rounded border-slate-600 bg-transparent text-cyan-500 focus:ring-cyan-500/20"
+                               style={{ accentColor: getAuraColor() }}
+                            />
+                            <span className="text-[10px] font-bold uppercase group-hover:text-white transition-colors" style={selectedBanks.includes(bank.id) ? { color: getAuraColor() } : { color: '#94a3b8' }}>
+                               {bank.label}
+                            </span>
+                         </label>
+                      ))}
                     {selectedBanks.length > 0 && (
                        <button 
                           onClick={() => setSelectedBanks([])}
