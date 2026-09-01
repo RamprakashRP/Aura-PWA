@@ -1,15 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Mail, 
   CheckCircle, 
   Copy, 
   Smartphone, 
-  Zap,
-  ChevronDown,
-  ChevronUp
+  Zap, 
+  ChevronDown, 
+  ChevronUp, 
+  Radio, 
+  RefreshCw, 
+  CheckCircle2, 
+  AlertCircle,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface WebhookLog {
+  id: string;
+  timestamp: string;
+  status: 'success' | 'warning' | 'error';
+  statusCode: number;
+  rawTitle: string;
+  rawText: string;
+  merchant?: string;
+  amount?: number;
+  category?: string;
+  currency?: string;
+  error?: string;
+}
 
 export function ZeroTouchSync() {
   const { user } = useAuth();
@@ -19,11 +38,13 @@ export function ZeroTouchSync() {
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Live Webhook Activity Feed
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
   const currentOrigin = window.location.origin;
-  
   const userParam = user?.id ? `?user_id=${user.id}` : '';
-  const effectiveOrigin = currentOrigin;
-  const webhookUrl = `${effectiveOrigin}/api/webhook/transaction${userParam}`;
+  const webhookUrl = `${currentOrigin}/api/webhook/transaction${userParam}`;
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -35,6 +56,29 @@ export function ZeroTouchSync() {
     setActiveChannel((prev) => (prev === channel ? null : channel));
   };
 
+  // Fetch Live Webhook Activity Logs
+  const fetchWebhookLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const url = user?.id ? `/api/webhook/logs?user_id=${user.id}` : '/api/webhook/logs';
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setWebhookLogs(data.logs || []);
+      }
+    } catch (e) {
+      // Quiet fail if offline
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWebhookLogs();
+    const interval = setInterval(fetchWebhookLogs, 3500);
+    return () => clearInterval(interval);
+  }, [user]);
+
   const handleSendTestWebhook = async () => {
     setIsTestingWebhook(true);
     setTestResult(null);
@@ -43,12 +87,9 @@ export function ZeroTouchSync() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          description: 'Tim Hortons (MacroDroid Test)',
-          amount: 4.25,
-          category: 'Food',
+          title: 'Google Wallet',
+          message: 'Paid $4.25 to Tim Hortons with Visa •••• 3896',
           currency: 'CAD',
-          card: 'Google Wallet (Samsung Pay / NFC)',
-          payment_method: 'Google Wallet',
           user_id: user?.id,
         }),
       });
@@ -56,8 +97,9 @@ export function ZeroTouchSync() {
       if (res.ok) {
         setTestResult({
           success: true,
-          message: 'HTTP 200 OK! Webhook is live and test transaction was recorded.',
+          message: 'HTTP 200 OK! Test transaction parsed & logged to your Ledger.',
         });
+        fetchWebhookLogs();
       } else {
         setTestResult({
           success: false,
@@ -75,8 +117,8 @@ export function ZeroTouchSync() {
   };
 
   return (
-    <div className="space-y-2.5 text-slate-100 max-w-5xl mx-auto">
-      {/* Sleek Horizontal 3 Channel Buttons (Click to open, click again to close) */}
+    <div className="space-y-4 text-slate-100 max-w-5xl mx-auto">
+      {/* 1. Sleek 3 Channel Accordion Buttons */}
       <div className="grid grid-cols-3 gap-2 p-1.5 bg-[#000000] rounded-2xl border border-zinc-800">
         <button
           type="button"
@@ -121,9 +163,8 @@ export function ZeroTouchSync() {
         </button>
       </div>
 
-      {/* Expandable Channel Details */}
+      {/* 2. Expandable Setup Guides */}
       <AnimatePresence mode="wait">
-        {/* CHANNEL 1: ANDROID (GOOGLE WALLET) */}
         {activeChannel === 'android' && (
           <motion.div 
             key="android-channel"
@@ -140,7 +181,7 @@ export function ZeroTouchSync() {
                   <span>Android Google Wallet & Bank Notifications Bridge</span>
                 </h3>
                 <p className="text-[11px] text-zinc-400 mt-0.5 max-w-xl">
-                  Whenever you tap your phone to pay or receive bank alert notifications, MacroDroid captures it and posts to Aura in under 1 second.
+                  MacroDroid captures payment notifications in under 1 second and posts them to your Aura webhook.
                 </p>
               </div>
               <button 
@@ -156,23 +197,14 @@ export function ZeroTouchSync() {
               <div className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2">
                 <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">1</span>
                 <div>
-                  <b className="text-white text-xs">Install MacroDroid (Free on Google Play Store)</b>
-                  <p className="text-zinc-400 text-[10px]">Safe, lightweight automation app with zero battery impact.</p>
+                  <b className="text-white text-xs">Trigger: Notification Received → Pick (Google Wallet / Bank App)</b>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2">
                 <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">2</span>
-                <div>
-                  <b className="text-white text-xs">Trigger: Notification Received → Pick (Google Wallet / TD / RBC / CIBC)</b>
-                  <p className="text-zinc-400 text-[10px]">Select your wallet and bank apps.</p>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">3</span>
                 <div className="w-full space-y-2">
-                  <b className="text-white text-xs">Action: HTTP Request → POST to Webhook URL</b>
+                  <b className="text-white text-xs">Action: HTTP Request (POST) → Webhook URL</b>
 
                   <div className="p-2.5 rounded-xl bg-[#080808] border border-zinc-700 space-y-2">
                     <div className="flex items-center justify-between font-mono text-[11px] text-cyan-300">
@@ -196,26 +228,9 @@ export function ZeroTouchSync() {
                       </button>
                     </div>
 
-                    <div className="pt-1.5 border-t border-zinc-800 flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-zinc-400">Test live connection ($4.25 coffee simulation):</span>
-                      <button
-                        type="button"
-                        onClick={handleSendTestWebhook}
-                        disabled={isTestingWebhook}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-cyan-600 hover:bg-cyan-500 cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                      >
-                        <Zap size={11} />
-                        <span>Send Test</span>
-                      </button>
+                    <div className="text-[10px] text-zinc-400 font-mono">
+                      <b>Request Body (JSON):</b> <code className="text-cyan-300">&#123;&quot;title&quot;: &quot;[not_title]&quot;, &quot;message&quot;: &quot;[not_text]&quot;&#125;</code>
                     </div>
-
-                    {testResult && (
-                      <div className={`p-1.5 rounded text-[10px] font-mono ${
-                        testResult.success ? 'bg-emerald-950/80 text-emerald-300' : 'bg-rose-950/80 text-rose-300'
-                      }`}>
-                        {testResult.message}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -223,7 +238,6 @@ export function ZeroTouchSync() {
           </motion.div>
         )}
 
-        {/* CHANNEL 2: APPLE PAY / IOS SHORTCUT */}
         {activeChannel === 'ios' && (
           <motion.div 
             key="ios-channel"
@@ -239,9 +253,6 @@ export function ZeroTouchSync() {
                   <Zap className="text-rose-400" size={16} />
                   <span>Apple Pay Real-Time iOS Automation</span>
                 </h3>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
-                  Whenever you tap your iPhone or Apple Watch, iOS executes a background shortcut posting spending to Aura.
-                </p>
               </div>
               <button 
                 type="button" 
@@ -256,21 +267,14 @@ export function ZeroTouchSync() {
               <div className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2">
                 <span className="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">1</span>
                 <div>
-                  <b className="text-white text-xs">Open Shortcuts App on iPhone → Automation tab → New Automation</b>
+                  <b className="text-white text-xs">Shortcuts App → Automation → Transaction (Apple Pay)</b>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2">
                 <span className="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">2</span>
-                <div>
-                  <b className="text-white text-xs">Trigger: Transaction (Apple Pay) → Run Immediately</b>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#000000] border border-zinc-800 flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">3</span>
                 <div className="w-full space-y-1.5">
-                  <b className="text-white text-xs">Action: &quot;Get Contents of URL&quot; (POST)</b>
+                  <b className="text-white text-xs">Action: &quot;Get Contents of URL&quot; (POST to Webhook)</b>
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#000000] border border-zinc-700 font-mono text-[11px] text-rose-300">
                     <span className="truncate max-w-[200px] sm:max-w-md">{webhookUrl}</span>
                     <button
@@ -288,7 +292,6 @@ export function ZeroTouchSync() {
           </motion.div>
         )}
 
-        {/* CHANNEL 3: EMAIL & INTERAC */}
         {activeChannel === 'email' && (
           <motion.div 
             key="email-channel"
@@ -324,6 +327,104 @@ export function ZeroTouchSync() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 3. LIVE WEBHOOK ACTIVITY FEED & MOBILE DEBUGGER */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#080808] border border-zinc-800 shadow-xl space-y-3.5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2.5 border-b border-zinc-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <Activity size={16} className="animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                <span>Live Webhook Activity Feed</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
+              </h3>
+              <p className="text-[10px] sm:text-[11px] text-zinc-400">
+                Real-time debugger for phone tap-to-pay & bank notifications
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={handleSendTestWebhook}
+              disabled={isTestingWebhook}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-cyan-600 hover:bg-cyan-500 cursor-pointer disabled:opacity-50 flex items-center gap-1 shadow-md"
+            >
+              <Zap size={11} />
+              <span>{isTestingWebhook ? 'Sending...' : 'Test Ping'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={fetchWebhookLogs}
+              className="p-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 cursor-pointer"
+              title="Refresh Logs"
+            >
+              <RefreshCw size={13} className={isLoadingLogs ? 'animate-spin' : ''} />
+            </button>
+          </div>
+        </div>
+
+        {testResult && (
+          <div className={`p-2 rounded-xl text-[11px] font-mono flex items-center gap-1.5 ${
+            testResult.success ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+          }`}>
+            {testResult.success ? <CheckCircle2 size={13} className="flex-shrink-0" /> : <AlertCircle size={13} className="flex-shrink-0" />}
+            <span>{testResult.message}</span>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {webhookLogs.length === 0 ? (
+            <div className="p-4 rounded-xl bg-[#000000] border border-zinc-800/80 text-center space-y-1.5">
+              <Radio size={18} className="text-zinc-600 mx-auto animate-pulse" />
+              <p className="text-xs text-zinc-400 font-medium">Listening for live payment notifications...</p>
+              <p className="text-[10px] text-zinc-500">
+                When you tap your phone at Dollarama, the captured payment will appear here live within 1 second.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-800/60 max-h-56 overflow-y-auto pr-1 space-y-1.5">
+              {webhookLogs.map((log) => (
+                <div key={log.id} className="pt-2 first:pt-0 space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <b className="text-white text-xs">{log.merchant || log.rawTitle}</b>
+                      {log.amount && (
+                        <span className="font-mono font-bold text-emerald-400 text-xs">
+                          ${Number(log.amount).toFixed(2)} {log.currency || 'CAD'}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-[#000000] border border-zinc-850 text-[11px] font-mono text-zinc-300 space-y-0.5">
+                    <div className="text-zinc-400 truncate">
+                      <span className="text-zinc-500">Raw: </span>
+                      &quot;{log.rawText}&quot;
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] pt-0.5">
+                      <span className="text-cyan-400 font-sans">
+                        Category: <b>{log.category || 'Shopping'}</b>
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                        {log.statusCode || 200} OK • Saved to Ledger
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

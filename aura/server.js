@@ -268,6 +268,27 @@ app.post('/api/plaid/exchange-public-token', async (req, res) => {
   }
 });
 
+
+// In-memory ring buffer for live Webhook Activity Feed (last 30 logs)
+const recentWebhookLogs = [];
+
+function recordWebhookLog(entry) {
+  recentWebhookLogs.unshift({
+    id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    timestamp: new Date().toISOString(),
+    ...entry
+  });
+  if (recentWebhookLogs.length > 30) recentWebhookLogs.pop();
+}
+
+app.get('/api/webhook/logs', (req, res) => {
+  const userId = req.query.user_id;
+  const filtered = userId 
+    ? recentWebhookLogs.filter(l => !l.user_id || l.user_id === userId)
+    : recentWebhookLogs;
+  res.json({ logs: filtered });
+});
+
 app.post('/api/webhook/transaction', async (req, res) => {
   try {
     let { 
@@ -311,6 +332,14 @@ app.post('/api/webhook/transaction', async (req, res) => {
     }
 
     if (parsedAmount === 0) {
+      recordWebhookLog({
+        status: 'warning',
+        statusCode: 400,
+        rawTitle: title || 'Google Wallet',
+        rawText: rawText || JSON.stringify(req.body),
+        error: 'Could not extract valid dollar amount from notification',
+        user_id: req.query.user_id || req.body.user_id || null
+      });
       return res.status(400).json({ error: 'Could not detect valid amount from payload' });
     }
 
@@ -349,6 +378,17 @@ app.post('/api/webhook/transaction', async (req, res) => {
     };
 
     console.log('[REAL-TIME ZERO-TOUCH WEBHOOK] Automatically ingested payment from Samsung / Google Wallet:', payload);
+    recordWebhookLog({
+      status: 'success',
+      statusCode: 200,
+      rawTitle: title || 'Google Wallet',
+      rawText: rawText || message || text || 'Direct Webhook POST',
+      merchant: txDesc,
+      amount: parsedAmount,
+      category: autoCategory,
+      currency: payload.currency,
+      user_id: payload.user_id
+    });
 
     // Save directly to Supabase
     if (supabaseUrl && supabaseAnonKey) {
