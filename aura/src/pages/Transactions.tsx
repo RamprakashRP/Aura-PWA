@@ -107,25 +107,25 @@ const Transactions = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [user]);
 
-  // Fetch Connected Accounts from Supabase + Local Storage + Transactions discovery
+  // Fetch Connected Accounts from Supabase + Local Storage (Fully generalized for any user & any bank)
   const fetchConnectedAccounts = async () => {
     if (!user) return;
     const accountsMap = new Map<string, ConnectedAccount>();
 
-    // 1. Fetch from Supabase bank_accounts
+    // 1. Fetch from Supabase bank_accounts (user's real connected banks & cards)
     try {
       const { data: dbAccounts } = await supabase
         .from('bank_accounts')
         .select('*')
         .eq('user_id', user.id);
 
-      if (dbAccounts) {
+      if (dbAccounts && dbAccounts.length > 0) {
         dbAccounts.forEach((acc: any) => {
           accountsMap.set(acc.id, {
             id: acc.id,
-            bank_id: acc.bank_id || 'cibc',
+            bank_id: acc.bank_id || 'bank',
             account_name: acc.account_name || 'Bank Account',
-            account_type: acc.account_type || 'Checking Account',
+            account_type: acc.account_type || 'Account',
             last_4_digits: acc.last_4_digits || '',
             balance: acc.balance || 0,
             currency: acc.currency || 'CAD',
@@ -136,7 +136,7 @@ const Transactions = () => {
       console.warn('Could not query Supabase bank_accounts:', err);
     }
 
-    // 2. Fetch from LocalStorage fallback
+    // 2. Fetch from user-scoped LocalStorage fallback
     try {
       const localKey = `aura_bank_accounts_${user.id}`;
       const localRaw = localStorage.getItem(localKey);
@@ -146,9 +146,9 @@ const Transactions = () => {
           if (!accountsMap.has(acc.id)) {
             accountsMap.set(acc.id, {
               id: acc.id,
-              bank_id: acc.bankId || acc.bank_id || 'cibc',
+              bank_id: acc.bankId || acc.bank_id || 'bank',
               account_name: acc.accountName || acc.account_name || 'Bank Account',
-              account_type: acc.accountType || acc.account_type || 'Chequing',
+              account_type: acc.accountType || acc.account_type || 'Account',
               last_4_digits: acc.last4Digits || acc.last_4_digits || '',
               balance: acc.balance || 0,
               currency: acc.currency || 'CAD',
@@ -158,36 +158,27 @@ const Transactions = () => {
       }
     } catch (e) {}
 
-    // 3. If accounts map is empty or only has 1, provide the user's connected CIBC accounts
-    if (accountsMap.size === 0) {
-      accountsMap.set('acc_cibc_credit_8840', {
-        id: 'acc_cibc_credit_8840',
-        bank_id: 'cibc',
-        account_name: 'CIBC Adapta Mastercard',
-        account_type: 'Credit Card',
-        last_4_digits: '8840',
-        balance: 0,
-        currency: 'CAD',
-      });
-
-      accountsMap.set('acc_cibc_chequing', {
-        id: 'acc_cibc_chequing',
-        bank_id: 'cibc',
-        account_name: 'CIBC Smart Chequing Account',
-        account_type: 'Chequing Account',
-        last_4_digits: '',
-        balance: 0,
-        currency: 'CAD',
-      });
-
-      accountsMap.set('acc_cibc_savings', {
-        id: 'acc_cibc_savings',
-        bank_id: 'cibc',
-        account_name: 'CIBC eAdvantage Savings',
-        account_type: 'Savings Account',
-        last_4_digits: '',
-        balance: 0,
-        currency: 'CAD',
+    // 3. Auto-discover linked cards from user's transaction records if no manual account was created yet
+    if (accountsMap.size === 0 && transactions.length > 0) {
+      transactions.forEach(t => {
+        const desc = t.description || '';
+        const match4 = desc.match(/(?:••|\*\*|#|ending in\s*)([0-9]{4})/i) || desc.match(/([0-9]{4})/);
+        if (match4) {
+          const last4 = match4[1];
+          const isCard = /mastercard|visa|amex|credit/i.test(desc);
+          const autoId = `acc_discovered_${last4}`;
+          if (!accountsMap.has(autoId)) {
+            accountsMap.set(autoId, {
+              id: autoId,
+              bank_id: /cibc/i.test(desc) ? 'cibc' : /td/i.test(desc) ? 'td' : /rbc/i.test(desc) ? 'rbc' : /scotia/i.test(desc) ? 'scotiabank' : /bmo/i.test(desc) ? 'bmo' : 'bank',
+              account_name: isCard ? `Card ••••${last4}` : `Account ••••${last4}`,
+              account_type: isCard ? 'Credit Card' : 'Chequing Account',
+              last_4_digits: last4,
+              balance: 0,
+              currency: t.currency || 'CAD',
+            });
+          }
+        }
       });
     }
 
@@ -275,43 +266,46 @@ const Transactions = () => {
     setActiveFilterMenu(null);
   };
 
-  // Helper to match transaction precisely with Credit Card vs Chequing vs Savings
+  // Universal Dynamic Matcher: Correlates any transaction to any bank account dynamically
   const matchTxToAccount = (tx: any, acc: ConnectedAccount) => {
     const desc = (tx.description || '').toLowerCase();
     const bank = (tx.bank || '').toLowerCase();
     const last4 = (acc.last_4_digits || '').trim();
     const accType = (acc.account_type || '').toLowerCase();
     const accName = acc.account_name.toLowerCase();
+    const bankId = (acc.bank_id || '').toLowerCase();
 
     // 1. Direct ID match
     if (tx.account_id && tx.account_id === acc.id) return true;
 
-    // 2. Strict Last-4 digits match (e.g. 8840)
+    // 2. Exact Last 4 Digits Match (Highest Precision, e.g. 8840, 1234, 4691)
     if (last4 && (desc.includes(last4) || desc.includes(`••${last4}`) || desc.includes(`**${last4}`))) {
       return true;
     }
 
-    // 3. Category & Type Contextual Check (Credit Card vs Chequing vs Savings)
-    const isCreditCardTx = /mastercard|visa|credit|adapta|aventura|dividend/i.test(desc);
-    const isChequingTx = /debit|chequing|checking|interac|e-transfer|atm|pos/i.test(desc);
-    const isSavingsTx = /savings|interest|hisa|tfsa/i.test(desc);
+    // 3. Dynamic Bank Matching for Any Bank (TD, RBC, Scotiabank, CIBC, BMO, Tangerine, Chase, Amex, etc.)
+    const bankKeywords = [bankId, accName.split(' ')[0]].filter(k => k && k.length > 2);
+    const matchesBank = bankKeywords.some(k => desc.includes(k) || bank.includes(k));
 
-    const isCreditAcc = accType.includes('credit') || accName.includes('mastercard') || accName.includes('visa');
-    const isChequingAcc = accType.includes('chequing') || accType.includes('checking');
-    const isSavingsAcc = accType.includes('savings');
+    if (matchesBank) {
+      const isCreditCardTx = /mastercard|visa|amex|american express|credit card|card/i.test(desc);
+      const isChequingTx = /debit|chequing|checking|interac|e-transfer|direct deposit|payroll|atm|pos/i.test(desc);
+      const isSavingsTx = /savings|saving|interest|hisa|tfsa|fhsa|rrsp/i.test(desc);
 
-    // Both belong to CIBC:
-    const isCibcTx = desc.includes('cibc') || bank.includes('cibc');
-    const isCibcAcc = acc.bank_id === 'cibc' || accName.includes('cibc');
+      const isCreditAcc = accType.includes('credit') || accName.includes('card') || accName.includes('mastercard') || accName.includes('visa') || accName.includes('amex');
+      const isChequingAcc = accType.includes('chequing') || accType.includes('checking');
+      const isSavingsAcc = accType.includes('savings') || accType.includes('hisa');
 
-    if (isCibcTx && isCibcAcc) {
       if (isCreditCardTx && isCreditAcc) return true;
       if (isChequingTx && isChequingAcc) return true;
       if (isSavingsTx && isSavingsAcc) return true;
+
+      // If no conflicting subtype keywords, match bank
+      if (!isCreditCardTx && !isChequingTx && !isSavingsTx) return true;
     }
 
-    // 4. Exact account name substring match
-    if (accName && desc.includes(accName)) return true;
+    // 4. Custom Account Name match (e.g. "Dividend Infinite", "Aeroplan", "Student Chequing")
+    if (accName && accName.length > 4 && desc.includes(accName)) return true;
 
     return false;
   };
