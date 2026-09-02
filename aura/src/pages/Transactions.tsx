@@ -158,14 +158,34 @@ const Transactions = () => {
       }
     } catch (e) {}
 
-    // 3. Fallback: Auto-add user's connected CIBC account if not explicitly logged yet
+    // 3. If accounts map is empty or only has 1, provide the user's connected CIBC accounts
     if (accountsMap.size === 0) {
+      accountsMap.set('acc_cibc_credit_8840', {
+        id: 'acc_cibc_credit_8840',
+        bank_id: 'cibc',
+        account_name: 'CIBC Adapta Mastercard',
+        account_type: 'Credit Card',
+        last_4_digits: '8840',
+        balance: 0,
+        currency: 'CAD',
+      });
+
       accountsMap.set('acc_cibc_chequing', {
         id: 'acc_cibc_chequing',
         bank_id: 'cibc',
-        account_name: 'CIBC Chequing Account',
-        account_type: 'Chequing',
-        last_4_digits: '8840',
+        account_name: 'CIBC Smart Chequing Account',
+        account_type: 'Chequing Account',
+        last_4_digits: '',
+        balance: 0,
+        currency: 'CAD',
+      });
+
+      accountsMap.set('acc_cibc_savings', {
+        id: 'acc_cibc_savings',
+        bank_id: 'cibc',
+        account_name: 'CIBC eAdvantage Savings',
+        account_type: 'Savings Account',
+        last_4_digits: '',
         balance: 0,
         currency: 'CAD',
       });
@@ -255,17 +275,42 @@ const Transactions = () => {
     setActiveFilterMenu(null);
   };
 
-  // Helper to match transaction with a connected account
+  // Helper to match transaction precisely with Credit Card vs Chequing vs Savings
   const matchTxToAccount = (tx: any, acc: ConnectedAccount) => {
     const desc = (tx.description || '').toLowerCase();
     const bank = (tx.bank || '').toLowerCase();
-    const last4 = acc.last_4_digits || '';
+    const last4 = (acc.last_4_digits || '').trim();
+    const accType = (acc.account_type || '').toLowerCase();
     const accName = acc.account_name.toLowerCase();
-    const bankId = (acc.bank_id || '').toLowerCase();
 
+    // 1. Direct ID match
     if (tx.account_id && tx.account_id === acc.id) return true;
-    if (last4 && desc.includes(last4)) return true;
-    if (bankId && (desc.includes(bankId) || bank.includes(bankId))) return true;
+
+    // 2. Strict Last-4 digits match (e.g. 8840)
+    if (last4 && (desc.includes(last4) || desc.includes(`••${last4}`) || desc.includes(`**${last4}`))) {
+      return true;
+    }
+
+    // 3. Category & Type Contextual Check (Credit Card vs Chequing vs Savings)
+    const isCreditCardTx = /mastercard|visa|credit|adapta|aventura|dividend/i.test(desc);
+    const isChequingTx = /debit|chequing|checking|interac|e-transfer|atm|pos/i.test(desc);
+    const isSavingsTx = /savings|interest|hisa|tfsa/i.test(desc);
+
+    const isCreditAcc = accType.includes('credit') || accName.includes('mastercard') || accName.includes('visa');
+    const isChequingAcc = accType.includes('chequing') || accType.includes('checking');
+    const isSavingsAcc = accType.includes('savings');
+
+    // Both belong to CIBC:
+    const isCibcTx = desc.includes('cibc') || bank.includes('cibc');
+    const isCibcAcc = acc.bank_id === 'cibc' || accName.includes('cibc');
+
+    if (isCibcTx && isCibcAcc) {
+      if (isCreditCardTx && isCreditAcc) return true;
+      if (isChequingTx && isChequingAcc) return true;
+      if (isSavingsTx && isSavingsAcc) return true;
+    }
+
+    // 4. Exact account name substring match
     if (accName && desc.includes(accName)) return true;
 
     return false;
@@ -593,8 +638,8 @@ const Transactions = () => {
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-300 ml-1.5 flex-shrink-0">
-                                {acc.bank_id?.toUpperCase() || 'BANK'}
+                              <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-cyan-300 ml-1.5 flex-shrink-0">
+                                {acc.account_type || 'Account'}
                               </span>
                             </label>
                           );
