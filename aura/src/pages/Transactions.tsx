@@ -1,4 +1,5 @@
 import { SmartTransactionAnnotator } from '../components/expenses/SmartTransactionAnnotator';
+import { QuickLinkCardModal } from '../components/accounts/QuickLinkCardModal';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -13,7 +14,10 @@ import {
   ChevronDown, 
   Calendar, 
   Trash2, 
-  Landmark
+  Landmark, 
+  CreditCard,
+  Ban,
+  Plus
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +45,16 @@ export interface ConnectedAccount {
   currency?: string;
 }
 
+export interface DiscoveredCard {
+  last4: string;
+  bankId: string;
+  suggestedName: string;
+  suggestedType: string;
+  sampleDesc: string;
+  count: number;
+  totalAmount: number;
+}
+
 const categorize = (desc: string) => {
   const d = desc.toLowerCase();
   if (["chicken", "meat", "grocery", "supermarket", "mart", "store", "d-mart", "reliance", "vegetable", "fruit", "milk", "dairy", "egg", "fish", "mutton", "dollarama", "costco", "walmart", "loblaws", "metro", "sobeys", "no frills", "freshco"].some(k => d.includes(k))) return "Groceries";
@@ -62,6 +76,14 @@ const Transactions = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
   
+  // Ignored Cards State (Cards the user chooses not to link)
+  const [ignoredCards, setIgnoredCards] = useState<string[]>([]);
+  const [dismissedDiscovery, setDismissedDiscovery] = useState(false);
+
+  // Quick Link Modal State
+  const [quickLinkModalOpen, setQuickLinkModalOpen] = useState(false);
+  const [cardToLink, setCardToLink] = useState<{ last4: string; bankId?: string; accountName?: string; accountType?: string }>({ last4: '' });
+  
   // Spreadsheet Controls
   type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL' | 'CUSTOM';
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
@@ -72,7 +94,6 @@ const Transactions = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
   
   // Connected Accounts Filter State
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -80,12 +101,34 @@ const Transactions = () => {
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   
   // Custom Right-Click Filter Menu State
-  const [activeFilterMenu, setActiveFilterMenu] = useState<{ column: string; x: number; y: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ description: '', category: '' });
+
+  // Load Ignored Cards from LocalStorage
+  useEffect(() => {
+    if (user?.id) {
+      const stored = localStorage.getItem(`aura_ignored_cards_${user.id}`);
+      if (stored) {
+        try { setIgnoredCards(JSON.parse(stored)); } catch (e) {}
+      }
+    }
+  }, [user]);
+
+  const handleIgnoreCard = (last4: string) => {
+    if (!user?.id || !last4) return;
+    const next = Array.from(new Set([...ignoredCards, last4]));
+    setIgnoredCards(next);
+    localStorage.setItem(`aura_ignored_cards_${user.id}`, JSON.stringify(next));
+  };
+
+  const handleUnignoreCard = (last4: string) => {
+    if (!user?.id || !last4) return;
+    const next = ignoredCards.filter(c => c !== last4);
+    setIgnoredCards(next);
+    localStorage.setItem(`aura_ignored_cards_${user.id}`, JSON.stringify(next));
+  };
 
   useEffect(() => {
     fetchTransactions();
@@ -93,9 +136,6 @@ const Transactions = () => {
     
     // Click outside
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setActiveFilterMenu(null);
-      }
       if (timeDropdownRef.current && !timeDropdownRef.current.contains(e.target as Node)) {
         setShowTimeDropdown(false);
       }
@@ -107,12 +147,12 @@ const Transactions = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [user]);
 
-  // Fetch Connected Accounts from Supabase + Local Storage (Fully generalized for any user & any bank)
+  // Fetch Connected Accounts from Supabase + Local Storage
   const fetchConnectedAccounts = async () => {
     if (!user) return;
     const accountsMap = new Map<string, ConnectedAccount>();
 
-    // 1. Fetch from Supabase bank_accounts (user's real connected banks & cards)
+    // 1. Fetch from Supabase bank_accounts
     try {
       const { data: dbAccounts } = await supabase
         .from('bank_accounts')
@@ -157,30 +197,6 @@ const Transactions = () => {
         });
       }
     } catch (e) {}
-
-    // 3. Auto-discover linked cards from user's transaction records if no manual account was created yet
-    if (accountsMap.size === 0 && transactions.length > 0) {
-      transactions.forEach(t => {
-        const desc = t.description || '';
-        const match4 = desc.match(/(?:••|\*\*|#|ending in\s*)([0-9]{4})/i) || desc.match(/([0-9]{4})/);
-        if (match4) {
-          const last4 = match4[1];
-          const isCard = /mastercard|visa|amex|credit/i.test(desc);
-          const autoId = `acc_discovered_${last4}`;
-          if (!accountsMap.has(autoId)) {
-            accountsMap.set(autoId, {
-              id: autoId,
-              bank_id: /cibc/i.test(desc) ? 'cibc' : /td/i.test(desc) ? 'td' : /rbc/i.test(desc) ? 'rbc' : /scotia/i.test(desc) ? 'scotiabank' : /bmo/i.test(desc) ? 'bmo' : 'bank',
-              account_name: isCard ? `Card ••••${last4}` : `Account ••••${last4}`,
-              account_type: isCard ? 'Credit Card' : 'Chequing Account',
-              last_4_digits: last4,
-              balance: 0,
-              currency: t.currency || 'CAD',
-            });
-          }
-        }
-      });
-    }
 
     setConnectedAccounts(Array.from(accountsMap.values()));
   };
@@ -236,35 +252,50 @@ const Transactions = () => {
     setTransactions(sorted);
   };
 
+  // Discover any unlinked cards in transactions that are not in connectedAccounts and not in ignoredCards
+  const discoveredUnlinkedCards = useMemo<DiscoveredCard[]>(() => {
+    const cardMap = new Map<string, DiscoveredCard>();
+    const knownDigits = new Set(connectedAccounts.map(a => (a.last_4_digits || '').trim()).filter(Boolean));
+    const ignoredSet = new Set(ignoredCards);
+
+    transactions.forEach((tx) => {
+      const desc = tx.description || '';
+      const match4 = desc.match(/(?:••|\*{2}|#|ending in\s*)([0-9]{4})/i) || desc.match(/\b([0-9]{4})\b/);
+      if (match4) {
+        const last4 = match4[1];
+        if (!knownDigits.has(last4) && !ignoredSet.has(last4)) {
+          const isCard = /mastercard|visa|amex|credit/i.test(desc);
+          const bankName = /cibc/i.test(desc) ? 'CIBC' : /td/i.test(desc) ? 'TD' : /rbc/i.test(desc) ? 'RBC' : /scotia/i.test(desc) ? 'Scotiabank' : /bmo/i.test(desc) ? 'BMO' : /amex/i.test(desc) ? 'Amex' : 'Bank';
+          const bankId = bankName.toLowerCase();
+          
+          const existing = cardMap.get(last4);
+          if (existing) {
+            existing.count += 1;
+            existing.totalAmount += Number(tx.amount) || 0;
+          } else {
+            cardMap.set(last4, {
+              last4,
+              bankId,
+              suggestedName: `${bankName} ${isCard ? 'Card' : 'Account'} ••${last4}`,
+              suggestedType: isCard ? 'Credit Card' : 'Chequing Account',
+              sampleDesc: desc,
+              count: 1,
+              totalAmount: Number(tx.amount) || 0,
+            });
+          }
+        }
+      }
+    });
+
+    return Array.from(cardMap.values());
+  }, [transactions, connectedAccounts, ignoredCards]);
+
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
     setSortConfig({ key, direction });
   };
 
-
-  const toggleFilter = (column: string, value: string) => {
-    setFilters(prev => {
-      const current = prev[column] || [];
-      const updated = current.includes(value) 
-         ? current.filter(v => v !== value) 
-         : [...current, value];
-      
-      if (updated.length === 0) {
-         const { [column]: _, ...rest } = prev;
-         return rest;
-      }
-      return { ...prev, [column]: updated };
-    });
-  };
-
-  const clearFilters = (column: string) => {
-    setFilters(prev => {
-      const { [column]: _, ...rest } = prev;
-      return rest;
-    });
-    setActiveFilterMenu(null);
-  };
 
   // Universal Dynamic Matcher: Correlates any transaction to any bank account dynamically
   const matchTxToAccount = (tx: any, acc: ConnectedAccount) => {
@@ -279,7 +310,7 @@ const Transactions = () => {
     if (tx.account_id && tx.account_id === acc.id) return true;
 
     // 2. Exact Last 4 Digits Match (Highest Precision, e.g. 8840, 1234, 4691)
-    if (last4 && (desc.includes(last4) || desc.includes(`••${last4}`) || desc.includes(`**${last4}`))) {
+    if (last4 && (desc.includes(last4) || desc.includes('••' + last4) || desc.includes('**' + last4))) {
       return true;
     }
 
@@ -304,7 +335,7 @@ const Transactions = () => {
       if (!isCreditCardTx && !isChequingTx && !isSavingsTx) return true;
     }
 
-    // 4. Custom Account Name match (e.g. "Dividend Infinite", "Aeroplan", "Student Chequing")
+    // 4. Custom Account Name match
     if (accName && accName.length > 4 && desc.includes(accName)) return true;
 
     return false;
@@ -338,17 +369,25 @@ const Transactions = () => {
       );
     }
 
-    Object.entries(filters).forEach(([col, activeValues]) => {
-      if (activeValues.length > 0) {
-        result = result.filter(t => activeValues.includes(String(t[col])));
-      }
-    });
 
     // Connected Accounts Filter
     if (selectedAccountIds.length > 0) {
-      const targetAccounts = connectedAccounts.filter(a => selectedAccountIds.includes(a.id));
       result = result.filter(t => {
-        return targetAccounts.some(acc => matchTxToAccount(t, acc));
+        // Check if matching selected connected account
+        const matchesConnected = connectedAccounts
+          .filter(a => selectedAccountIds.includes(a.id))
+          .some(acc => matchTxToAccount(t, acc));
+        
+        // Or check if matching selected unlinked card
+        const matchesUnlinked = selectedAccountIds.some(id => {
+          if (id.startsWith('unlinked_')) {
+            const last4 = id.replace('unlinked_', '');
+            return (t.description || '').includes(last4);
+          }
+          return false;
+        });
+
+        return matchesConnected || matchesUnlinked;
       });
     }
 
@@ -367,7 +406,7 @@ const Transactions = () => {
     }
 
     return result;
-  }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, filters, sortConfig, selectedAccountIds, connectedAccounts]);
+  }, [transactions, timeRange, customDateFrom, customDateTo, searchQuery, sortConfig, selectedAccountIds, connectedAccounts]);
 
   // Grouped Mobile Sticky Segments
   const groupedData = useMemo(() => {
@@ -385,9 +424,6 @@ const Transactions = () => {
     return groups;
   }, [processedData]);
 
-  const getUniqueValues = (column: string) => {
-    return Array.from(new Set(transactions.map(t => String(t[column] || '')))).filter(Boolean);
-  };
 
   const handleEditClick = (tx: any) => {
     setEditingId(tx.id || tx.transaction_id);
@@ -432,50 +468,89 @@ const Transactions = () => {
   const selectedAccountLabels = useMemo(() => {
     if (selectedAccountIds.length === 0) return 'All Accounts';
     if (selectedAccountIds.length === 1) {
-      const found = connectedAccounts.find(a => a.id === selectedAccountIds[0]);
+      const id = selectedAccountIds[0];
+      if (id.startsWith('unlinked_')) {
+        return `Unlinked (••••${id.replace('unlinked_', '')})`;
+      }
+      const found = connectedAccounts.find(a => a.id === id);
       return found ? `${found.account_name} ${found.last_4_digits ? `(${found.last_4_digits})` : ''}` : '1 Account';
     }
     return `${selectedAccountIds.length} Accounts`;
   }, [selectedAccountIds, connectedAccounts]);
 
+  const openQuickLinkModal = (card: DiscoveredCard) => {
+    setCardToLink({
+      last4: card.last4,
+      bankId: card.bankId,
+      accountName: card.suggestedName,
+      accountType: card.suggestedType,
+    });
+    setQuickLinkModalOpen(true);
+  };
+
   return (
     <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Real-Time Transaction Annotator Prompt */}
       <SmartTransactionAnnotator />
-      
-      {/* FILTER OVERLAY POPUP */}
-      <AnimatePresence>
-        {activeFilterMenu && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            ref={menuRef}
-            style={{ top: activeFilterMenu.y + 15, left: activeFilterMenu.x }}
-            className="fixed z-50 w-64 glass bg-[#000000] border border-zinc-700 rounded-xl shadow-2xl overflow-hidden backdrop-blur-3xl"
-            onContextMenu={(e) => e.preventDefault()}
-          >
-             <div className="bg-[#080808]/90 px-4 py-3 border-b border-zinc-700 flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Filter: {activeFilterMenu.column}</span>
-                <button onClick={() => clearFilters(activeFilterMenu.column)} className="text-[10px] text-blue-400 font-bold hover:text-white transition-colors uppercase">Clear</button>
-             </div>
-             <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                {getUniqueValues(activeFilterMenu.column).map(val => (
-                   <label key={val} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800/50 rounded cursor-pointer transition-colors group">
-                      <input 
-                         type="checkbox" 
-                         checked={(filters[activeFilterMenu.column] || []).includes(val)}
-                         onChange={() => toggleFilter(activeFilterMenu.column, val)}
-                         className="rounded border-slate-600 bg-transparent text-blue-500 focus:ring-blue-500/20"
-                         style={{ accentColor: getAuraColor() }}
-                      />
-                      <span className="text-xs font-mono text-zinc-300 group-hover:text-white transition-colors">{val}</span>
-                   </label>
-                ))}
-             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+      {/* 💳 SMART NEW CARD DISCOVERY BANNER */}
+      {discoveredUnlinkedCards.length > 0 && !dismissedDiscovery && (
+        <div className="p-4 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 shadow-xl space-y-3 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                <CreditCard size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <b className="text-xs sm:text-sm text-white font-bold">
+                    New Unlinked Card Detected: {discoveredUnlinkedCards[0].suggestedName}
+                  </b>
+                  <span className="px-2 py-0.2 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-400/30">
+                    Auto-Discovered
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-300 mt-0.5">
+                  We found {discoveredUnlinkedCards[0].count} transaction (${discoveredUnlinkedCards[0].totalAmount.toFixed(2)}) on card ••••{discoveredUnlinkedCards[0].last4}.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+              {/* Link Card Button */}
+              <button
+                type="button"
+                onClick={() => openQuickLinkModal(discoveredUnlinkedCards[0])}
+                className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg transition-transform active:scale-95"
+              >
+                <Plus size={13} />
+                <span>Link to My Accounts</span>
+              </button>
+
+              {/* Ignore Forever Button */}
+              <button
+                type="button"
+                onClick={() => handleIgnoreCard(discoveredUnlinkedCards[0].last4)}
+                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-rose-300 border border-zinc-700 text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                title="Never prompt for this card again"
+              >
+                <Ban size={12} />
+                <span>Ignore Card</span>
+              </button>
+
+              {/* Dismiss Banner for now */}
+              <button
+                type="button"
+                onClick={() => setDismissedDiscovery(true)}
+                className="p-1.5 rounded-xl text-zinc-500 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer"
+                title="Dismiss"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SPREADSHEET TOOLBAR */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#000000] border border-zinc-800 p-3 md:p-4 rounded-xl shadow-2xl">
@@ -582,7 +657,7 @@ const Transactions = () => {
                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                   className="absolute top-full right-0 mt-2 w-64 glass bg-[#000000] border border-zinc-700 rounded-xl shadow-2xl z-40 overflow-hidden p-2.5 space-y-1.5"
+                   className="absolute top-full right-0 mt-2 w-72 glass bg-[#000000] border border-zinc-700 rounded-xl shadow-2xl z-40 overflow-hidden p-2.5 space-y-2"
                  >
                     <div className="flex justify-between items-center pb-1.5 border-b border-zinc-800 text-[9px] font-bold uppercase tracking-wider text-zinc-400 px-1">
                       <span>Your Linked Accounts</span>
@@ -596,13 +671,14 @@ const Transactions = () => {
                       )}
                     </div>
 
-                    {connectedAccounts.length === 0 ? (
-                      <div className="p-3 text-center text-xs text-zinc-400 space-y-1">
-                        <p>No accounts connected yet.</p>
-                      </div>
-                    ) : (
-                      <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
-                        {connectedAccounts.map((acc) => {
+                    {/* Section 1: Linked Accounts */}
+                    <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                      {connectedAccounts.length === 0 ? (
+                        <div className="p-2.5 text-center text-xs text-zinc-400">
+                          No bank accounts linked yet.
+                        </div>
+                      ) : (
+                        connectedAccounts.map((acc) => {
                           const isSelected = selectedAccountIds.includes(acc.id);
                           return (
                             <label 
@@ -637,7 +713,82 @@ const Transactions = () => {
                               </span>
                             </label>
                           );
+                        })
+                      )}
+                    </div>
+
+                    {/* Section 2: Discovered Unlinked Cards */}
+                    {discoveredUnlinkedCards.length > 0 && (
+                      <div className="pt-2 border-t border-zinc-800 space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400 px-1 block">
+                          ⚡ Discovered Unlinked Cards
+                        </span>
+                        {discoveredUnlinkedCards.map((card) => {
+                          const unlinkedId = `unlinked_${card.last4}`;
+                          const isSelected = selectedAccountIds.includes(unlinkedId);
+                          return (
+                            <div 
+                              key={card.last4}
+                              className={`flex items-center justify-between p-1.5 rounded-lg border text-xs ${
+                                isSelected ? 'bg-amber-950/40 border-amber-500/50 text-amber-300' : 'bg-[#080808] border-zinc-800 text-zinc-300'
+                              }`}
+                            >
+                              <label className="flex items-center gap-2 truncate cursor-pointer flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedAccountIds(prev =>
+                                      prev.includes(unlinkedId) ? prev.filter(id => id !== unlinkedId) : [...prev, unlinkedId]
+                                    );
+                                  }}
+                                  className="rounded border-zinc-600"
+                                />
+                                <span className="truncate text-xs font-mono font-bold">••••{card.last4}</span>
+                                <span className="text-[10px] text-zinc-500">({card.count} tx)</span>
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => openQuickLinkModal(card)}
+                                className="px-2 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10px] ml-1.5 cursor-pointer flex items-center gap-1"
+                              >
+                                <Plus size={10} /> Link
+                              </button>
+                            </div>
+                          );
                         })}
+                      </div>
+                    )}
+
+                    {/* Section 3: Ignored Cards */}
+                    {ignoredCards.length > 0 && (
+                      <div className="pt-2 border-t border-zinc-800 space-y-1">
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 px-1 flex justify-between items-center">
+                          <span>{ignoredCards.length} Ignored Cards</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIgnoredCards([]);
+                              if (user?.id) localStorage.removeItem(`aura_ignored_cards_${user.id}`);
+                            }}
+                            className="text-[9px] text-zinc-400 hover:text-white cursor-pointer"
+                          >
+                            Reset All
+                          </button>
+                        </div>
+                        {ignoredCards.map(c => (
+                          <div key={c} className="flex justify-between items-center p-1 rounded bg-zinc-950 text-[10px] text-zinc-400">
+                            <span>Card ••••{c}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleUnignoreCard(c)}
+                              className="text-[9px] text-cyan-400 hover:text-white cursor-pointer"
+                            >
+                              Un-ignore
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                  </motion.div>
@@ -682,10 +833,12 @@ const Transactions = () => {
                                     )}
                                     <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono">
                                        <span>{tx.date}</span>
-                                       {matchedAccount && (
+                                       {matchedAccount ? (
                                          <span className="px-1.5 py-0.2 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-sans text-[9px] font-bold">
                                            {matchedAccount.account_name}
                                          </span>
+                                       ) : (
+                                         <span className="text-zinc-600 text-[9px] font-mono">Unlinked</span>
                                        )}
                                     </div>
                                  </div>
@@ -864,6 +1017,16 @@ const Transactions = () => {
             </table>
          </div>
       </div>
+
+      {/* QUICK LINK DISCOVERED CARD MODAL */}
+      <QuickLinkCardModal
+        isOpen={quickLinkModalOpen}
+        onClose={() => setQuickLinkModalOpen(false)}
+        initialData={cardToLink}
+        onAccountLinked={() => {
+          fetchConnectedAccounts();
+        }}
+      />
     </div>
   );
 };
