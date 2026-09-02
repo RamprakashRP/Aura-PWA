@@ -32,7 +32,8 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || localEnv.VITE_SUPABASE_URL 
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || localEnv.VITE_SUPABASE_ANON_KEY || '';
 
 const app = express();
-const PORT = process.env.PORT || 5173;
+const PORT = process.env.PORT || 10000;
+const HOST = '0.0.0.0';
 
 app.use(express.json({ limit: '50mb' }));
 
@@ -575,6 +576,6 @@ if (fs.existsSync(buildPath)) {
   console.warn(`[SERVER WARNING] dist/ folder not found. Be sure to run 'npm run build' before launching the server.`);
 }
 
-app.listen(PORT, () => {
-  console.log(`[SERVER] Aura Node active on port ${PORT}. Status: RESONATING.`);
+app.listen(PORT, HOST, () => {
+  console.log(`[SERVER] Aura Node active on http://${HOST}:${PORT}. Status: RESONATING.`);
 });
